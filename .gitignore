@@ -12,3 +12,9 @@ discovery-log.json
 
 # Install-time symlink created by the one-shot setup
 AGENTS.md
+
+# Scanner runtime state (regenerated each run / accumulates per scan)
+news_cache.json
+scanner_audit.json
+scanner_audit_pre_v3_backup.json
+strength_cache.json
