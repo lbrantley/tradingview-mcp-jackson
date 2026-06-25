@@ -17671,7 +17671,7 @@
       "exitTime": null,
       "maxFavorable": 0.56984,
       "maxAdverse": 0.57102,
-      "lastPrice": 0.57035
+      "lastPrice": 0.57072
     },
     {
       "id": "NZDCAD-1782151675524",
@@ -17727,7 +17727,7 @@
       "exitTime": null,
       "maxFavorable": 0.80975,
       "maxAdverse": 0.80248,
-      "lastPrice": 0.80248
+      "lastPrice": 0.80265
     },
     {
       "id": "EURGBP-1782151675524",
@@ -17783,7 +17783,7 @@
       "exitTime": null,
       "maxFavorable": 0.86244,
       "maxAdverse": 0.86136,
-      "lastPrice": 0.86162
+      "lastPrice": 0.86148
     },
     {
       "id": "EURAUD-1782166677748",
@@ -17902,7 +17902,7 @@
       "exitTime": null,
       "maxFavorable": 1.13922,
       "maxAdverse": 1.13511,
-      "lastPrice": 1.13806
+      "lastPrice": 1.13808
     },
     {
       "id": "NZDUSD-1782166677748",
@@ -18014,7 +18014,7 @@
       "exitTime": null,
       "maxFavorable": 0.69392,
       "maxAdverse": 0.68926,
-      "lastPrice": 0.69107
+      "lastPrice": 0.69219
     },
     {
       "id": "USDJPY-1782221443729",
@@ -18070,7 +18070,7 @@
       "exitTime": null,
       "maxFavorable": 161.756,
       "maxAdverse": 161.554,
-      "lastPrice": 161.641
+      "lastPrice": 161.697
     },
     {
       "id": "NZDUSD-1782221443730",
@@ -18124,9 +18124,9 @@
       "outcome": null,
       "exitPrice": null,
       "exitTime": null,
-      "maxFavorable": 0.56526,
+      "maxFavorable": 0.56572,
       "maxAdverse": 0.56394,
-      "lastPrice": 0.56526
+      "lastPrice": 0.56572
     },
     {
       "id": "AUDJPY-1782221443730",
@@ -18238,7 +18238,7 @@
       "exitTime": null,
       "maxFavorable": 0.4586,
       "maxAdverse": 0.45765,
-      "lastPrice": 0.45766
+      "lastPrice": 0.45804
     },
     {
       "id": "AUDCAD-1782221443730",
@@ -18292,9 +18292,9 @@
       "outcome": null,
       "exitPrice": null,
       "exitTime": null,
-      "maxFavorable": 0.98166,
+      "maxFavorable": 0.98196,
       "maxAdverse": 0.98112,
-      "lastPrice": 0.98112
+      "lastPrice": 0.98196
     },
     {
       "id": "GBPNZD-1782221443730",
@@ -18350,7 +18350,7 @@
       "exitTime": null,
       "maxFavorable": 2.3329,
       "maxAdverse": 2.33697,
-      "lastPrice": 2.33697
+      "lastPrice": 2.33524
     },
     {
       "id": "EURAUD-1782221443730",
@@ -18404,9 +18404,9 @@
       "outcome": null,
       "exitPrice": null,
       "exitTime": null,
-      "maxFavorable": 1.64582,
+      "maxFavorable": 1.64422,
       "maxAdverse": 1.648,
-      "lastPrice": 1.6469
+      "lastPrice": 1.64422
     },
     {
       "id": "CADJPY-1782276048532",
@@ -18460,9 +18460,9 @@
       "outcome": null,
       "exitPrice": null,
       "exitTime": null,
-      "maxFavorable": 113.85,
+      "maxFavorable": 113.992,
       "maxAdverse": 113.614,
-      "lastPrice": 113.85
+      "lastPrice": 113.992
     },
     {
       "id": "AUDCHF-1782276048532",
@@ -18581,7 +18581,7 @@
       "exitTime": null,
       "maxFavorable": 0.80929,
       "maxAdverse": 0.81269,
-      "lastPrice": 0.80929
+      "lastPrice": 0.80962
     },
     {
       "id": "USDCAD-1782276048532",
@@ -18635,9 +18635,9 @@
       "outcome": null,
       "exitPrice": null,
       "exitTime": null,
-      "maxFavorable": 1.41966,
+      "maxFavorable": 1.41867,
       "maxAdverse": 1.42394,
-      "lastPrice": 1.41966
+      "lastPrice": 1.41867
     },
     {
       "id": "CHFJPY-1782276048532",
@@ -18757,9 +18757,9 @@
       "outcome": null,
       "exitPrice": null,
       "exitTime": null,
-      "maxFavorable": 1.3214,
+      "maxFavorable": 1.32142,
       "maxAdverse": 1.3163,
-      "lastPrice": 1.3214
+      "lastPrice": 1.32142
     },
     {
       "id": "NZDJPY-1782276048532",
@@ -18872,9 +18872,9 @@
       "outcome": null,
       "exitPrice": null,
       "exitTime": null,
-      "maxFavorable": 111.764,
+      "maxFavorable": 111.944,
       "maxAdverse": 111.492,
-      "lastPrice": 111.764
+      "lastPrice": 111.944
     },
     {
       "id": "EURJPY-1782276048533",
@@ -18924,13 +18924,13 @@
       "triggerPrice": 183.588,
       "triggerLevel": 183.604,
       "triggerTime": "2026-06-25T00:24:41.380Z",
-      "status": "pending",
-      "outcome": null,
-      "exitPrice": null,
-      "exitTime": null,
-      "maxFavorable": 184.005,
+      "status": "tp1_hit",
+      "outcome": "win",
+      "exitPrice": 184.046,
+      "exitTime": "2026-06-25T16:11:56.260Z",
+      "maxFavorable": 184.046,
       "maxAdverse": 183.588,
-      "lastPrice": 184.005
+      "lastPrice": 184.046
     },
     {
       "id": "GBPAUD-1782276048533",
@@ -18984,9 +18984,9 @@
       "outcome": null,
       "exitPrice": null,
       "exitTime": null,
-      "maxFavorable": 1.90942,
+      "maxFavorable": 1.90888,
       "maxAdverse": 1.91082,
-      "lastPrice": 1.91082
+      "lastPrice": 1.90888
     },
     {
       "id": "USDJPY-1782348359439",
@@ -19042,7 +19042,7 @@
       "exitTime": null,
       "maxFavorable": 161.624,
       "maxAdverse": 161.728,
-      "lastPrice": 161.624
+      "lastPrice": 161.698
     },
     {
       "id": "NZDJPY-1782348359439",
@@ -19215,8 +19215,8 @@
       "exitPrice": null,
       "exitTime": null,
       "maxFavorable": 1.22222,
-      "maxAdverse": 1.22276,
-      "lastPrice": 1.22276
+      "maxAdverse": 1.22358,
+      "lastPrice": 1.22358
     },
     {
       "id": "CHFJPY-1782348359440",
@@ -19628,9 +19628,9 @@
       "outcome": null,
       "exitPrice": null,
       "exitTime": null,
-      "maxFavorable": 0.55978,
+      "maxFavorable": 0.56044,
       "maxAdverse": 0.55978,
-      "lastPrice": 0.55978
+      "lastPrice": 0.56044
     },
     {
       "id": "USDCHF-1782401387615",
@@ -19676,16 +19676,17 @@
       "continuationLevels": null,
       "entryZone": null,
       "entryLevel": null,
-      "triggered": false,
-      "triggerPrice": null,
-      "triggerLevel": null,
-      "triggerTime": null,
+      "triggered": true,
+      "triggerPrice": 0.80959,
+      "triggerLevel": 0.81012,
+      "triggerTime": "2026-06-25T16:13:11.245Z",
       "status": "pending",
       "outcome": null,
       "exitPrice": null,
       "exitTime": null,
-      "maxFavorable": null,
-      "maxAdverse": null
+      "maxFavorable": 0.80959,
+      "maxAdverse": 0.80959,
+      "lastPrice": 0.80959
     },
     {
       "id": "EURNZD-1782401387615",
@@ -19738,6 +19739,240 @@
       "triggerPrice": null,
       "triggerLevel": null,
       "triggerTime": null,
+      "status": "tp1_hit",
+      "outcome": "win",
+      "exitPrice": 2.01174,
+      "exitTime": "2026-06-25T16:13:26.268Z",
+      "maxFavorable": 2.01174,
+      "maxAdverse": 2.01174,
+      "lastPrice": 2.01174
+    },
+    {
+      "id": "GBPJPY-1782405173794",
+      "timestamp": "2026-06-25T16:32:53.794Z",
+      "symbol": "OANDA:GBPJPY",
+      "type": "REVERSAL SHORT",
+      "strength": 3,
+      "entryPrice": 213.69,
+      "sl": 213.966845,
+      "tp1": 213.55,
+      "tp2": 213.347,
+      "tp3": 211.512,
+      "rr1": 0.5056981343350322,
+      "htfAligned": false,
+      "pullbackAlert": true,
+      "macroReversal": false,
+      "macroConfidence": null,
+      "htfDaily": "bearish",
+      "htfWeekly": "bullish",
+      "htfDRSI": 47.9,
+      "htfWRSI": 56.5,
+      "originalType": "REVERSAL SHORT",
+      "suggestedDirection": "CONTINUATION LONG",
+      "csVerdict": "neutral",
+      "csScore": 0,
+      "csBase": {
+        "currency": "GBP",
+        "direction": "leaning_bull",
+        "strength": "ranging",
+        "trendStrength": 8.0632
+      },
+      "csQuote": {
+        "currency": "JPY",
+        "direction": "leaning_bull",
+        "strength": "ranging",
+        "trendStrength": 8.245129
+      },
+      "ltfConfirmed": true,
+      "ltfEvent": "CHoCH+",
+      "ltfEventPrice": 212.99,
+      "ltfBarsAgo": 46,
+      "continuationDirection": "bullish",
+      "continuationLevels": {
+        "entry": 213.722,
+        "sl": 212.73013899999998,
+        "tp1": 215.20979150000005,
+        "tp2": 216.6975830000001,
+        "rr1": 1.5,
+        "rr2": 3
+      },
+      "entryZone": null,
+      "entryLevel": null,
+      "triggered": false,
+      "triggerPrice": null,
+      "triggerLevel": null,
+      "triggerTime": null,
+      "status": "pending",
+      "outcome": null,
+      "exitPrice": null,
+      "exitTime": null,
+      "maxFavorable": null,
+      "maxAdverse": null
+    },
+    {
+      "id": "NZDJPY-1782405173795",
+      "timestamp": "2026-06-25T16:32:53.794Z",
+      "symbol": "OANDA:NZDJPY",
+      "type": "REVERSAL LONG",
+      "strength": 3,
+      "entryPrice": 91.524,
+      "sl": 90.467452,
+      "tp1": 94.083125,
+      "tp2": null,
+      "tp3": null,
+      "rr1": 2.9994259154381058,
+      "htfAligned": false,
+      "pullbackAlert": false,
+      "macroReversal": true,
+      "macroConfidence": "low",
+      "htfDaily": "bearish",
+      "htfWeekly": "bearish",
+      "htfDRSI": 34.7,
+      "htfWRSI": 47.1,
+      "originalType": null,
+      "suggestedDirection": null,
+      "csVerdict": "weak",
+      "csScore": -1,
+      "csBase": {
+        "currency": "NZD",
+        "direction": "leaning_bear",
+        "strength": "ranging",
+        "trendStrength": 3.44876
+      },
+      "csQuote": {
+        "currency": "JPY",
+        "direction": "leaning_bull",
+        "strength": "ranging",
+        "trendStrength": 8.245129
+      },
+      "ltfConfirmed": true,
+      "ltfEvent": "BOS",
+      "ltfEventPrice": 92.19,
+      "ltfBarsAgo": 59,
+      "continuationDirection": null,
+      "continuationLevels": null,
+      "entryZone": {
+        "low": 91.338,
+        "high": 91.405
+      },
+      "entryLevel": 91.3715,
+      "triggered": false,
+      "triggerPrice": null,
+      "triggerLevel": null,
+      "triggerTime": null,
+      "status": "pending",
+      "outcome": null,
+      "exitPrice": null,
+      "exitTime": null,
+      "maxFavorable": null,
+      "maxAdverse": null
+    },
+    {
+      "id": "EURNZD-1782405173795",
+      "timestamp": "2026-06-25T16:32:53.794Z",
+      "symbol": "OANDA:EURNZD",
+      "type": "REVERSAL SHORT",
+      "strength": 3,
+      "entryPrice": 2.01168,
+      "sl": 2.0488166933333334,
+      "tp1": 2.016475,
+      "tp2": 2.007485,
+      "tp3": 1.99407,
+      "rr1": 1.0421998868451048,
+      "htfAligned": false,
+      "pullbackAlert": false,
+      "macroReversal": true,
+      "macroConfidence": "low",
+      "htfDaily": "bullish",
+      "htfWeekly": "bullish",
+      "htfDRSI": 65.9,
+      "htfWRSI": 56,
+      "originalType": null,
+      "suggestedDirection": null,
+      "csVerdict": "neutral",
+      "csScore": -0.5,
+      "csBase": {
+        "currency": "EUR",
+        "direction": "neutral",
+        "strength": "ranging",
+        "trendStrength": 8.79007
+      },
+      "csQuote": {
+        "currency": "NZD",
+        "direction": "leaning_bear",
+        "strength": "ranging",
+        "trendStrength": 3.44876
+      },
+      "ltfConfirmed": true,
+      "ltfEvent": "BOS",
+      "ltfEventPrice": 2.01,
+      "ltfBarsAgo": 41,
+      "continuationDirection": null,
+      "continuationLevels": null,
+      "entryZone": {
+        "low": 2.03122,
+        "high": 2.03533
+      },
+      "entryLevel": 2.0329800000000002,
+      "triggered": false,
+      "triggerPrice": null,
+      "triggerLevel": null,
+      "triggerTime": null,
+      "status": "pending",
+      "outcome": null,
+      "exitPrice": null,
+      "exitTime": null,
+      "maxFavorable": null,
+      "maxAdverse": null
+    },
+    {
+      "id": "CADJPY-1782405173795",
+      "timestamp": "2026-06-25T16:32:53.794Z",
+      "symbol": "OANDA:CADJPY",
+      "type": "CONTINUATION LONG",
+      "strength": 2,
+      "entryPrice": 114.038,
+      "sl": null,
+      "tp1": null,
+      "tp2": null,
+      "tp3": null,
+      "rr1": null,
+      "htfAligned": false,
+      "pullbackAlert": true,
+      "macroReversal": false,
+      "macroConfidence": null,
+      "htfDaily": "bearish",
+      "htfWeekly": "bearish",
+      "htfDRSI": 40.1,
+      "htfWRSI": 49,
+      "originalType": "CONTINUATION LONG",
+      "suggestedDirection": "CONTINUATION SHORT",
+      "csVerdict": "neutral",
+      "csScore": 0,
+      "csBase": {
+        "currency": "CAD",
+        "direction": "leaning_bull",
+        "strength": "ranging",
+        "trendStrength": 66.7391
+      },
+      "csQuote": {
+        "currency": "JPY",
+        "direction": "leaning_bull",
+        "strength": "ranging",
+        "trendStrength": 8.245129
+      },
+      "ltfConfirmed": false,
+      "ltfEvent": null,
+      "ltfEventPrice": null,
+      "ltfBarsAgo": null,
+      "continuationDirection": null,
+      "continuationLevels": null,
+      "entryZone": null,
+      "entryLevel": null,
+      "triggered": false,
+      "triggerPrice": null,
+      "triggerLevel": null,
+      "triggerTime": null,
       "status": "pending",
       "outcome": null,
       "exitPrice": null,
@@ -19747,10 +19982,10 @@
     }
   ],
   "health": {
-    "total": 452,
-    "wins": 180,
+    "total": 454,
+    "wins": 182,
     "losses": 127,
-    "pending": 23,
+    "pending": 25,
     "expired": 124
   }
 }
