@@ -1,0 +1,649 @@
+//@version=6
+// ═══════════════════════════════════════════════════════════════════
+// 4HR Supply and Demand Swing Trader
+// Version: 7.0 — HTF Trend Engine: Daily + Weekly must agree (50SMA + RSI14)
+//
+// Uses input.source() to read LuxAlgo indicator plots:
+//   - Signals & Overlays: Trend Tracer/Catcher direction, Stop Loss, signals
+//   - Price Action Concepts: BOS/CHoCH structure events (tracked), OB state
+//   - Oscillator Matrix: HWO direction, reversals
+//
+// State plots (continuous) = direct filters, no threshold guessing
+// Event plots (momentary)  = tracked via var to remember last state
+//
+// Zone drawing: base candle before impulse, wick to wick
+// ═══════════════════════════════════════════════════════════════════
+
+strategy(title="4HR Supply and Demand Swing Trader", shorttitle="4H-SD",
+     overlay=true, pyramiding=1,
+     default_qty_type=strategy.fixed, default_qty_value=1,
+     initial_capital=10000,
+     commission_type=strategy.commission.percent, commission_value=0.03,
+     slippage=2, calc_on_every_tick=false, max_bars_back=500,
+     margin_long=2.0, margin_short=2.0)
+
+// ═══════════════════════════════════════════════════════════════════
+// INPUTS — ZONE DETECTION
+// ═══════════════════════════════════════════════════════════════════
+i_impulseBars      = input.int(3,    "Min Impulse Candles",                    minval=1,   group="Detection")
+i_obLookback       = input.int(5,    "OB Search Window (bars beyond impulse)", minval=1, maxval=15, group="Detection")
+i_minImpulseFactor = input.float(0.0,"Min Impulse Size (× ATR14)", minval=0.0, maxval=5.0, step=0.1, group="Detection")
+i_slomoBars        = input.int(3,    "Slow Momentum Lookback (bars)",          minval=1,   group="Detection")
+
+// ═══════════════════════════════════════════════════════════════════
+// INPUTS — RISK
+// ═══════════════════════════════════════════════════════════════════
+i_zoneBuffer    = input.float(0.001, "Stop Buffer (fraction beyond zone)",  minval=0.0, group="Risk", step=0.0001)
+i_minRR         = input.float(2.0,   "Minimum R:R",                        minval=0.0, group="Risk", step=0.1)
+i_riskAplus     = input.float(3.0,   "A+ Risk % of Equity",                minval=0.1, group="Risk", step=0.1)
+i_riskA         = input.float(1.5,   "A Risk % of Equity",                 minval=0.1, group="Risk", step=0.1)
+i_swingLookback = input.int(5,       "1H Swing Lookback (bars)",            minval=1,   group="Risk")
+i_trailOffset   = input.float(0.5,   "Trail Stop Offset (x stop distance)", minval=0.1, group="Risk", step=0.1)
+
+// ═══════════════════════════════════════════════════════════════════
+// INPUTS — SIGNALS & OVERLAYS [7.3.1]
+// State plots: Trend Tracer Up/Down, Trend Catcher Up/Down
+// Price plots: Stop Loss, Smart Trail
+// Event plots: Bullish/Bearish Confirmation
+// ═══════════════════════════════════════════════════════════════════
+i_useSO            = input.bool(false,  "Enable S&O Filters",               group="Signals & Overlays")
+i_soTrendTracerUp  = input.source(close, "→ Trend Tracer Up",               group="Signals & Overlays")
+i_soTrendTracerDown = input.source(close, "→ Trend Tracer Down",            group="Signals & Overlays")
+i_soTrendCatcherUp = input.source(close, "→ Trend Catcher Up",              group="Signals & Overlays")
+i_soTrendCatcherDown = input.source(close, "→ Trend Catcher Down",          group="Signals & Overlays")
+i_soBarColor       = input.source(close, "→ Bar Color Value",               group="Signals & Overlays")
+i_soTrendStr       = input.source(close, "→ Trend Strength",                group="Signals & Overlays")
+i_soStopLoss       = input.source(close, "→ Stop Loss",                     group="Signals & Overlays")
+i_soSmartTrail     = input.source(close, "→ Smart Trail",                   group="Signals & Overlays")
+i_soBullConf       = input.source(close, "→ Bullish Confirmation",          group="Signals & Overlays")
+i_soBearConf       = input.source(close, "→ Bearish Confirmation",          group="Signals & Overlays")
+i_soBullConfPlus   = input.source(close, "→ Bullish Confirmation+",         group="Signals & Overlays")
+i_soBearConfPlus   = input.source(close, "→ Bearish Confirmation+",         group="Signals & Overlays")
+i_useSOStop        = input.bool(false,  "Use S&O Stop Loss as SL",          group="Signals & Overlays")
+i_confLookback     = input.int(5,       "Confirmation Lookback (bars)",  minval=1, maxval=20, group="Signals & Overlays")
+
+// ═══════════════════════════════════════════════════════════════════
+// INPUTS — PRICE ACTION CONCEPTS [2.3.2]
+// Event plots: BOS/CHoCH (tracked for structure direction)
+// State plots: Within Bullish/Bearish OB
+// ═══════════════════════════════════════════════════════════════════
+i_usePAC           = input.bool(true,   "Enable PAC Structure Filter",      group="Price Action Concepts")
+// Internal structure (short-term, lookback 5-49 in PAC settings)
+i_pacBullIBOS      = input.source(close, "→ Bullish I-BOS",                 group="Price Action Concepts")
+i_pacBearIBOS      = input.source(close, "→ Bearish I-BOS",                 group="Price Action Concepts")
+i_pacBullICHOCH    = input.source(close, "→ Bullish I-CHoCH",               group="Price Action Concepts")
+i_pacBearICHOCH    = input.source(close, "→ Bearish I-CHoCH",               group="Price Action Concepts")
+i_pacBullICHOCHp   = input.source(close, "→ Bullish I-CHoCH+",              group="Price Action Concepts")
+i_pacBearICHOCHp   = input.source(close, "→ Bearish I-CHoCH+",              group="Price Action Concepts")
+// Swing structure (long-term, lookback 50-100 in PAC settings)
+i_pacBullSBOS      = input.source(close, "→ Bullish S-BOS",                 group="Price Action Concepts")
+i_pacBearSBOS      = input.source(close, "→ Bearish S-BOS",                 group="Price Action Concepts")
+i_pacBullSCHOCH    = input.source(close, "→ Bullish S-CHoCH",               group="Price Action Concepts")
+i_pacBearSCHOCH    = input.source(close, "→ Bearish S-CHoCH",               group="Price Action Concepts")
+i_pacBullSCHOCHp   = input.source(close, "→ Bullish S-CHoCH+",              group="Price Action Concepts")
+i_pacBearSCHOCHp   = input.source(close, "→ Bearish S-CHoCH+",              group="Price Action Concepts")
+// OB state — non-zero when price is currently inside an OB
+i_pacWithinBullOB  = input.source(close, "→ Within Bullish OB",              group="Price Action Concepts")
+i_pacWithinBearOB  = input.source(close, "→ Within Bearish OB",              group="Price Action Concepts")
+// Imbalance events — FVG detection for A+ quality
+i_pacBullImbalance = input.source(close, "→ Bullish New Imbalance",          group="Price Action Concepts")
+i_pacBearImbalance = input.source(close, "→ Bearish New Imbalance",          group="Price Action Concepts")
+// Liquidity events
+i_pacEqualHighs    = input.source(close, "→ Equal Highs",                    group="Price Action Concepts")
+i_pacEqualLows     = input.source(close, "→ Equal Lows",                     group="Price Action Concepts")
+i_pacBullLiqGrab   = input.source(close, "→ Bullish Liquidity Grab",         group="Price Action Concepts")
+i_pacBearLiqGrab   = input.source(close, "→ Bearish Liquidity Grab",         group="Price Action Concepts")
+
+// ═══════════════════════════════════════════════════════════════════
+// INPUTS — OSCILLATOR MATRIX [7.2.2]
+// State plots: HWO Up/Down (continuous direction)
+// Event plots: Oversold HWO Up, Overbought HWO Down, Reversals
+// ═══════════════════════════════════════════════════════════════════
+i_useOM            = input.bool(false,  "Enable Oscillator Matrix Filters", group="Oscillator Matrix")
+i_omHWOUp          = input.source(close, "→ HWO Up",                        group="Oscillator Matrix")
+i_omHWODown        = input.source(close, "→ HWO Down",                      group="Oscillator Matrix")
+i_omOversoldUp     = input.source(close, "→ Oversold HWO Up",               group="Oscillator Matrix")
+i_omOverboughtDown = input.source(close, "→ Overbought HWO Down",           group="Oscillator Matrix")
+i_omReversalUp     = input.source(close, "→ Reversal Up",                    group="Oscillator Matrix")
+i_omReversalDown   = input.source(close, "→ Reversal Down",                  group="Oscillator Matrix")
+i_omReversalUpPlus = input.source(close, "→ Reversal Up +",                  group="Oscillator Matrix")
+i_omReversalDownPlus = input.source(close, "→ Reversal Down +",              group="Oscillator Matrix")
+i_omBullDiv        = input.source(close, "→ Bullish Divergence",             group="Oscillator Matrix")
+i_omBearDiv        = input.source(close, "→ Bearish Divergence",             group="Oscillator Matrix")
+
+// ═══════════════════════════════════════════════════════════════════
+// INPUTS — HTF TREND ENGINE (Daily + Weekly agreement)
+// ═══════════════════════════════════════════════════════════════════
+i_useHTFTrend = input.bool(true,  "HTF Trend Filter (D+W must agree)", group="HTF Trend Engine")
+
+// ═══════════════════════════════════════════════════════════════════
+// INPUTS — LEGACY FILTERS (disabled by default)
+// ═══════════════════════════════════════════════════════════════════
+i_useBOS    = input.bool(true,   "Legacy Pivot BOS Filter",         group="Legacy Filters")
+i_bosLook   = input.int(8,       "BOS Pivot Lookback",  minval=1, maxval=30, group="Legacy Filters")
+i_useHTF    = input.bool(false,  "Weekly EMA Bias Filter",          group="Legacy Filters")
+i_htfPeriod = input.int(20,      "Weekly EMA Period",   minval=5, maxval=50, group="Legacy Filters")
+i_usePD     = input.bool(false,  "Weekly Premium/Discount Filter",  group="Legacy Filters")
+
+// ═══════════════════════════════════════════════════════════════════
+// HTF TREND ENGINE — Daily AND Weekly must agree
+// Uses 50 SMA (price position) + RSI(14) (momentum direction)
+// Both timeframes must align for entries. This is the foundation.
+// ═══════════════════════════════════════════════════════════════════
+// ── Daily trend ──
+d_sma50    = request.security(syminfo.tickerid, "D", ta.sma(close, 50), lookahead=barmerge.lookahead_off)
+d_rsi      = request.security(syminfo.tickerid, "D", ta.rsi(close, 14), lookahead=barmerge.lookahead_off)
+d_close    = request.security(syminfo.tickerid, "D", close, lookahead=barmerge.lookahead_off)
+
+bool dTrendBull = d_rsi > 50                           // Daily momentum bullish
+bool dTrendBear = d_rsi < 50                           // Daily momentum bearish
+
+// ── Weekly trend ──
+w_sma50    = request.security(syminfo.tickerid, "W", ta.sma(close, 50), lookahead=barmerge.lookahead_off)
+w_rsi      = request.security(syminfo.tickerid, "W", ta.rsi(close, 14), lookahead=barmerge.lookahead_off)
+w_close    = request.security(syminfo.tickerid, "W", close, lookahead=barmerge.lookahead_off)
+
+bool wTrendBull = w_rsi > 50                           // Weekly momentum bullish
+bool wTrendBear = w_rsi < 50                           // Weekly momentum bearish
+
+// ── Combined: both must agree ──
+bool htfBullish = dTrendBull and wTrendBull            // both Daily AND Weekly RSI bullish
+bool htfBearish = dTrendBear and wTrendBear            // both Daily AND Weekly RSI bearish
+
+// ── Premium / Discount (weekly range) ──
+w_high     = request.security(syminfo.tickerid, "W", high,  lookahead=barmerge.lookahead_off)
+w_low      = request.security(syminfo.tickerid, "W", low,   lookahead=barmerge.lookahead_off)
+w_eq       = (w_high + w_low) / 2.0
+inDiscount = close < w_eq
+inPremium  = close > w_eq
+
+// ── Legacy weekly EMA (kept for compatibility) ──
+w_ema      = request.security(syminfo.tickerid, "W", ta.ema(close, i_htfPeriod), lookahead=barmerge.lookahead_off)
+weeklyBull = close > w_ema
+weeklyBear = close < w_ema
+
+// ═══════════════════════════════════════════════════════════════════
+// 1H DATA
+// ═══════════════════════════════════════════════════════════════════
+h1_close    = request.security(syminfo.tickerid, "60", close, lookahead=barmerge.lookahead_off)
+h1_low      = request.security(syminfo.tickerid, "60", low,   lookahead=barmerge.lookahead_off)
+h1_high     = request.security(syminfo.tickerid, "60", high,  lookahead=barmerge.lookahead_off)
+h1_fridayClose = request.security(syminfo.tickerid, "60",
+     dayofweek == dayofweek.friday and hour(time, "America/New_York") == 16,
+     lookahead=barmerge.lookahead_off)
+h1_swingLow  = request.security(syminfo.tickerid, "60", ta.lowest(low,   i_swingLookback), lookahead=barmerge.lookahead_off)
+h1_swingHigh = request.security(syminfo.tickerid, "60", ta.highest(high, i_swingLookback), lookahead=barmerge.lookahead_off)
+
+// ═══════════════════════════════════════════════════════════════════
+// SIGNALS & OVERLAYS — DERIVED FILTERS
+// State-based: Trend Tracer/Catcher direction flags are continuous
+// (non-zero when active, zero when inactive)
+// ═══════════════════════════════════════════════════════════════════
+// Trend direction from S&O (state-based — always valid)
+bool soTrendBullish = i_soTrendTracerUp != 0 and i_soTrendTracerUp != close
+bool soTrendBearish = i_soTrendTracerDown != 0 and i_soTrendTracerDown != close
+
+// Trend Catcher for faster confirmation (more reactive than Tracer)
+bool soCatchBullish = i_soTrendCatcherUp != 0 and i_soTrendCatcherUp != close
+bool soCatchBearish = i_soTrendCatcherDown != 0 and i_soTrendCatcherDown != close
+
+// Bar Color: 1 = green (bullish), -1 = red (bearish), 0 = purple (reversal)
+bool soColorBull = i_soBarColor > 0
+bool soColorBear = i_soBarColor < 0
+
+// Recent confirmation signal tracking (event-based → track last N bars)
+var int barsSinceBullConf = 999
+var int barsSinceBearConf = 999
+if (i_soBullConf != 0 and i_soBullConf != close) or (i_soBullConfPlus != 0 and i_soBullConfPlus != close)
+    barsSinceBullConf := 0
+else
+    barsSinceBullConf += 1
+if (i_soBearConf != 0 and i_soBearConf != close) or (i_soBearConfPlus != 0 and i_soBearConfPlus != close)
+    barsSinceBearConf := 0
+else
+    barsSinceBearConf += 1
+bool soRecentBullConf = barsSinceBullConf <= i_confLookback
+bool soRecentBearConf = barsSinceBearConf <= i_confLookback
+
+// Combined S&O filter:
+// Long: trend direction bullish (tracer OR catcher) + candles not red
+// Short: trend direction bearish (tracer OR catcher) + candles not green
+bool soLongOK  = (soTrendBullish or soCatchBullish) and not soColorBear
+bool soShortOK = (soTrendBearish or soCatchBearish) and not soColorBull
+
+// ═══════════════════════════════════════════════════════════════════
+// PRICE ACTION CONCEPTS — DERIVED FILTERS
+// Event-based: track last BOS/CHoCH to determine structure direction
+// State-based: Within OB gives us direct zone confirmation
+// ═══════════════════════════════════════════════════════════════════
+// Track internal structure direction (short-term)
+// Last bullish event → structure is bullish; last bearish → bearish
+var bool pacInternalBullish = false
+var bool pacInternalBearish = false
+
+// Detect event fires: PAC shape plots output a price level when event fires, na otherwise.
+// When source is unmapped (default=close), it's never na → guard with != close check.
+// When mapped and event fires: not na AND value is a price level (could equal close rarely).
+bool bullIBOS_fire    = not na(i_pacBullIBOS) and i_pacBullIBOS != close
+bool bearIBOS_fire    = not na(i_pacBearIBOS) and i_pacBearIBOS != close
+bool bullICHOCH_fire  = not na(i_pacBullICHOCH) and i_pacBullICHOCH != close
+bool bearICHOCH_fire  = not na(i_pacBearICHOCH) and i_pacBearICHOCH != close
+bool bullICHOCHp_fire = not na(i_pacBullICHOCHp) and i_pacBullICHOCHp != close
+bool bearICHOCHp_fire = not na(i_pacBearICHOCHp) and i_pacBearICHOCHp != close
+
+if bullIBOS_fire or bullICHOCH_fire or bullICHOCHp_fire
+    pacInternalBullish := true
+    pacInternalBearish := false
+if bearIBOS_fire or bearICHOCH_fire or bearICHOCHp_fire
+    pacInternalBearish := true
+    pacInternalBullish := false
+
+// Track swing structure direction (long-term)
+var bool pacSwingBullish = false
+var bool pacSwingBearish = false
+
+bool bullSBOS_fire    = not na(i_pacBullSBOS) and i_pacBullSBOS != close
+bool bearSBOS_fire    = not na(i_pacBearSBOS) and i_pacBearSBOS != close
+bool bullSCHOCH_fire  = not na(i_pacBullSCHOCH) and i_pacBullSCHOCH != close
+bool bearSCHOCH_fire  = not na(i_pacBearSCHOCH) and i_pacBearSCHOCH != close
+bool bullSCHOCHp_fire = not na(i_pacBullSCHOCHp) and i_pacBullSCHOCHp != close
+bool bearSCHOCHp_fire = not na(i_pacBearSCHOCHp) and i_pacBearSCHOCHp != close
+
+if bullSBOS_fire or bullSCHOCH_fire or bullSCHOCHp_fire
+    pacSwingBullish := true
+    pacSwingBearish := false
+if bearSBOS_fire or bearSCHOCH_fire or bearSCHOCHp_fire
+    pacSwingBearish := true
+    pacSwingBullish := false
+
+// Within OB — state-based (non-zero = price is inside OB right now)
+bool inBullishOB = i_pacWithinBullOB != 0 and i_pacWithinBullOB != close
+bool inBearishOB = i_pacWithinBearOB != 0 and i_pacWithinBearOB != close
+
+// Track recent imbalances (FVG) for A+ quality upgrade
+var int barsSinceBullFVG = 999
+var int barsSinceBearFVG = 999
+if i_pacBullImbalance != 0 and i_pacBullImbalance != close
+    barsSinceBullFVG := 0
+else
+    barsSinceBullFVG += 1
+if i_pacBearImbalance != 0 and i_pacBearImbalance != close
+    barsSinceBearFVG := 0
+else
+    barsSinceBearFVG += 1
+
+// Track recent liquidity grabs
+var int barsSinceBullLiqGrab = 999
+var int barsSinceBearLiqGrab = 999
+if i_pacBullLiqGrab != 0 and i_pacBullLiqGrab != close
+    barsSinceBullLiqGrab := 0
+else
+    barsSinceBullLiqGrab += 1
+if i_pacBearLiqGrab != 0 and i_pacBearLiqGrab != close
+    barsSinceBearLiqGrab := 0
+else
+    barsSinceBearLiqGrab += 1
+
+// Combined PAC filter:
+// Strict: require last structure event to align with trade direction
+// Long: internal OR swing must be bullish, AND internal must not be bearish
+// Short: internal OR swing must be bearish, AND internal must not be bullish
+bool pacLongOK  = (pacInternalBullish or pacSwingBullish) and not pacInternalBearish
+bool pacShortOK = (pacInternalBearish or pacSwingBearish) and not pacInternalBullish
+
+// ═══════════════════════════════════════════════════════════════════
+// OSCILLATOR MATRIX — DERIVED FILTERS
+// HWO Up/Down are state flags (continuous direction indicator)
+// Reversal/Divergence are event-based
+// ═══════════════════════════════════════════════════════════════════
+// HyperWave direction (state-based — continuous)
+bool hwoBullish = i_omHWOUp != 0 and i_omHWOUp != close
+bool hwoBearish = i_omHWODown != 0 and i_omHWODown != close
+
+// Track recent reversal signals
+var int barsSinceRevUp = 999
+var int barsSinceRevDown = 999
+bool revUp_fire  = (i_omReversalUp != 0 and i_omReversalUp != close) or (i_omReversalUpPlus != 0 and i_omReversalUpPlus != close) or (i_omOversoldUp != 0 and i_omOversoldUp != close)
+bool revDown_fire = (i_omReversalDown != 0 and i_omReversalDown != close) or (i_omReversalDownPlus != 0 and i_omReversalDownPlus != close) or (i_omOverboughtDown != 0 and i_omOverboughtDown != close)
+if revUp_fire
+    barsSinceRevUp := 0
+else
+    barsSinceRevUp += 1
+if revDown_fire
+    barsSinceRevDown := 0
+else
+    barsSinceRevDown += 1
+
+// Combined OM filter:
+// Long: HWO direction is bullish (up), not bearish
+// Short: HWO direction is bearish (down), not bullish
+bool omLongOK  = hwoBullish or not hwoBearish    // OK if HWO up or at least not down
+bool omShortOK = hwoBearish or not hwoBullish    // OK if HWO down or at least not up
+
+// ═══════════════════════════════════════════════════════════════════
+// SLOW MOMENTUM FILTER — candles shrinking = momentum slowing into zone
+// ═══════════════════════════════════════════════════════════════════
+recentAvgBody = ta.sma(math.abs(close - open), i_slomoBars)
+priorAvgBody  = ta.sma(math.abs(close - open), i_slomoBars * 3)
+slowMomentum  = recentAvgBody < priorAvgBody
+
+// ═══════════════════════════════════════════════════════════════════
+// IMPULSE DETECTION
+// ═══════════════════════════════════════════════════════════════════
+bullImpulse = true
+bearImpulse = true
+for i = 0 to i_impulseBars - 1
+    if close[i] <= open[i]
+        bullImpulse := false
+    if close[i] >= open[i]
+        bearImpulse := false
+
+avgBody       = ta.sma(math.abs(close - open), 20)
+bigBullCandle = close[0] > open[0] and (close[0] - open[0]) > avgBody * 2
+bigBearCandle = close[0] < open[0] and (open[0] - close[0]) > avgBody * 2
+
+atr14         = ta.atr(14)
+bullMoveSize  = close[0] - open[i_impulseBars]
+bearMoveSize  = open[i_impulseBars] - close[0]
+sizeOK_bull   = i_minImpulseFactor <= 0 or (atr14 > 0 and bullMoveSize >= i_minImpulseFactor * atr14)
+sizeOK_bear   = i_minImpulseFactor <= 0 or (atr14 > 0 and bearMoveSize >= i_minImpulseFactor * atr14)
+
+isBullImpulse = (bullImpulse or bigBullCandle) and sizeOK_bull
+isBearImpulse = (bearImpulse or bigBearCandle) and sizeOK_bear
+
+// ═══════════════════════════════════════════════════════════════════
+// LEGACY PIVOT BOS (disabled by default)
+// ═══════════════════════════════════════════════════════════════════
+float ph = ta.pivothigh(high, i_bosLook, i_bosLook)
+float pl = ta.pivotlow(low,  i_bosLook, i_bosLook)
+var float lastSwingHigh = na
+var float lastSwingLow  = na
+if not na(ph)
+    lastSwingHigh := ph
+if not na(pl)
+    lastSwingLow  := pl
+var bool bullishBOS = false
+var bool bearishBOS = false
+if not na(lastSwingHigh) and close > lastSwingHigh
+    bullishBOS := true
+    bearishBOS := false
+if not na(lastSwingLow) and close < lastSwingLow
+    bearishBOS := true
+    bullishBOS := false
+
+// Only fire when the impulse STARTS
+var bool prevBullImpulse = false
+var bool prevBearImpulse = false
+newBullImpulse = isBullImpulse and not prevBullImpulse
+newBearImpulse = isBearImpulse and not prevBearImpulse
+prevBullImpulse := isBullImpulse
+prevBearImpulse := isBearImpulse
+
+// ═══════════════════════════════════════════════════════════════════
+// ZONE DETECTION — base candle wick to wick
+// ═══════════════════════════════════════════════════════════════════
+newDemand  = newBullImpulse
+dBase_high = high[i_impulseBars]
+dBase_low  = low[i_impulseBars]
+
+newSupply  = newBearImpulse
+sBase_high = high[i_impulseBars]
+sBase_low  = low[i_impulseBars]
+
+// ═══════════════════════════════════════════════════════════════════
+// ZONE STORAGE
+// ═══════════════════════════════════════════════════════════════════
+var float dZoneTop = na
+var float dZoneBot = na
+var bool  dIsAplus = false
+var bool  dActive  = false
+var bool  dUsed    = false
+var bool  dHasOB   = false
+
+var float sZoneTop = na
+var float sZoneBot = na
+var bool  sIsAplus = false
+var bool  sActive  = false
+var bool  sUsed    = false
+var bool  sHasOB   = false
+
+if newDemand and strategy.position_size <= 0
+    bool ob_found = false
+    for i = i_impulseBars to i_impulseBars + i_obLookback
+        if close[i] < open[i]
+            dZoneTop := high[i]
+            dZoneBot := low[i]
+            dHasOB   := true
+            ob_found := true
+            break
+    if not ob_found
+        dZoneTop := dBase_high
+        dZoneBot := dBase_low
+        dHasOB   := false
+    dIsAplus := true
+    dActive  := true
+    dUsed    := false
+
+if newSupply and strategy.position_size >= 0
+    bool ob_found = false
+    for i = i_impulseBars to i_impulseBars + i_obLookback
+        if close[i] > open[i]
+            sHasOB   := true
+            ob_found := true
+            break
+    if not ob_found
+        sHasOB := false
+    sZoneTop := sBase_high
+    sZoneBot := sBase_low
+    sIsAplus := true
+    sActive  := true
+    sUsed    := false
+
+// ═══════════════════════════════════════════════════════════════════
+// STRUCTURAL ZONE EXPIRY
+// ═══════════════════════════════════════════════════════════════════
+if newSupply and strategy.position_size >= 0 and dActive and not na(dZoneTop) and not na(sZoneBot)
+    float demandDist = close - dZoneTop
+    float supplyDist = sZoneBot - close
+    if demandDist > 0 and supplyDist >= 0 and demandDist > supplyDist
+        dActive := false
+
+if newDemand and strategy.position_size <= 0 and sActive and not na(sZoneBot) and not na(dZoneTop)
+    float supplyDist = sZoneBot - close
+    float demandDist = close - dZoneTop
+    if supplyDist > 0 and demandDist >= 0 and supplyDist > demandDist
+        sActive := false
+
+if dActive and close < dZoneBot
+    dActive := false
+if sActive and close > sZoneTop
+    sActive := false
+
+// A+ quality: fresh zone + recent FVG from PAC
+var bool dEntryAplus = false
+var bool sEntryAplus = false
+
+if newDemand
+    dEntryAplus := false
+if newSupply
+    sEntryAplus := false
+
+if dActive and not dUsed and h1_low <= dZoneTop and h1_close >= dZoneBot
+    // A+ if zone is fresh AND PAC detected a bullish imbalance (FVG) recently
+    dEntryAplus := dIsAplus or (barsSinceBullFVG <= 10)
+    dUsed       := true
+    dIsAplus    := false
+if sActive and not sUsed and h1_high >= sZoneBot and h1_close <= sZoneTop
+    sEntryAplus := sIsAplus or (barsSinceBearFVG <= 10)
+    sUsed       := true
+    sIsAplus    := false
+
+// ═══════════════════════════════════════════════════════════════════
+// 1H CLOSE INSIDE ZONE
+// ═══════════════════════════════════════════════════════════════════
+var bool longZoneClose  = false
+var bool shortZoneClose = false
+
+if newDemand
+    longZoneClose := false
+if newSupply
+    shortZoneClose := false
+if strategy.position_size > 0
+    longZoneClose := false
+if strategy.position_size < 0
+    shortZoneClose := false
+
+if dActive and h1_close <= dZoneTop and h1_close >= dZoneBot and strategy.position_size == 0
+    longZoneClose := true
+if sActive and h1_close >= sZoneBot and h1_close <= sZoneTop and strategy.position_size == 0
+    shortZoneClose := true
+
+if longZoneClose and h1_close < dZoneBot
+    longZoneClose := false
+    dActive       := false
+if shortZoneClose and h1_close > sZoneTop
+    shortZoneClose := false
+    sActive        := false
+
+// ═══════════════════════════════════════════════════════════════════
+// TRADE STATE TRACKING
+// ═══════════════════════════════════════════════════════════════════
+var float entryPrice    = na
+var float stopDist      = na
+var float longStopLevel = na
+var float shortStopLevel= na
+var bool  tp2Hit        = false
+var bool  isLong        = false
+
+tp1Price = isLong ? entryPrice + stopDist * 1.0 : entryPrice - stopDist * 1.0
+
+// ═══════════════════════════════════════════════════════════════════
+// STOP CALC — 1H Swing (default) or S&O Stop Loss (optional)
+// ═══════════════════════════════════════════════════════════════════
+float longStopCalc  = na
+float shortStopCalc = na
+
+if i_useSOStop and i_useSO and i_soStopLoss != close
+    // S&O Stop Loss plot: price level calculated by the indicator
+    if dActive and i_soStopLoss < close and i_soStopLoss > 0
+        longStopCalc := i_soStopLoss
+    if sActive and i_soStopLoss > close
+        shortStopCalc := i_soStopLoss
+else
+    longStopCalc  := dActive and not na(h1_swingLow)  ? h1_swingLow  * (1.0 - i_zoneBuffer) : na
+    shortStopCalc := sActive and not na(h1_swingHigh) ? h1_swingHigh * (1.0 + i_zoneBuffer) : na
+
+// ═══════════════════════════════════════════════════════════════════
+// R:R CHECK
+// ═══════════════════════════════════════════════════════════════════
+longRR_ok  = true
+shortRR_ok = true
+if i_minRR > 0
+    if longZoneClose and not na(longStopCalc)
+        float sd = close - longStopCalc
+        float td = sActive and not na(sZoneBot) ? sZoneBot - close : na
+        longRR_ok := not na(td) and sd > 0 ? (td / sd) >= i_minRR : true
+    if shortZoneClose and not na(shortStopCalc)
+        float sd = shortStopCalc - close
+        float td = dActive and not na(dZoneTop) ? close - dZoneTop : na
+        shortRR_ok := not na(td) and sd > 0 ? (td / sd) >= i_minRR : true
+
+// ═══════════════════════════════════════════════════════════════════
+// ENTRY CONDITIONS
+// ═══════════════════════════════════════════════════════════════════
+bool fridayNoEntry = dayofweek == dayofweek.friday and hour(time, "America/New_York") >= 11
+
+longEntry  = longZoneClose  and slowMomentum and h1_close > dZoneTop
+          and strategy.position_size == 0 and longRR_ok  and not na(longStopCalc)
+          and (not i_useHTFTrend or htfBullish)            // HTF: Daily + Weekly both bullish
+          and (not i_useSO  or soLongOK)                   // S&O: trend direction + candle color
+          and (not i_usePAC or pacLongOK)                  // PAC: internal/swing structure
+          and (not i_useOM  or omLongOK)                   // OM: HWO direction
+          and (not i_useBOS or not bearishBOS)             // Legacy: pivot BOS
+          and (not i_useHTF or weeklyBull)                 // Legacy: weekly EMA
+          and (not i_usePD  or inDiscount)                 // Legacy: premium/discount
+          and not fridayNoEntry
+
+shortEntry = shortZoneClose and slowMomentum and h1_close < sZoneBot
+          and strategy.position_size == 0 and shortRR_ok and not na(shortStopCalc)
+          and (not i_useHTFTrend or htfBearish)            // HTF: Daily + Weekly both bearish
+          and (not i_useSO  or soShortOK)                  // S&O: trend direction + candle color
+          and (not i_usePAC or pacShortOK)                 // PAC: internal/swing structure
+          and (not i_useOM  or omShortOK)                  // OM: HWO direction
+          and (not i_useBOS or not bullishBOS)             // Legacy: pivot BOS
+          and (not i_useHTF or weeklyBear)                 // Legacy: weekly EMA
+          and (not i_usePD  or inPremium)                  // Legacy: premium/discount
+          and not fridayNoEntry
+
+// Close all open positions at 4PM EST Friday
+if h1_fridayClose and strategy.position_size != 0
+    strategy.close_all(comment="Fri-Close")
+
+if longEntry
+    float riskPct  = dEntryAplus ? i_riskAplus : i_riskA
+    float riskAmt  = strategy.equity * (riskPct / 100.0)
+    float sd       = close - longStopCalc
+    float qty      = sd > 0 ? riskAmt / sd : 1.0
+    strategy.entry("Long", strategy.long, qty=qty, comment=dEntryAplus ? (dHasOB ? "L-A+OB" : "L-A+") : "L-A")
+    entryPrice     := close
+    longStopLevel  := longStopCalc
+    stopDist       := sd
+    isLong         := true
+    longZoneClose  := false
+    dActive        := false
+
+if shortEntry
+    float riskPct  = sEntryAplus ? i_riskAplus : i_riskA
+    float riskAmt  = strategy.equity * (riskPct / 100.0)
+    float sd       = shortStopCalc - close
+    float qty      = sd > 0 ? riskAmt / sd : 1.0
+    strategy.entry("Short", strategy.short, qty=qty, comment=sEntryAplus ? (sHasOB ? "S-A+OB" : "S-A+") : "S-A")
+    entryPrice     := close
+    shortStopLevel := shortStopCalc
+    stopDist       := sd
+    isLong         := false
+    shortZoneClose := false
+    sActive        := false
+
+// ═══════════════════════════════════════════════════════════════════
+// TP2 detection — tightens trail offset after 2:1
+// ═══════════════════════════════════════════════════════════════════
+if strategy.position_size != 0 and not tp2Hit and not na(entryPrice) and not na(stopDist)
+    float tp2Price = isLong ? entryPrice + stopDist * 2.0 : entryPrice - stopDist * 2.0
+    if (isLong and high >= tp2Price) or (not isLong and low <= tp2Price)
+        tp2Hit := true
+
+// ═══════════════════════════════════════════════════════════════════
+// EXITS — trailing stop, activates at TP1 (1:1)
+// ═══════════════════════════════════════════════════════════════════
+if strategy.position_size > 0 and not na(entryPrice) and not na(longStopLevel) and not na(stopDist)
+    float trailDist  = tp2Hit ? stopDist * 0.15 : stopDist * i_trailOffset
+    int   trailTicks = math.max(1, math.round(trailDist / syminfo.mintick))
+    strategy.exit("Long-Exit", from_entry="Long",
+         stop=longStopLevel, trail_price=tp1Price, trail_offset=trailTicks, comment="L-Exit")
+
+if strategy.position_size < 0 and not na(entryPrice) and not na(shortStopLevel) and not na(stopDist)
+    float trailDist  = tp2Hit ? stopDist * 0.15 : stopDist * i_trailOffset
+    int   trailTicks = math.max(1, math.round(trailDist / syminfo.mintick))
+    strategy.exit("Short-Exit", from_entry="Short",
+         stop=shortStopLevel, trail_price=tp1Price, trail_offset=trailTicks, comment="S-Exit")
+
+// Reset state on trade close
+var bool wasInTrade = false
+if strategy.position_size != 0
+    wasInTrade := true
+if strategy.position_size == 0 and wasInTrade
+    longStopLevel  := na
+    shortStopLevel := na
+    tp2Hit         := false
+    entryPrice     := na
+    stopDist       := na
+    longZoneClose  := false
+    shortZoneClose := false
+    wasInTrade     := false
+
+// ═══════════════════════════════════════════════════════════════════
+// VISUALS — minimal (only legacy plots, trade executions from strategy engine)
+// ═══════════════════════════════════════════════════════════════════
+plot(i_useHTF ? w_ema : na, "W-EMA", color=color.new(color.blue, 40), linewidth=2)
+plot(i_usePD ? w_eq : na, "W-EQ", color=color.new(color.orange, 30), linewidth=1, style=plot.style_circles)

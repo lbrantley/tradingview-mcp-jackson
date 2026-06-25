@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node src/cli/index.js ui panel strategy-tester)",
+      "Bash(node src/cli/index.js pine console)",
+      "Bash(node src/cli/index.js ui click --text \"Add to chart\")",
+      "Bash(node src/cli/index.js ui find --text \"Add to chart\")",
+      "Bash(node src/cli/index.js ui find --aria-label \"Add to chart\")",
+      "Bash(node src/cli/index.js ui eval --js \"document.querySelector\\('[data-name=\\\\\"add-script-to-chart\\\\\"]'\\)?.click\\(\\); 'clicked'\")",
+      "Bash(node src/cli/index.js capture screenshot)",
+      "Bash(node src/cli/index.js chart screenshot)",
+      "Bash(node src/cli/index.js --help)",
+      "Bash(node src/cli/index.js screenshot)",
+      "Bash(node src/cli/index.js ui eval --js \"document.querySelector\\('[data-name=\\\\\"add-script-to-chart\\\\\"], [class*=\\\\\"addToChart\\\\\"], button[class*=\\\\\"add-to-chart\\\\\"]'\\)?.click\\(\\); document.querySelector\\('[class*=\\\\\"submitButton\\\\\"]'\\)?.textContent\")",
+      "Bash(node src/cli/index.js ui eval --js \"Array.from\\(document.querySelectorAll\\('button'\\)\\).filter\\(b => b.textContent.toLowerCase\\(\\).includes\\('add'\\) || b.textContent.toLowerCase\\(\\).includes\\('chart'\\) || b.getAttribute\\('aria-label'\\)?.toLowerCase\\(\\).includes\\('add'\\)\\).map\\(b => \\({text: b.textContent.trim\\(\\).substring\\(0,40\\), aria: b.getAttribute\\('aria-label'\\), name: b.getAttribute\\('data-name'\\)}\\)\\)\")",
+      "Bash(node src/cli/index.js indicator remove --name \"4H Trend Follow Swing Trader\")",
+      "Bash(node src/cli/index.js pine new --type strategy)",
+      "Bash(node src/cli/index.js ui eval --js \"Array.from\\(document.querySelectorAll\\('button'\\)\\).map\\(b => \\({text: b.textContent.trim\\(\\).substring\\(0,50\\), aria: b.getAttribute\\('aria-label'\\), name: b.getAttribute\\('data-name'\\)}\\)\\).filter\\(b => b.text || b.aria\\)\")",
+      "Bash(node src/cli/index.js ui eval --js \"Array.from\\(document.querySelectorAll\\('[class*=\\\\\"pine\\\\\"] button, [class*=\\\\\"editor\\\\\"] button, [data-name*=\\\\\"add\\\\\"], [data-name*=\\\\\"chart\\\\\"], [class*=\\\\\"addToChart\\\\\"], [class*=\\\\\"add-to\\\\\"]'\\)\\).map\\(b => \\({text: b.textContent.trim\\(\\).substring\\(0,50\\), aria: b.getAttribute\\('aria-label'\\), name: b.getAttribute\\('data-name'\\), cls: b.className.substring\\(0,60\\)}\\)\\)\")",
+      "Bash(node src/cli/index.js ui keyboard --key \"ctrl+Enter\")",
+      "Bash(node mcp-client.js tv_health_check)",
+      "Bash(npx @modelcontextprotocol/inspector --cli node src/index.js --method tools/call --tool-name capture_screenshot --tool-arg region=full)",
+      "Bash(npm run:*)",
+      "Bash(node -e ':*)",
+      "Bash(timeout 15 node mcp-server.js)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d\\)\")",
+      "Bash(python3 -c \" import sys, json d = json.loads\\(sys.stdin.read\\(\\).split\\('\\\\n',1\\)[1]\\) m = d.get\\('metrics', {}\\) for k,v in m.items\\(\\): print\\(f'{k}: {v}'\\) \")",
+      "Bash(node -e \" const WebSocket = require\\('ws'\\); const http = require\\('http'\\); http.get\\('http://localhost:9222/json', \\(res\\) => { let d=''; res.on\\('data',c=>d+=c\\); res.on\\('end',\\(\\)=>{ const page = JSON.parse\\(d\\)[0]; const ws = new WebSocket\\(page.webSocketDebuggerUrl\\); ws.on\\('open', \\(\\) => { ws.send\\(JSON.stringify\\({id:1, method:'Runtime.evaluate', params:{ expression: \\\\` \\(function\\(\\) { const panel = document.querySelector\\('.bottom-widgetbar-content.backtesting'\\); if\\(panel\\) { panel.scrollTop = 1200; return 'scrolled to ' + panel.scrollTop; } return 'not found'; }\\)\\(\\) \\\\`, returnByValue: true }}\\)\\); }\\); ws.on\\('message', \\(msg\\) => { const r = JSON.parse\\(msg\\); if\\(r.id===1\\) { console.log\\(r.result?.result?.value\\); ws.close\\(\\); } }\\); setTimeout\\(\\(\\)=>ws.close\\(\\), 5000\\); }\\); }\\); \")",
+      "Read(//dev/**)"
+    ]
+  }
+}

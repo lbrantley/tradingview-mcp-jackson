@@ -1,0 +1,585 @@
+{
+  "fetchedAt": 1782400064648,
+  "events": [
+    {
+      "title": "CPI m/m",
+      "currency": "CAD",
+      "date": "2026-06-22T08:30:00-04:00",
+      "impact": "High",
+      "time": "08:30 AM",
+      "day": "Mon, Jun 22",
+      "forecast": "0.7%",
+      "previous": "0.4%",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Median CPI y/y",
+      "currency": "CAD",
+      "date": "2026-06-22T08:30:00-04:00",
+      "impact": "High",
+      "time": "08:30 AM",
+      "day": "Mon, Jun 22",
+      "forecast": "2.1%",
+      "previous": "2.1%",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Trimmed CPI y/y",
+      "currency": "CAD",
+      "date": "2026-06-22T08:30:00-04:00",
+      "impact": "High",
+      "time": "08:30 AM",
+      "day": "Mon, Jun 22",
+      "forecast": "2.0%",
+      "previous": "2.0%",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Common CPI y/y",
+      "currency": "CAD",
+      "date": "2026-06-22T08:30:00-04:00",
+      "impact": "Medium",
+      "time": "08:30 AM",
+      "day": "Mon, Jun 22",
+      "forecast": "2.5%",
+      "previous": "2.5%",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "ECB President Lagarde Speaks",
+      "currency": "EUR",
+      "date": "2026-06-22T09:00:00-04:00",
+      "impact": "Medium",
+      "time": "09:00 AM",
+      "day": "Mon, Jun 22",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "EURUSD",
+        "EURJPY",
+        "EURCHF",
+        "EURNZD",
+        "EURCAD",
+        "EURAUD",
+        "EURGBP"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "ECB President Lagarde Speaks",
+      "currency": "EUR",
+      "date": "2026-06-22T11:25:00-04:00",
+      "impact": "Medium",
+      "time": "11:25 AM",
+      "day": "Mon, Jun 22",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "EURUSD",
+        "EURJPY",
+        "EURCHF",
+        "EURNZD",
+        "EURCAD",
+        "EURAUD",
+        "EURGBP"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "French Flash Manufacturing PMI",
+      "currency": "EUR",
+      "date": "2026-06-23T03:15:00-04:00",
+      "impact": "Medium",
+      "time": "03:15 AM",
+      "day": "Tue, Jun 23",
+      "forecast": "50.2",
+      "previous": "48.9",
+      "affectedPairs": [
+        "EURUSD",
+        "EURJPY",
+        "EURCHF",
+        "EURNZD",
+        "EURCAD",
+        "EURAUD",
+        "EURGBP"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "French Flash Services PMI",
+      "currency": "EUR",
+      "date": "2026-06-23T03:15:00-04:00",
+      "impact": "Medium",
+      "time": "03:15 AM",
+      "day": "Tue, Jun 23",
+      "forecast": "45.9",
+      "previous": "42.9",
+      "affectedPairs": [
+        "EURUSD",
+        "EURJPY",
+        "EURCHF",
+        "EURNZD",
+        "EURCAD",
+        "EURAUD",
+        "EURGBP"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "German Flash Manufacturing PMI",
+      "currency": "EUR",
+      "date": "2026-06-23T03:30:00-04:00",
+      "impact": "Medium",
+      "time": "03:30 AM",
+      "day": "Tue, Jun 23",
+      "forecast": "50.3",
+      "previous": "49.9",
+      "affectedPairs": [
+        "EURUSD",
+        "EURJPY",
+        "EURCHF",
+        "EURNZD",
+        "EURCAD",
+        "EURAUD",
+        "EURGBP"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "German Flash Services PMI",
+      "currency": "EUR",
+      "date": "2026-06-23T03:30:00-04:00",
+      "impact": "Medium",
+      "time": "03:30 AM",
+      "day": "Tue, Jun 23",
+      "forecast": "49.0",
+      "previous": "47.8",
+      "affectedPairs": [
+        "EURUSD",
+        "EURJPY",
+        "EURCHF",
+        "EURNZD",
+        "EURCAD",
+        "EURAUD",
+        "EURGBP"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Flash Manufacturing PMI",
+      "currency": "GBP",
+      "date": "2026-06-23T04:30:00-04:00",
+      "impact": "Medium",
+      "time": "04:30 AM",
+      "day": "Tue, Jun 23",
+      "forecast": "53.5",
+      "previous": "53.7",
+      "affectedPairs": [
+        "GBPUSD",
+        "GBPJPY",
+        "GBPCHF",
+        "GBPNZD",
+        "GBPCAD",
+        "GBPAUD",
+        "EURGBP"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Flash Services PMI",
+      "currency": "GBP",
+      "date": "2026-06-23T04:30:00-04:00",
+      "impact": "Medium",
+      "time": "04:30 AM",
+      "day": "Tue, Jun 23",
+      "forecast": "50.1",
+      "previous": "47.9",
+      "affectedPairs": [
+        "GBPUSD",
+        "GBPJPY",
+        "GBPCHF",
+        "GBPNZD",
+        "GBPCAD",
+        "GBPAUD",
+        "EURGBP"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "BOC Gov Macklem Speaks",
+      "currency": "CAD",
+      "date": "2026-06-23T09:25:00-04:00",
+      "impact": "Medium",
+      "time": "09:25 AM",
+      "day": "Tue, Jun 23",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Flash Manufacturing PMI",
+      "currency": "USD",
+      "date": "2026-06-23T09:45:00-04:00",
+      "impact": "Medium",
+      "time": "09:45 AM",
+      "day": "Tue, Jun 23",
+      "forecast": "54.6",
+      "previous": "55.3",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Flash Services PMI",
+      "currency": "USD",
+      "date": "2026-06-23T09:45:00-04:00",
+      "impact": "Medium",
+      "time": "09:45 AM",
+      "day": "Tue, Jun 23",
+      "forecast": "51.1",
+      "previous": "50.9",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "President Trump Speaks",
+      "currency": "USD",
+      "date": "2026-06-23T14:05:00-04:00",
+      "impact": "Medium",
+      "time": "02:05 PM",
+      "day": "Tue, Jun 23",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "CPI m/m",
+      "currency": "AUD",
+      "date": "2026-06-23T21:30:00-04:00",
+      "impact": "High",
+      "time": "09:30 PM",
+      "day": "Tue, Jun 23",
+      "forecast": "-0.4%",
+      "previous": "0.4%",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "CPI y/y",
+      "currency": "AUD",
+      "date": "2026-06-23T21:30:00-04:00",
+      "impact": "High",
+      "time": "09:30 PM",
+      "day": "Tue, Jun 23",
+      "forecast": "4.3%",
+      "previous": "4.2%",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Trimmed Mean CPI m/m",
+      "currency": "AUD",
+      "date": "2026-06-23T21:30:00-04:00",
+      "impact": "High",
+      "time": "09:30 PM",
+      "day": "Tue, Jun 23",
+      "forecast": "0.3%",
+      "previous": "0.3%",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "President Trump Speaks",
+      "currency": "USD",
+      "date": "2026-06-24T20:30:00-04:00",
+      "impact": "Medium",
+      "time": "08:30 PM",
+      "day": "Wed, Jun 24",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Employment Change",
+      "currency": "AUD",
+      "date": "2026-06-24T21:30:00-04:00",
+      "impact": "High",
+      "time": "09:30 PM",
+      "day": "Wed, Jun 24",
+      "forecast": "31.2K",
+      "previous": "-18.6K",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Unemployment Rate",
+      "currency": "AUD",
+      "date": "2026-06-24T21:30:00-04:00",
+      "impact": "High",
+      "time": "09:30 PM",
+      "day": "Wed, Jun 24",
+      "forecast": "4.4%",
+      "previous": "4.5%",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Core PCE Price Index m/m",
+      "currency": "USD",
+      "date": "2026-06-25T08:30:00-04:00",
+      "impact": "High",
+      "time": "08:30 AM",
+      "day": "Thu, Jun 25",
+      "forecast": "0.3%",
+      "previous": "0.2%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Final GDP q/q",
+      "currency": "USD",
+      "date": "2026-06-25T08:30:00-04:00",
+      "impact": "High",
+      "time": "08:30 AM",
+      "day": "Thu, Jun 25",
+      "forecast": "1.6%",
+      "previous": "1.6%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Final GDP Price Index q/q",
+      "currency": "USD",
+      "date": "2026-06-25T08:30:00-04:00",
+      "impact": "Medium",
+      "time": "08:30 AM",
+      "day": "Thu, Jun 25",
+      "forecast": "3.5%",
+      "previous": "3.5%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Unemployment Claims",
+      "currency": "USD",
+      "date": "2026-06-25T08:30:00-04:00",
+      "impact": "Medium",
+      "time": "08:30 AM",
+      "day": "Thu, Jun 25",
+      "forecast": "225K",
+      "previous": "226K",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Tokyo Core CPI y/y",
+      "currency": "JPY",
+      "date": "2026-06-25T19:30:00-04:00",
+      "impact": "Medium",
+      "time": "07:30 PM",
+      "day": "Thu, Jun 25",
+      "forecast": "1.6%",
+      "previous": "1.3%",
+      "affectedPairs": [
+        "USDJPY",
+        "GBPJPY",
+        "EURJPY",
+        "AUDJPY",
+        "NZDJPY",
+        "CADJPY",
+        "CHFJPY"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Revised UoM Consumer Sentiment",
+      "currency": "USD",
+      "date": "2026-06-26T10:00:00-04:00",
+      "impact": "Medium",
+      "time": "10:00 AM",
+      "day": "Fri, Jun 26",
+      "forecast": "50.0",
+      "previous": "48.9",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "source": "ff"
+    },
+    {
+      "title": "Revised UoM Inflation Expectations",
+      "currency": "USD",
+      "date": "2026-06-26T10:00:00-04:00",
+      "impact": "Medium",
+      "time": "10:00 AM",
+      "day": "Fri, Jun 26",
+      "forecast": "—",
+      "previous": "4.6%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ],
+      "source": "ff"
+    }
+  ]
+}

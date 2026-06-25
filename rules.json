@@ -1,65 +1,213 @@
 {
-  "watchlist": ["BTCUSDT"],
-  "default_timeframe": "1",
-
   "strategy": {
-    "name": "10-Second Momentum Scalper",
-    "sources": [
-      "Price momentum — buy if last close > previous close (green candle)",
-      "RSI filter — only trade when RSI is not at an extreme (30–70 range)"
+    "name": "4HR Supply and Demand Swing Trader",
+    "version": "5.0",
+    "description": "Multi-timeframe S&D strategy based on base candle zone drawing (wick to wick), FVG as quality confirmation, and lower timeframe entry on zone close. 4H defines zones, 1H confirms retest, 15M triggers entry.",
+    "instruments": [
+      "OANDA:GBPCHF", "OANDA:AUDNZD", "OANDA:EURNZD", "OANDA:GBPNZD",
+      "OANDA:EURCHF", "OANDA:CADCHF", "OANDA:EURAUD", "OANDA:GBPJPY",
+      "OANDA:AUDCHF", "OANDA:GBPUSD", "OANDA:GBPCAD", "OANDA:USDCHF",
+      "OANDA:GBPAUD", "OANDA:CADJPY", "OANDA:EURCAD", "OANDA:USDCAD",
+      "OANDA:AUDUSD", "OANDA:NZDCHF", "OANDA:USDJPY", "OANDA:AUDJPY",
+      "OANDA:EURJPY", "OANDA:NZDCAD", "OANDA:EURUSD", "OANDA:AUDCAD",
+      "OANDA:EURGBP", "OANDA:NZDJPY", "OANDA:NZDUSD", "OANDA:CHFJPY"
     ],
-    "primary_timeframes": [
-      "1-minute (signal source)",
-      "10-second execution loop"
-    ]
+    "timeframe_roles": {
+      "4H":  "Zone identification — base candle before impulsive move defines the zone (wick to wick). FVG presence confirms quality. CHoCH confirms the reversal the zone caused. This is the WHERE and the WHAT.",
+      "1H":  "Retest — price returns to the 4H zone on the 1H chart, slowing momentum and closing inside the zone. This is the CONFIRMATION.",
+      "15M": "Entry trigger — price closes back above demand zone top (longs) or below supply zone bottom (shorts) on 15M. This is the WHEN."
+    },
+    "bias": "Determined through backtesting per instrument — no HTF bias filter applied at this stage"
   },
 
-  "indicators": {
-    "rsi_14": "Momentum filter. Only trade when RSI is between 30–70 (avoid extremes).",
-    "price_momentum": "Compare last close vs previous close. Up = long signal. Down = short signal."
+  "zone_rules": {
+    "definition": "A supply or demand zone is defined by the BASE CANDLE immediately before the impulsive move away. The zone is drawn wick to wick on that base candle. This is where smart money placed their orders.",
+    "demand_zone": {
+      "description": "The candle immediately before a strong bullish impulse move. Price left this area aggressively to the upside — smart money was buying here.",
+      "zone_top": "High (including wick) of the base candle before the bullish impulse",
+      "zone_bottom": "Low (including wick) of the base candle before the bullish impulse"
+    },
+    "supply_zone": {
+      "description": "The candle immediately before a strong bearish impulse move. Price left this area aggressively to the downside — smart money was selling here.",
+      "zone_top": "High (including wick) of the base candle before the bearish impulse",
+      "zone_bottom": "Low (including wick) of the base candle before the bearish impulse"
+    },
+    "impulse_requirement": "The move away from the base candle must be strong and impulsive — multiple consecutive candles in one direction, or one very large candle. Gradual drift does not qualify.",
+    "fvg_quality": {
+      "description": "A Fair Value Gap within the impulse move (3-candle imbalance where candle 1 and candle 3 do not overlap) upgrades the zone quality. FVG confirms only smart money can create this imbalance.",
+      "with_fvg": "Zone has FVG — A+ eligible. Strong institutional presence confirmed.",
+      "without_fvg": "Zone has no FVG — A eligible only if impulse is still strong (3-4 consecutive candles)."
+    },
+    "break_of_structure": "The impulse move must take out a previous supply or demand level. A push that does not break prior structure is a weaker zone.",
+    "freshness": {
+      "fresh": "Price has never returned to the zone since formation — highest probability, A+ eligible",
+      "used_once": "Price has returned and reacted once — still tradeable but weaker, A eligible",
+      "invalidated": "Price has closed completely through the zone — zone is dead, do not trade it. Repeated tests weaken zones significantly."
+    },
+    "trend_alignment": "Prefer buying from demand zones in uptrends and selling from supply zones in downtrends. Note: trend filter to be calibrated through backtesting.",
+    "slow_momentum_on_return": "When price returns to the zone, it should slow down — smaller candles, reduced range. Price slamming into the zone aggressively is a warning sign — do not enter."
   },
 
-  "bias_criteria": {
-    "bullish": [
-      "Last 1-min candle closed higher than the one before it",
-      "RSI is between 30 and 70"
-    ],
-    "bearish": [
-      "Last 1-min candle closed lower than the one before it",
-      "RSI is between 30 and 70"
-    ],
-    "neutral": [
-      "RSI is above 70 (overbought — skip)",
-      "RSI is below 30 (oversold — skip)",
-      "Candle close change is less than 0.05% (chop — skip)"
-    ]
+  "setup_tiers": {
+    "A_plus": {
+      "label": "A+ Setup — Highest Confidence",
+      "criteria": [
+        "Fresh 4H zone (price has never returned since formation)",
+        "FVG present within the impulse move away from the zone",
+        "Impulse move breaks previous supply or demand structure",
+        "Price returns to zone slowly (momentum slowing, smaller candles)",
+        "Price closes inside the zone on 1H",
+        "15M close back above demand zone top (longs) or below supply zone bottom (shorts)",
+        "Minimum 2:1 R:R to next opposing zone"
+      ],
+      "risk_percent": 3.0
+    },
+    "A": {
+      "label": "A Setup — Good Confidence",
+      "criteria": [
+        "Zone has been used once but still structurally valid",
+        "Strong impulse move away (3-4 consecutive candles) even without FVG",
+        "Price returns to zone slowly",
+        "Price closes inside the zone on 1H",
+        "15M close back above demand zone top (longs) or below supply zone bottom (shorts)",
+        "Minimum 2:1 R:R to next opposing zone"
+      ],
+      "risk_percent": 1.5
+    }
   },
 
   "entry_rules": {
-    "long": [
-      "Last close > previous close by at least 0.05%",
-      "RSI between 30 and 70",
-      "Enter market buy immediately"
+    "sequence": [
+      "STEP 1 — Identify zone: Find the base candle before an impulsive 4H move. Draw zone wick to wick. Check for FVG in the impulse — upgrades to A+. Check that impulse broke prior structure.",
+      "STEP 2 — Wait for return: Price pulls back toward the zone. It must approach slowly — momentum slowing, candles getting smaller. Aggressive candles into the zone are a warning.",
+      "STEP 3 — Close inside zone: On the 1H chart, a candle closes inside the zone (between zone top and zone bottom). This is the confirmation the zone is being respected.",
+      "STEP 4 — Entry trigger: On the 15M chart, price closes back above the demand zone top (longs) or below the supply zone bottom (shorts). Enter on that 15M candle close.",
+      "STEP 5 — R:R check: Confirm the distance to the next opposing zone is at least 2x the stop distance. Do not enter if not met."
     ],
-    "short": [
-      "Last close < previous close by at least 0.05%",
-      "RSI between 30 and 70",
-      "Enter market sell immediately"
+    "long_conditions": [
+      "Valid 4H demand zone identified (base candle before bullish impulse, wick to wick)",
+      "Price approaches zone slowly — momentum slowing",
+      "1H candle closes inside the demand zone",
+      "15M candle closes back above the demand zone top",
+      "Minimum 2:1 R:R to next opposing 4H supply zone"
+    ],
+    "short_conditions": [
+      "Valid 4H supply zone identified (base candle before bearish impulse, wick to wick)",
+      "Price approaches zone slowly — momentum slowing",
+      "1H candle closes inside the supply zone",
+      "15M candle closes back below the supply zone bottom",
+      "Minimum 2:1 R:R to next opposing 4H demand zone"
+    ],
+    "do_not_enter_if": [
+      "Zone has been fully invalidated (4H close completely through it)",
+      "Zone has been tested more than once without a strong reaction — zone is weakening",
+      "Price approaches zone aggressively (large fast candles into zone) — do not enter",
+      "1H candle has not closed inside the zone yet",
+      "15M entry trigger has not fired",
+      "R:R to next opposing zone is less than 2:1",
+      "Already at max 3 open trades",
+      "Would result in more than 2 correlated pairs open simultaneously"
     ]
   },
 
-  "exit_rules": [
-    "Exit automatically after 10 seconds (next loop tick closes previous position)",
-    "No manual exit management — pure time-based scalp"
+  "stop_loss_rules": {
+    "long": "Place stop below the demand zone bottom (low of base candle) with a small buffer. Buffer to be calibrated during backtesting.",
+    "short": "Place stop above the supply zone top (high of base candle) with a small buffer. Buffer to be calibrated during backtesting.",
+    "buffer_note": "Buffer protects against liquidity sweeps just beyond the zone. Do not place stop at the exact zone boundary.",
+    "invalidation": "If price closes a full 4H candle completely through the zone — zone is dead, this is a full stop loss event."
+  },
+
+  "target_rules": {
+    "primary_target": "Next opposing 4H supply or demand zone",
+    "secondary_reference": "Fair value gaps within the move can also act as TP levels",
+    "rr_minimum": "3:1 minimum required on all trades to accommodate the full TP1/TP2/TP3 structure",
+    "scaling_and_exits": {
+      "note": "Pure scaling-in system — no partial closes. All positions exit together via trailing stop.",
+      "entry": "Full size at original risk (A+ = 3%, A = 1.5%)",
+      "tp1": {
+        "level": "1:1 R:R from entry (1x stop distance)",
+        "action": "Add 50% of original position size (Test A) or 100% (Test B)",
+        "stop": "Stop stays at original level"
+      },
+      "tp2": {
+        "level": "2:1 R:R from entry (2x stop distance)",
+        "action": "Add 50% of original position size (Test A) or 100% (Test B)",
+        "stop": "Move stop up to TP1 level — locks in breakeven+ on original"
+      },
+      "tp3": {
+        "level": "3:1 R:R from entry (3x stop distance)",
+        "action": "Add 50% of original position size (Test A) or 100% (Test B)",
+        "stop": "Trail stop activates from TP2 level — follows price, gives back less than full move"
+      },
+      "final_exit": "Trailing stop hits → entire position (original + all additions) closes at once",
+      "test_plan": "Run Test A (50% additions) first to establish baseline. Then run Test B (100% additions) and compare R:R, drawdown, and net P&L to determine if extra risk is justified."
+    }
+  },
+
+  "exit_rules": {
+    "stay_in_trade": [
+      "Price wicks through the zone on retest but 1H candle closes back inside — liquidity sweep, zone still valid",
+      "Price moves against the trade but no opposing zone reaction has formed — hold"
+    ],
+    "exit_immediately": [
+      "A strong opposing candle pattern forms AT an opposing supply or demand zone — exit at market",
+      "Price closes a full 4H candle completely through the entry zone — zone invalidated, full stop loss",
+      "Primary target (opposing zone) reached — take profit or partial"
+    ],
+    "re_entry_rules": [
+      "If stopped out and price returns to form a new valid zone nearby with a fresh 15M trigger — treat as a new A or A+ setup",
+      "Do not re-enter simply because price came back — a new zone and new confirmation are required"
+    ]
+  },
+
+  "risk_rules": {
+    "per_trade": {
+      "A_plus": "3% of account equity",
+      "A": "1.5% of account equity"
+    },
+    "minimum_rr": "2:1 required on all trades",
+    "max_open_trades": 3,
+    "correlation_limit": "No more than 2 correlated pairs open simultaneously",
+    "scaling_into_winners": {
+      "note": "To be defined after base strategy is validated",
+      "placeholder": [
+        "Only add to a trade at breakeven or better",
+        "Each addition requires its own valid zone and 15M trigger",
+        "Each addition sized at 50% of original",
+        "Max 2 additions per trade",
+        "Total exposure on one trade cannot exceed 6% of account"
+      ]
+    },
+    "compounding": [
+      "After each winning trade, add realized profit to account base before calculating next risk",
+      "After a losing trade, recalculate risk from updated reduced account base",
+      "Review and reset account base at the start of each week"
+    ]
+  },
+
+  "trade_log_notes": [
+    "Record zone tier: A+ (fresh + FVG + BOS) or A (used once, no FVG)",
+    "Record whether price approached slowly or aggressively",
+    "Record whether 1H closed inside zone before entry",
+    "Record 15M entry trigger candle",
+    "Record stop level and buffer",
+    "Record target zone and R:R at entry",
+    "Record exit reason (TP / opposing zone reaction / zone invalidation / SL)"
   ],
 
-  "risk_rules": [
-    "Fixed trade size: 1% of portfolio per trade",
-    "Maximum trade size: $3.00",
-    "Maximum 6 trades per 60-second run",
-    "No stop loss — exit is time-based at next tick",
-    "For demo purposes only — minimum BitGet order size may apply"
+  "backtesting_notes": [
+    "Trend alignment filter (uptrend = longs only, downtrend = shorts only) to be evaluated per instrument through backtesting",
+    "Stop buffer amount to be calibrated per instrument",
+    "Zone expiry (how long to wait for a retest) to be evaluated — no hard rule set yet",
+    "TP1/TP2/TP3 structure to be defined after base results are in",
+    "Scaling rules to be activated after consistent profitability is shown"
   ],
 
-  "notes": "Demo strategy for YouTube video. Runs 6 trades over 60 seconds, one every 10 seconds. Signal is simple price momentum on 1-min candles with RSI sanity check."
+  "known_gaps_for_future_tuning": [
+    "HTF context (weekly/daily structure) not yet applied — see memory file for details",
+    "Order block confluence not yet applied",
+    "Liquidity pool awareness not yet applied",
+    "Premium/discount filter not yet applied",
+    "Trend alignment filter to be determined through backtesting"
+  ]
 }
