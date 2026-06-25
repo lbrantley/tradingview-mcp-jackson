@@ -18,7 +18,7 @@
 
 import { setSymbol, setTimeframe } from '../src/core/chart.js';
 import { getStudyValues, getPineLabels, getPineBoxes, getOhlcv, getQuote } from '../src/core/data.js';
-import { evaluate } from '../src/connection.js';
+import { evaluate, disconnect } from '../src/connection.js';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import https from 'https';
@@ -2072,9 +2072,15 @@ async function printReport(allAlerts) {
       for (const s of triggered) {
         const d = s.symbol.includes('JPY') ? 2 : 4;
         const pipMul = s.symbol.includes('JPY') ? 100 : 10000;
-        const isLong = (s.suggestedDirection || s.type).includes('LONG');
+        // Match reviewSetups' direction logic: only honor suggestedDirection
+        // when ltfConfirmed — otherwise the trade is still tracked as the
+        // original type (e.g., a REV LONG stays a LONG even if scanner now
+        // suggests CONT SHORT). Mismatch here caused stopped LONGs to render
+        // with SHORT P/L math, inflating the win count.
+        const effectiveType = s.ltfConfirmed && s.suggestedDirection ? s.suggestedDirection : s.type;
+        const isLong = effectiveType.includes('LONG');
         const stars = '★'.repeat(s.strength || 0);
-        const dir = shortTypeLocal(s.suggestedDirection || s.type);
+        const dir = shortTypeLocal(effectiveType);
         const zone = s.entryZone
           ? `${s.entryZone.low.toFixed(d)}-${s.entryZone.high.toFixed(d)}`
           : (s.entryLevel ?? s.entryPrice ?? '?').toFixed?.(d) ?? '?';
@@ -2133,12 +2139,14 @@ async function printReport(allAlerts) {
         t === 'REVERSAL SHORT' ? 'REV SHORT' :
         t === 'CONTINUATION LONG' ? 'CONT LONG' :
         t === 'CONTINUATION SHORT' ? 'CONT SHORT' : t;
-      for (const s of recent.slice(0, 12)) {
+      for (const s of recent) {
         const d = s.symbol.includes('JPY') ? 2 : 4;
         const pipMul = s.symbol.includes('JPY') ? 100 : 10000;
-        const isLong = (s.suggestedDirection || s.type).includes('LONG');
+        // Match reviewSetups' direction logic (see TRIGGERED loop above).
+        const effectiveType = s.ltfConfirmed && s.suggestedDirection ? s.suggestedDirection : s.type;
+        const isLong = effectiveType.includes('LONG');
         const stars = '★'.repeat(s.strength || 0);
-        const dir = shortTypeLocal2(s.suggestedDirection || s.type);
+        const dir = shortTypeLocal2(effectiveType);
         const ref = s.entryLevel ?? s.entryPrice ?? s.triggerPrice ?? null;
         const exitPrice = s.exitPrice ?? null;
         const pl = (ref != null && exitPrice != null)
@@ -2965,7 +2973,11 @@ async function main() {
   } while (!once);
 }
 
-main().catch(err => {
-  console.error('Scanner error:', err.message);
-  process.exit(1);
-});
+main()
+  .catch(err => {
+    console.error('Scanner error:', err.message);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await disconnect();
+  });
