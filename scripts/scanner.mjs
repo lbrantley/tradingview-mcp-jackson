@@ -19,6 +19,7 @@
 import { setSymbol, setTimeframe } from '../src/core/chart.js';
 import { getStudyValues, getPineLabels, getPineBoxes, getOhlcv, getQuote } from '../src/core/data.js';
 import { evaluate, disconnect } from '../src/connection.js';
+import { notify, notifyOnce } from '../src/notify.js';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import https from 'https';
@@ -356,11 +357,19 @@ const ALL_PAIRS = [
   'OANDA:EURGBP', 'OANDA:NZDJPY', 'OANDA:NZDUSD', 'OANDA:CHFJPY'
 ];
 
-const SETTLE_MS = 4000;  // wait for chart + indicators to load after symbol switch
+const SETTLE_MS = 2500;  // wait for chart + indicators to load after symbol switch
+                          // (was 4000; trimmed for throughput — revert if reads return stale data)
 
 // ─── Helpers ─────────────────────────────────────────────────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const shortName = sym => sym.replace('OANDA:', '');
+const shortType = (t) => {
+  if (t === 'REVERSAL LONG')     return 'REV LONG';
+  if (t === 'REVERSAL SHORT')    return 'REV SHORT';
+  if (t === 'CONTINUATION LONG') return 'CONT LONG';
+  if (t === 'CONTINUATION SHORT')return 'CONT SHORT';
+  return t;
+};
 const now = () => new Date().toLocaleTimeString('en-US', { hour12: false });
 
 // ─── HTF TREND ENGINE — Daily + Weekly RSI(14) must agree ───────
@@ -2211,6 +2220,43 @@ async function printReport(allAlerts) {
           ? `  🌟 ALL GREEN (5/5 + 📈 1st catalyst in ${(gateInfo.firstActionable.hoursUntil / 24).toFixed(1)}d)`
           : `  🌟 ALL GREEN (5/5 + clean window)`
         : '';
+      if (gateInfo.allGreen) {
+        const catalystSuffix = gateInfo.firstActionable
+          ? ` | catalyst in ${(gateInfo.firstActionable.hoursUntil / 24).toFixed(1)}d`
+          : ' | clean window';
+        // Include full trade plan when available; flag "levels TBD" when not.
+        const hasLevels = t.sl != null && t.tp1 != null;
+        const planLine = hasLevels
+          ? `SL ${fmtPrice(t.sl, d)} | TP1 ${fmtPrice(t.tp1, d)}${t.tp2 != null ? ' | TP2 ' + fmtPrice(t.tp2, d) : ''}${t.tp3 != null ? ' | TP3 ' + fmtPrice(t.tp3, d) : ''}`
+          : 'levels TBD — set manually';
+        notifyOnce(`ALLGREEN:${symbol}:${alert.type}`, {
+          title: `🌟 ${shortName(symbol)} ${shortType(alert.type)}`,
+          message: `Entry ${entryDisplay}\n${planLine}${catalystSuffix}`,
+          priority: 1,
+          sound: 'magic',
+        });
+
+        // Approach alert — fires when price is within ~20 pips of the entry zone
+        // boundary but hasn't crossed yet. Gives you lead time before fill.
+        // 4h cooldown so we don't ping every scan as price hovers near the zone.
+        const pipMul = symbol.includes('JPY') ? 100 : 10000;
+        let approachPips = null;
+        if (alert.entryZone) {
+          const z = alert.entryZone;
+          const isLong = alert.type.includes('LONG');
+          if (isLong && price > z.high) approachPips = Math.round((price - z.high) * pipMul);
+          else if (!isLong && price < z.low) approachPips = Math.round((z.low - price) * pipMul);
+        } else if (alert.entryLevel != null) {
+          approachPips = Math.round(Math.abs(price - alert.entryLevel) * pipMul);
+        }
+        if (approachPips !== null && approachPips > 0 && approachPips <= 20) {
+          notifyOnce(`APPROACH:${symbol}:${alert.type}`, {
+            title: `📍 ${shortName(symbol)} ${shortType(alert.type)} approaching`,
+            message: `Now ${price.toFixed(d)} | Entry ${entryDisplay} | ~${approachPips}p away`,
+            priority: 0,
+          });
+        }
+      }
       console.log(`  ${shortName(symbol).padEnd(9)} ${shortType(alert.type).padEnd(12)} ${stars.padEnd(4)} ${entryDisplay.padEnd(15)} ${fmtPrice(t.sl, d).padEnd(9)} ${fmtPrice(t.tp1, d).padEnd(9)} ${(ctx.confidence || '?').padEnd(8)} ${htfStr.padEnd(13)} ${(ctx.distanceFromExtreme || '—').padEnd(7)} ${csIcon}${confirmBadge}${entryNote}${freshBadge}${swingBadge}${allGreenBadge}`);
     }
     console.log(`  ${'─'.repeat(108)}`);
@@ -2522,6 +2568,27 @@ function logSetups(allAlerts) {
 // ─── Calculate market hours between two dates (skip weekends) ────
 // Forex market: open Sun 17:00 EST (22:00 UTC) → Fri 17:00 EST (22:00 UTC)
 // Weekend = Fri 22:00 UTC to Sun 22:00 UTC (48 hours excluded per weekend)
+// Returns ms until Sunday 22:00 UTC (forex market reopen), or 0 if market is open.
+// Forex closes Fri 22:00 UTC → reopens Sun 22:00 UTC (5pm ET during EST, 6pm ET during EDT).
+function msUntilMarketOpen(now = new Date()) {
+  const day = now.getUTCDay();
+  const hour = now.getUTCHours();
+  // Friday after 22:00 UTC, or all of Saturday, or Sunday before 22:00 UTC = closed
+  const isClosed =
+    (day === 5 && hour >= 22) ||
+    (day === 6) ||
+    (day === 0 && hour < 22);
+  if (!isClosed) return 0;
+  const reopen = new Date(now);
+  // Walk forward to Sunday
+  while (reopen.getUTCDay() !== 0) {
+    reopen.setUTCDate(reopen.getUTCDate() + 1);
+  }
+  reopen.setUTCHours(22, 0, 0, 0);
+  if (reopen <= now) reopen.setUTCDate(reopen.getUTCDate() + 7);
+  return reopen - now;
+}
+
 function calcMarketHours(start, end) {
   const MS_PER_HOUR = 3600000;
   const totalHours = (end - start) / MS_PER_HOUR;
@@ -2698,6 +2765,7 @@ async function reviewSetups() {
       // Trigger detection: has price reached the entry zone (limit order fill)?
       // For shorts: triggered when price rises into the zone (high ≥ zone low / entry).
       // For longs: triggered when price falls into the zone (low ≤ zone high / entry).
+      let justTriggered = false;
       if (!setup.triggered) {
         const zone = setup.entryZone;
         let triggerHit = false;
@@ -2722,7 +2790,65 @@ async function reviewSetups() {
           setup.triggerPrice = currentPrice;
           setup.triggerLevel = triggerLevel;
           setup.triggerTime = new Date().toISOString();
+          justTriggered = true;
         }
+      }
+
+      // Skip TP/SL evaluation when the setup *just* triggered this pass — the
+      // trigger price IS the current price, so any "hit" would be a 0p phantom.
+      // Wait for the next pass to evaluate real movement.
+      if (justTriggered) {
+        const priceDigits = setup.symbol.includes('JPY') ? 2 : 4;
+        console.log(` triggered at ${currentPrice.toFixed(priceDigits)} (will evaluate next pass)`);
+        notify({
+          title: `🎯 ${shortName(setup.symbol)} ${shortType(effectiveType)} triggered`,
+          message: `Filled at ${currentPrice.toFixed(priceDigits)} | watching for SL/TP`,
+          priority: 1,
+          sound: 'incoming',
+        });
+        continue;
+      }
+
+      // TP3-trail mode: setup hit TP3 on a prior pass and is now trailing.
+      // SL trails to the TP3 price; we ping every 30 pips of further extension
+      // and close when price retraces to the trail SL.
+      if (setup.tp3Trailing) {
+        const pipMul = setup.symbol.includes('JPY') ? 100 : 10000;
+        const priceDigits = setup.symbol.includes('JPY') ? 2 : 4;
+        const trailSL = setup.trailSL;
+        const refPx = setup.triggerPrice ?? setup.entryLevel ?? setup.entryPrice;
+        const slRetraced = isLong ? currentPrice <= trailSL : currentPrice >= trailSL;
+        if (slRetraced) {
+          setup.status = 'tp3_extended';
+          setup.outcome = 'win';
+          setup.exitPrice = currentPrice;
+          setup.exitTime = new Date().toISOString();
+          log.health.wins++;
+          log.health.pending--;
+          const totalPips = refPx != null ? Math.round((isLong ? currentPrice - refPx : refPx - currentPrice) * pipMul) : 0;
+          console.log(` TP3-TRAIL CLOSED at ${currentPrice.toFixed(priceDigits)} (+${totalPips}p total)`);
+          notify({
+            title: `🏁 ${shortName(setup.symbol)} ${shortType(effectiveType)} trail closed`,
+            message: `Exit ${currentPrice.toFixed(priceDigits)} | +${totalPips}p total`,
+            priority: 0,
+            sound: 'cashregister',
+          });
+          continue;
+        }
+        // Still trailing — check extension milestone (every 30p past TP3)
+        const extensionPips = Math.round((isLong ? currentPrice - trailSL : trailSL - currentPrice) * pipMul);
+        const lastMilestone = setup.trailLastMilestone || 0;
+        if (extensionPips >= lastMilestone + 30) {
+          setup.trailLastMilestone = Math.floor(extensionPips / 30) * 30;
+          const totalPips = refPx != null ? Math.round((isLong ? currentPrice - refPx : refPx - currentPrice) * pipMul) : 0;
+          notify({
+            title: `📈 ${shortName(setup.symbol)} ${shortType(effectiveType)} extending`,
+            message: `Now ${currentPrice.toFixed(priceDigits)} | +${totalPips}p (${extensionPips}p past TP3)`,
+            priority: -1,
+          });
+        }
+        console.log(` trailing past TP3 (+${extensionPips}p extension)`);
+        continue;
       }
 
       // Check if SL hit (uses effective levels — CONT-direction for confirmed continuations)
@@ -2736,21 +2862,51 @@ async function reviewSetups() {
           log.health.losses++;
           log.health.pending--;
           console.log(` STOPPED at ${currentPrice.toFixed(4)} (loss)`);
+          const pipMul = setup.symbol.includes('JPY') ? 100 : 10000;
+          const refPx = setup.triggerPrice ?? setup.entryLevel ?? setup.entryPrice;
+          const lossPips = refPx != null ? Math.round((isLong ? currentPrice - refPx : refPx - currentPrice) * pipMul) : 0;
+          notify({
+            title: `❌ ${shortName(setup.symbol)} ${shortType(effectiveType)} stopped`,
+            message: `Exit ${currentPrice.toFixed(setup.symbol.includes('JPY') ? 2 : 4)} | ${lossPips}p`,
+            priority: 0,
+          });
           continue;
         }
       }
 
       // Check TP hits (highest first)
+      const notifyTP = (level) => {
+        const pipMul = setup.symbol.includes('JPY') ? 100 : 10000;
+        const refPx = setup.triggerPrice ?? setup.entryLevel ?? setup.entryPrice;
+        const gainPips = refPx != null ? Math.round((isLong ? currentPrice - refPx : refPx - currentPrice) * pipMul) : 0;
+        notify({
+          title: `✅ ${shortName(setup.symbol)} ${shortType(effectiveType)} ${level}`,
+          message: `Exit ${currentPrice.toFixed(setup.symbol.includes('JPY') ? 2 : 4)} | +${gainPips}p`,
+          priority: 0,
+          sound: 'cashregister',
+        });
+      };
       if (effectiveTP3 != null) {
         const tp3Hit = isLong ? currentPrice >= effectiveTP3 : currentPrice <= effectiveTP3;
         if (tp3Hit) {
-          setup.status = 'tp3_hit';
-          setup.outcome = 'win';
-          setup.exitPrice = currentPrice;
-          setup.exitTime = new Date().toISOString();
-          log.health.wins++;
-          log.health.pending--;
-          console.log(` TP3 HIT at ${currentPrice.toFixed(4)} (${setup.rr1 ? setup.rr1.toFixed(1) : '?'}R+ win!)`);
+          // Enter trail mode instead of closing — let runners run, ping on extensions.
+          // Status stays 'pending' but the trail block (above) handles future passes.
+          setup.tp3Trailing = true;
+          setup.tp3HitTime = new Date().toISOString();
+          setup.tp3HitPrice = currentPrice;
+          setup.trailSL = effectiveTP3;
+          setup.trailLastMilestone = 0;
+          const priceDigits = setup.symbol.includes('JPY') ? 2 : 4;
+          const pipMul = setup.symbol.includes('JPY') ? 100 : 10000;
+          const refPx = setup.triggerPrice ?? setup.entryLevel ?? setup.entryPrice;
+          const gainPips = refPx != null ? Math.round((isLong ? currentPrice - refPx : refPx - currentPrice) * pipMul) : 0;
+          console.log(` TP3 HIT at ${currentPrice.toFixed(priceDigits)} → entering trail mode (SL @ ${effectiveTP3.toFixed(priceDigits)})`);
+          notify({
+            title: `✅ ${shortName(setup.symbol)} ${shortType(effectiveType)} TP3 hit`,
+            message: `Now ${currentPrice.toFixed(priceDigits)} | +${gainPips}p | Trail SL @ ${effectiveTP3.toFixed(priceDigits)} — extensions will ping`,
+            priority: 1,
+            sound: 'cashregister',
+          });
           continue;
         }
       }
@@ -2764,6 +2920,7 @@ async function reviewSetups() {
           log.health.wins++;
           log.health.pending--;
           console.log(` TP2 HIT at ${currentPrice.toFixed(4)} (win)`);
+          notifyTP('TP2 hit');
           continue;
         }
       }
@@ -2777,6 +2934,7 @@ async function reviewSetups() {
           log.health.wins++;
           log.health.pending--;
           console.log(` TP1 HIT at ${currentPrice.toFixed(4)} (win)`);
+          notifyTP('TP1 hit');
           continue;
         }
       }
@@ -2821,13 +2979,25 @@ async function reviewSetups() {
         console.log(`  ${'─'.repeat(95)}`);
         for (const { setup, warnings } of tradesWithNews) {
           const sym = shortName(setup.symbol);
-          const dir = setup.suggestedDirection || setup.type;
+          const dir = setup.ltfConfirmed && setup.suggestedDirection ? setup.suggestedDirection : setup.type;
           for (const w of warnings) {
             const hrs = parseFloat(w.hoursUntil);
             const icon = hrs < 4 ? '🔴' : hrs < 12 ? '🟠' : '🟡';
             const hrsStr = hrs < 0 ? `${Math.abs(hrs).toFixed(1)}h ago` : `in ${hrs.toFixed(1)}h`;
             console.log(`  ${sym.padEnd(8)} ${shortType(dir).padEnd(12)} → ${icon} ${w.currency} ${w.title}`);
             console.log(`  ${''.padEnd(22)}   ${hrsStr}  (F: ${w.forecast} / P: ${w.previous})`);
+            // Push only for events within 4h of an open trade — 12-24h window is
+            // informational and would spam. Dedupe per (setup, event) so the same
+            // event doesn't fire on every 15-min scan.
+            if (hrs >= -1 && hrs < 4) {
+              const key = `NEWSOPEN:${setup.symbol}:${w.currency}:${w.title}:${w.date}`;
+              notifyOnce(key, {
+                title: `${icon} ${sym} news in ${hrs.toFixed(1)}h`,
+                message: `${w.currency} ${w.title} (F:${w.forecast} P:${w.previous}) — open ${shortType(dir)} trade`,
+                priority: 1,
+                sound: 'siren',
+              }, 12 * 3600 * 1000);
+            }
           }
         }
         console.log(`  ${'─'.repeat(95)}\n`);
@@ -2950,6 +3120,17 @@ async function main() {
   console.log(`${'─'.repeat(60)}`);
 
   do {
+    // Forex weekend pause — skip everything Fri 22:00 UTC → Sun 22:00 UTC.
+    // --once still runs so manual triggers work; only continuous mode pauses.
+    const msUntilOpen = msUntilMarketOpen();
+    if (!once && msUntilOpen > 0) {
+      const hrsUntil = (msUntilOpen / 3600000).toFixed(1);
+      const reopenAt = new Date(Date.now() + msUntilOpen).toISOString();
+      console.log(`\n[${now()}] 💤 Market closed — sleeping ${hrsUntil}h until ${reopenAt}\n`);
+      await sleep(msUntilOpen);
+      continue;
+    }
+
     // Review pending setups first
     const log = loadAuditLog();
     if (log.setups.filter(s => s.status === 'pending').length > 0) {
@@ -2965,6 +3146,10 @@ async function main() {
       const pendingCount = logSetups(alerts);
       console.log(`  [Audit] ${alerts.length} setup(s) logged. ${pendingCount} total pending.`);
     }
+
+    // Scan-summary pings removed by request — too noisy. Audit log still
+    // captures the count; phone only sees actionable transitions (🌟 ALL GREEN,
+    // TP/SL hits, news <4h).
 
     if (!once) {
       console.log(`\n[${now()}] Next scan in ${SCAN_INTERVAL / 60000} minutes. Press Ctrl+C to stop.\n`);
