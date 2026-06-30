@@ -20,6 +20,9 @@ import { setSymbol, setTimeframe } from '../src/core/chart.js';
 import { getStudyValues, getPineLabels, getPineBoxes, getOhlcv, getQuote } from '../src/core/data.js';
 import { evaluate, disconnect } from '../src/connection.js';
 import { notify, notifyOnce } from '../src/notify.js';
+import { observe } from '../src/observe.js';
+import { generateBriefData } from '../src/brief_data.js';
+import { execSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import https from 'https';
@@ -1792,6 +1795,7 @@ async function scanAll(pairs) {
   const macroToCheck = allAlerts.filter(a => a.alert.macroReversal);
   if (macroToCheck.length > 0) {
     console.log(`\n[${now()}] Phase 3b: Checking 1HR confirmation for ${macroToCheck.length} macro reversal candidates...`);
+    const phase3bStart = Date.now();
     await setTimeframe({ timeframe: '60' });
     await sleep(SETTLE_MS);
 
@@ -1824,6 +1828,23 @@ async function scanAll(pairs) {
 
     await setTimeframe({ timeframe: '240' });
     await sleep(SETTLE_MS);
+
+    // Op-health: phase 3b averages 2-3min over 5-7 candidates; flag if it
+    // ever exceeds 5min so dev can profile chart-switch overhead or settle
+    // waits before they compound into a real throughput problem on Azure.
+    const phase3bSec = (Date.now() - phase3bStart) / 1000;
+    if (phase3bSec > 300) {
+      observe({
+        type: 'op_health',
+        severity: 'warn',
+        message: `Phase 3b took ${phase3bSec.toFixed(0)}s (>5min threshold)`,
+        data: {
+          candidates: macroToCheck.length,
+          perCandidateSec: (phase3bSec / Math.max(macroToCheck.length, 1)).toFixed(1),
+          settleMs: SETTLE_MS,
+        },
+      });
+    }
   }
 
   return allAlerts;
@@ -2226,6 +2247,24 @@ async function printReport(allAlerts) {
           : ' | clean window';
         // Include full trade plan when available; flag "levels TBD" when not.
         const hasLevels = t.sl != null && t.tp1 != null;
+        // Detection anomaly: scanner shouldn't promote an ALL GREEN setup
+        // without SL/TP. Log to observations so dev can investigate the gate
+        // logic and the macroAlert builder for the missing levels path.
+        if (!hasLevels) {
+          observe({
+            type: 'detection_anomaly',
+            severity: 'warn',
+            message: `ALL GREEN fired without SL or TP1`,
+            data: {
+              symbol,
+              alertType: alert.type,
+              entry: alert.entryLevel ?? price,
+              sl: t.sl,
+              tp1: t.tp1,
+              hasEntryZone: !!alert.entryZone,
+            },
+          });
+        }
         const planLine = hasLevels
           ? `SL ${fmtPrice(t.sl, d)} | TP1 ${fmtPrice(t.tp1, d)}${t.tp2 != null ? ' | TP2 ' + fmtPrice(t.tp2, d) : ''}${t.tp3 != null ? ' | TP3 ' + fmtPrice(t.tp3, d) : ''}`
           : 'levels TBD — set manually';
@@ -2954,6 +2993,34 @@ async function reviewSetups() {
   log.health.pending = log.setups.filter(s => s.status === 'pending').length;
   saveAuditLog(log);
 
+  // Stat-pattern: pairs with 3+ stops in last 24h. Repeated stops on a single
+  // pair usually mean the SL distance is miscalibrated OR the direction read
+  // is wrong for the current regime — both are dev-actionable. We fire one
+  // observation per qualifying pair per review; duplicates across passes are
+  // intentional (they reinforce the pattern).
+  const stopCutoff = Date.now() - 24 * 3600000;
+  const recentStops = log.setups.filter(s =>
+    s.status === 'stopped' && s.exitTime && new Date(s.exitTime).getTime() >= stopCutoff
+  );
+  const stopsByPair = {};
+  for (const s of recentStops) {
+    stopsByPair[s.symbol] = (stopsByPair[s.symbol] || 0) + 1;
+  }
+  for (const [symbol, count] of Object.entries(stopsByPair)) {
+    if (count >= 3) {
+      observe({
+        type: 'stat_pattern',
+        severity: 'warn',
+        message: `${shortName(symbol)} stopped ${count}× in last 24h`,
+        data: {
+          symbol,
+          stopCount: count,
+          windowHours: 24,
+        },
+      });
+    }
+  }
+
   // ── NEWS AHEAD FOR OPEN TRADES (next 24h) ──
   // The scan-time news check only catches news at entry. This catches news
   // that landed in the calendar *after* the setup was logged, so an open
@@ -3150,6 +3217,35 @@ async function main() {
     // Scan-summary pings removed by request — too noisy. Audit log still
     // captures the count; phone only sees actionable transitions (🌟 ALL GREEN,
     // TP/SL hits, news <4h).
+
+    // Refresh brief_data.json so scheduled brief agents (cloud-run /schedule
+    // routines) see the latest aggregates without needing to parse the full
+    // scanner_audit.json (which is gitignored).
+    try {
+      const auditForBrief = loadAuditLog();
+      generateBriefData(auditForBrief);
+    } catch (e) {
+      console.log(`  [brief_data] regenerate failed: ${e.message}`);
+    }
+
+    // Auto-push (env-gated): commit observations.jsonl + brief_data.json so
+    // the cloud-scheduled brief agent picks up production state. Default OFF
+    // — set AUTO_PUSH_ENABLED=1 in .env on the production VM to enable.
+    if (process.env.AUTO_PUSH_ENABLED === '1') {
+      try {
+        execSync('git add observations.jsonl brief_data.json 2>/dev/null', { stdio: 'pipe' });
+        const status = execSync('git diff --cached --name-only', { stdio: 'pipe' }).toString().trim();
+        if (status) {
+          const msg = `chore(prod): scanner state @ ${new Date().toISOString()}`;
+          execSync(`git commit -m "${msg}" --quiet`, { stdio: 'pipe' });
+          execSync('git push origin main --quiet', { stdio: 'pipe' });
+          console.log(`  [auto-push] state synced (${status.split('\n').length} file(s))`);
+        }
+      } catch (e) {
+        // Never block the scanner — push failures are informational only.
+        console.log(`  [auto-push] skipped: ${e.message.split('\n')[0]}`);
+      }
+    }
 
     if (!once) {
       console.log(`\n[${now()}] Next scan in ${SCAN_INTERVAL / 60000} minutes. Press Ctrl+C to stop.\n`);

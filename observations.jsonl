@@ -1,0 +1,2 @@
+{"ts":"2026-06-29T00:00:00.000Z","type":"op_health","severity":"info","message":"observations.jsonl initialized — production→dev feedback substrate","data":{"schema":"see src/observe.js"}}
+{"ts":"2026-06-29T21:54:18.088Z","type":"op_health","severity":"info","message":"smoke test from dev session","data":{"when":"2026-06-29T21:54:18.087Z"}}
