@@ -36,13 +36,14 @@
  * The file is tracked in git so observations sync from production (Azure VM)
  * back to the dev repo via periodic commit/push (see deploy notes).
  */
-import { appendFileSync } from 'fs';
+import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { notify } from './notify.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OBS_LOG = join(__dirname, '..', 'observations.jsonl');
+const OBS_CACHE = join(__dirname, '..', 'observation_cache.json');
 
 const VALID_TYPES = new Set(['stat_pattern', 'op_health', 'detection_anomaly']);
 const VALID_SEVERITIES = new Set(['info', 'warn', 'urgent']);
@@ -76,4 +77,29 @@ export function observe({ type, severity = 'info', message, data = {} }) {
       priority: 1,
     });
   }
+}
+
+/**
+ * Dedup-cooldown wrapper for observations that would otherwise repeat on
+ * every scan pass while the underlying condition persists.
+ * Default cooldown 6h — enough to keep stat_pattern warnings visible once
+ * per trading session without duplicating on every 15-min scan.
+ */
+function loadCache() {
+  if (!existsSync(OBS_CACHE)) return {};
+  try { return JSON.parse(readFileSync(OBS_CACHE, 'utf8')); }
+  catch { return {}; }
+}
+function saveCache(cache) {
+  try { writeFileSync(OBS_CACHE, JSON.stringify(cache, null, 2)); }
+  catch { /* ignore */ }
+}
+
+export function observeOnce(key, opts, cooldownMs = 6 * 3600 * 1000) {
+  const cache = loadCache();
+  const last = cache[key];
+  if (last && Date.now() - last < cooldownMs) return { skipped: 'cooldown' };
+  cache[key] = Date.now();
+  saveCache(cache);
+  return observe(opts);
 }

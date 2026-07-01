@@ -20,7 +20,7 @@ import { setSymbol, setTimeframe } from '../src/core/chart.js';
 import { getStudyValues, getPineLabels, getPineBoxes, getOhlcv, getQuote } from '../src/core/data.js';
 import { evaluate, disconnect } from '../src/connection.js';
 import { notify, notifyOnce } from '../src/notify.js';
-import { observe } from '../src/observe.js';
+import { observe, observeOnce } from '../src/observe.js';
 import { generateBriefData } from '../src/brief_data.js';
 import { execSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
@@ -2782,6 +2782,25 @@ async function reviewSetups() {
         continue;
       }
 
+      // Sanity check: reject price reads that are wildly off entry. This guards
+      // against bad feed / phantom quote from TV that would otherwise trigger
+      // an SL "hit" at an impossible level (e.g., USDJPY exit 215.535 vs entry
+      // 162.278 — a 33% "move" that can't happen in a currency pair).
+      const referencePx = setup.entryLevel ?? setup.entryPrice ?? setup.triggerPrice;
+      if (referencePx != null) {
+        const deviation = Math.abs(currentPrice - referencePx) / referencePx;
+        if (deviation > 0.10) {
+          observeOnce(`BAD_QUOTE:${setup.symbol}:${Math.floor(Date.now() / 3600000)}`, {
+            type: 'detection_anomaly',
+            severity: 'warn',
+            message: `${shortName(setup.symbol)} quote ${(deviation * 100).toFixed(1)}% off entry — skipping`,
+            data: { symbol: setup.symbol, entry: referencePx, badQuote: currentPrice },
+          });
+          console.log(` bad quote ${currentPrice} vs entry ${referencePx}, skipping`);
+          continue;
+        }
+      }
+
       // Phase 3: For confirmed continuations, evaluate using CONT direction + levels
       const effectiveType = setup.ltfConfirmed && setup.suggestedDirection ? setup.suggestedDirection : setup.type;
       const isLong = effectiveType.includes('LONG');
@@ -2926,7 +2945,22 @@ async function reviewSetups() {
         });
       };
       if (effectiveTP3 != null) {
-        const tp3Hit = isLong ? currentPrice >= effectiveTP3 : currentPrice <= effectiveTP3;
+        // Direction guard: TP3 must be on the favorable side of entry. If the
+        // setup direction was flipped (e.g., REV LONG re-suggested as CONT SHORT)
+        // without ltfConfirmed, the stored TP3 may be from the original direction
+        // and sit on the WRONG side of entry — which triggers phantom hits.
+        // Symptom in production: EURNZD CONT LONG with tp3Trailing=true but MFE=0.
+        const refPx = setup.triggerPrice ?? setup.entryLevel ?? setup.entryPrice;
+        const tp3OnCorrectSide = refPx == null || (isLong ? effectiveTP3 > refPx : effectiveTP3 < refPx);
+        if (!tp3OnCorrectSide) {
+          observeOnce(`TP3_WRONGSIDE:${setup.symbol}:${setup.id ?? setup.timestamp}`, {
+            type: 'detection_anomaly',
+            severity: 'warn',
+            message: `${shortName(setup.symbol)} TP3 on wrong side of entry — skipping hit`,
+            data: { symbol: setup.symbol, direction: effectiveType, entry: refPx, tp3: effectiveTP3 },
+          });
+        }
+        const tp3Hit = tp3OnCorrectSide && (isLong ? currentPrice >= effectiveTP3 : currentPrice <= effectiveTP3);
         if (tp3Hit) {
           // Enter trail mode instead of closing — let runners run, ping on extensions.
           // Status stays 'pending' but the trail block (above) handles future passes.
@@ -3008,7 +3042,9 @@ async function reviewSetups() {
   }
   for (const [symbol, count] of Object.entries(stopsByPair)) {
     if (count >= 3) {
-      observe({
+      // 6h cooldown — one observation per pair per session, not per scan pass.
+      // Yesterday's brief showed 18 duplicates in 15h from the un-dedup'd version.
+      observeOnce(`STOPPED3X:${symbol}`, {
         type: 'stat_pattern',
         severity: 'warn',
         message: `${shortName(symbol)} stopped ${count}× in last 24h`,
