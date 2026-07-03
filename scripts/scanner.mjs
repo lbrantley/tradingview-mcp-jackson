@@ -3012,44 +3012,52 @@ async function reviewSetups() {
         }
       }
 
-      // Momentum-confirmation alert — fires for triggered setups that are
-      // moving *favorably right now*, so the user can enter on confirmation
-      // instead of waiting at the zone (which risks missing the move). Once
+      // Momentum-confirmation alert — fires for triggered setups moving
+      // favorably RIGHT NOW so the user can enter on confirmation. Once
       // per setup lifetime (24h cooldown via notifyOnce).
       //
-      // Rationale: user reported missing multiple profitable moves this week
-      // by waiting for post-trigger confirmation before entering. This alert
-      // detects setups already ~50%+ of the way to TP1 within the first ~4h,
-      // with the move still sustained (near MFE), so the entry-chase is still
-      // worthwhile.
-      if (setup.triggered && setup.triggerTime && effectiveSL != null && effectiveTP1 != null) {
+      // v2 (2026-07-03) — retuned after week 1 showed only 1 alert fired:
+      //   * Window 4h → 8h (many setups develop momentum over 5-8h)
+      //   * Fires on 0.3R OR absolute 25p (previously required 0.5R AND SL)
+      //   * SL-null fallback: use TP1 distance as risk proxy so unprotected
+      //     winners still qualify (5 of the biggest gainers this week had
+      //     sl:null and were silently disqualified)
+      //   * Keep sustained ≥80% MFE rule — this is the honest signal
+      if (setup.triggered && setup.triggerTime && effectiveTP1 != null) {
         const hoursSinceTrigger = (Date.now() - new Date(setup.triggerTime).getTime()) / 3600000;
         const refPx = setup.triggerPrice ?? setup.entryLevel ?? setup.entryPrice;
-        if (refPx != null && hoursSinceTrigger > 0 && hoursSinceTrigger <= 4) {
+        if (refPx != null && hoursSinceTrigger > 0 && hoursSinceTrigger <= 8) {
           const pipMul = setup.symbol.includes('JPY') ? 100 : 10000;
           const priceDigits = setup.symbol.includes('JPY') ? 2 : 4;
           const plPips = Math.round((isLong ? currentPrice - refPx : refPx - currentPrice) * pipMul);
-          const slDistPips = Math.round(Math.abs(refPx - effectiveSL) * pipMul);
+          // Risk proxy: SL distance when available, else half the TP1 distance.
+          const tp1DistFromEntry = Math.abs(refPx - effectiveTP1) * pipMul;
+          const slDistPips = effectiveSL != null
+            ? Math.round(Math.abs(refPx - effectiveSL) * pipMul)
+            : Math.round(tp1DistFromEntry / 2);
           const tp1DistFromNow = Math.round((isLong ? effectiveTP1 - currentPrice : currentPrice - effectiveTP1) * pipMul);
           const rAchieved = slDistPips > 0 ? plPips / slDistPips : 0;
           const rRemaining = slDistPips > 0 ? tp1DistFromNow / slDistPips : 0;
           const mfePipsFromRef = setup.maxFavorable != null
             ? Math.round((isLong ? setup.maxFavorable - refPx : refPx - setup.maxFavorable) * pipMul)
             : plPips;
-          // "Sustained" = currentPrice is at ≥80% of the MFE. Guards against
-          // spikes that already retraced (bad entry chase).
           const sustained = mfePipsFromRef > 0 ? plPips / mfePipsFromRef >= 0.8 : false;
-          const fireMomentum =
-            rAchieved >= 0.5 &&      // real move (≥ half of risk already banked)
-            rRemaining >= 1.0 &&     // room to run (≥ 1R to TP1 from here)
-            sustained &&             // hasn't retraced
-            slDistPips > 0;
+          // Fire if EITHER 0.3R gain OR 25 pips absolute — whichever hits first.
+          const meetsRThreshold = rAchieved >= 0.3;
+          const meetsPipThreshold = plPips >= 25;
+          const meetsMoveThreshold = meetsRThreshold || meetsPipThreshold;
+          // Room-to-run: 1R remaining, or if no SL then TP1 must be ≥30p away.
+          const meetsRoomThreshold = rRemaining >= 1.0 || tp1DistFromNow >= 30;
+          const fireMomentum = meetsMoveThreshold && meetsRoomThreshold && sustained && plPips > 0;
           if (fireMomentum) {
+            const slLine = effectiveSL != null
+              ? `MFE +${mfePipsFromRef}p (${Math.round(plPips / mfePipsFromRef * 100)}% of high)`
+              : `MFE +${mfePipsFromRef}p — ⚠️ NO SL SET`;
             notifyOnce(`MOMENTUM:${setup.symbol}:${setup.triggerTime}`, {
               title: `🚀 ${shortName(setup.symbol)} ${shortType(effectiveType)} — momentum favorable`,
               message: `Triggered ${hoursSinceTrigger.toFixed(1)}h ago @ ${refPx.toFixed(priceDigits)}
 Now ${currentPrice.toFixed(priceDigits)} (+${plPips}p, ${rAchieved.toFixed(1)}R)
-MFE +${mfePipsFromRef}p (${Math.round(plPips / mfePipsFromRef * 100)}% of high)
+${slLine}
 TP1 ${effectiveTP1.toFixed(priceDigits)} = +${tp1DistFromNow}p (${rRemaining.toFixed(1)}R remaining)`,
               priority: 1,
               sound: 'incoming',

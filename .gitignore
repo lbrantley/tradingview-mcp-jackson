@@ -20,3 +20,6 @@ scanner_audit_pre_v3_backup.json
 strength_cache.json
 notification_cache.json
 observation_cache.json
+
+# Brief-generator runtime logs
+logs/

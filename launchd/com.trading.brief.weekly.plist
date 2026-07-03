@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.trading.brief.weekly</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/leebrantley/tradingview-mcp-jackson/scripts/run_brief.sh</string>
+        <string>weekly</string>
+    </array>
+
+    <!--
+      Fires 2:00 PM local (America/Chicago) Sunday.
+      2pm Central = 3pm Eastern (both shift together for DST).
+    -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>14</integer>
+        <key>Minute</key><integer>0</integer>
+        <key>Weekday</key><integer>0</integer>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/leebrantley/tradingview-mcp-jackson</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/leebrantley/tradingview-mcp-jackson/logs/launchd.weekly.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/leebrantley/tradingview-mcp-jackson/logs/launchd.weekly.err</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
