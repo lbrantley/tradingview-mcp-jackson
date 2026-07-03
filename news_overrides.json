@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "lastUpdated": "2026-06-25",
-    "source": "Forex Factory screenshots — weeks of Jun 22-26 + Jun 28-Jul 4, 2026",
+    "lastUpdated": "2026-07-03",
+    "source": "Forex Factory screenshots — weeks of Jun 22-26 + Jun 28-Jul 4 + Jul 5-10, 2026",
     "note": "Manually added because FF JSON API was missing CAD events for this week. Times are EST and converted to UTC via offset (EDT = UTC-4 in June/July).",
     "instructions": "Add events from FF screenshots here. Date should be ISO 8601 UTC. Use format: YYYY-MM-DDTHH:MM:00.000Z. EST/EDT events: add 4 hours for EDT, 5 for EST. Filter: RED flag = High, ORANGE = Medium, skip yellow."
   },
@@ -341,6 +341,78 @@
       "impact": "Medium",
       "forecast": "—",
       "previous": "—"
+    },
+    {
+      "title": "BOE Gov Bailey Speaks",
+      "currency": "GBP",
+      "date": "2026-07-07T09:30:00.000Z",
+      "impact": "Medium",
+      "forecast": "—",
+      "previous": "—"
+    },
+    {
+      "title": "Ivey PMI",
+      "currency": "CAD",
+      "date": "2026-07-07T13:00:00.000Z",
+      "impact": "Medium",
+      "forecast": "59.1",
+      "previous": "58.2"
+    },
+    {
+      "title": "Official Cash Rate",
+      "currency": "NZD",
+      "date": "2026-07-08T01:00:00.000Z",
+      "impact": "High",
+      "forecast": "2.50%",
+      "previous": "2.25%"
+    },
+    {
+      "title": "RBNZ Rate Statement",
+      "currency": "NZD",
+      "date": "2026-07-08T01:00:00.000Z",
+      "impact": "High",
+      "forecast": "—",
+      "previous": "—"
+    },
+    {
+      "title": "RBNZ Press Conference",
+      "currency": "NZD",
+      "date": "2026-07-08T02:00:00.000Z",
+      "impact": "High",
+      "forecast": "—",
+      "previous": "—"
+    },
+    {
+      "title": "FOMC Meeting Minutes",
+      "currency": "USD",
+      "date": "2026-07-08T17:00:00.000Z",
+      "impact": "High",
+      "forecast": "—",
+      "previous": "—"
+    },
+    {
+      "title": "Unemployment Claims",
+      "currency": "USD",
+      "date": "2026-07-09T11:30:00.000Z",
+      "impact": "Medium",
+      "forecast": "218K",
+      "previous": "215K"
+    },
+    {
+      "title": "Employment Change",
+      "currency": "CAD",
+      "date": "2026-07-10T11:30:00.000Z",
+      "impact": "High",
+      "forecast": "10.0K",
+      "previous": "87.8K"
+    },
+    {
+      "title": "Unemployment Rate",
+      "currency": "CAD",
+      "date": "2026-07-10T11:30:00.000Z",
+      "impact": "High",
+      "forecast": "6.6%",
+      "previous": "6.6%"
     }
   ]
 }
