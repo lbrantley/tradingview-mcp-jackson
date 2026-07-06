@@ -3013,20 +3013,22 @@ async function reviewSetups() {
       }
 
       // Momentum-confirmation alert — fires for triggered setups moving
-      // favorably RIGHT NOW so the user can enter on confirmation. Once
-      // per setup lifetime (24h cooldown via notifyOnce).
+      // favorably so the user can enter on confirmation. Once per setup
+      // lifetime (24h cooldown via notifyOnce).
       //
-      // v2 (2026-07-03) — retuned after week 1 showed only 1 alert fired:
-      //   * Window 4h → 8h (many setups develop momentum over 5-8h)
-      //   * Fires on 0.3R OR absolute 25p (previously required 0.5R AND SL)
-      //   * SL-null fallback: use TP1 distance as risk proxy so unprotected
-      //     winners still qualify (5 of the biggest gainers this week had
-      //     sl:null and were silently disqualified)
-      //   * Keep sustained ≥80% MFE rule — this is the honest signal
+      // v3 (2026-07-05) — retuned after week 2 showed 0% recall on real
+      // top-5 winners (USDJPY REV SHORT +92p, CADJPY REV LONG +86p, etc.).
+      // Both took ~38h from trigger→TP1 with most of the move driven by
+      // NFP 30h after entry. The 8h window and 80% sustained rule both
+      // ruled them out.
+      //   * Window 8h → 24h (macro reversals mature over a full day)
+      //   * Sustained 0.80 → 0.60 (chop-before-extension is normal;
+      //     60% still guards against pinging on faded trades)
+      //   * Move / room thresholds unchanged — those are fine
       if (setup.triggered && setup.triggerTime && effectiveTP1 != null) {
         const hoursSinceTrigger = (Date.now() - new Date(setup.triggerTime).getTime()) / 3600000;
         const refPx = setup.triggerPrice ?? setup.entryLevel ?? setup.entryPrice;
-        if (refPx != null && hoursSinceTrigger > 0 && hoursSinceTrigger <= 8) {
+        if (refPx != null && hoursSinceTrigger > 0 && hoursSinceTrigger <= 24) {
           const pipMul = setup.symbol.includes('JPY') ? 100 : 10000;
           const priceDigits = setup.symbol.includes('JPY') ? 2 : 4;
           const plPips = Math.round((isLong ? currentPrice - refPx : refPx - currentPrice) * pipMul);
@@ -3041,7 +3043,7 @@ async function reviewSetups() {
           const mfePipsFromRef = setup.maxFavorable != null
             ? Math.round((isLong ? setup.maxFavorable - refPx : refPx - setup.maxFavorable) * pipMul)
             : plPips;
-          const sustained = mfePipsFromRef > 0 ? plPips / mfePipsFromRef >= 0.8 : false;
+          const sustained = mfePipsFromRef > 0 ? plPips / mfePipsFromRef >= 0.6 : false;
           // Fire if EITHER 0.3R gain OR 25 pips absolute — whichever hits first.
           const meetsRThreshold = rAchieved >= 0.3;
           const meetsPipThreshold = plPips >= 25;
