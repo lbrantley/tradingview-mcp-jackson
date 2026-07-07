@@ -79,8 +79,11 @@ function fetchJSON(url) {
   });
 }
 
-// Merge two event arrays, deduping by currency+title+date within a 60-min window.
+// Merge two event arrays, deduping by currency+title+date within a 120-min window.
 // Prefers override values when both sources have the same event (overrides have user-validated F/P).
+// 120min window: mid-week override entries from screenshots can drift 1h from the
+// live FF feed timing (timezone-parse edge cases). Anything more than 2h apart is
+// almost certainly a genuinely different event.
 function dedupeMerge(ffEvents, overrideEvents) {
   if (!overrideEvents || overrideEvents.length === 0) return ffEvents;
   const all = [...ffEvents];
@@ -89,7 +92,7 @@ function dedupeMerge(ffEvents, overrideEvents) {
     const dupeIdx = all.findIndex(e =>
       e.currency === ov.currency &&
       e.title === ov.title &&
-      Math.abs(new Date(e.date).getTime() - ovTime) < 3600000
+      Math.abs(new Date(e.date).getTime() - ovTime) <= 7200000
     );
     if (dupeIdx >= 0) all[dupeIdx] = ov; // prefer override (user validated)
     else all.push(ov);
