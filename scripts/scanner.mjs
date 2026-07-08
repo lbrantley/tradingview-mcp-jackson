@@ -1812,6 +1812,7 @@ async function scanAll(pairs) {
 
       const ltf = await checkLTFConfirmation(item.symbol, expectedDirection);
       if (ltf.confirmed) {
+        const wasAlreadyConfirmed = item.alert.ltfConfirmed === true;
         item.alert.ltfConfirmed = true;
         item.alert.ltfEvent = ltf.eventType;
         item.alert.ltfEventPrice = ltf.eventPrice;
@@ -1824,6 +1825,31 @@ async function scanAll(pairs) {
         }
         const ageStr = ltf.barsAgo != null ? ` ${ltf.barsAgo}b ago` : '';
         console.log(` ✅ CONFIRMED REVERSAL (${ltf.eventType} ${ltf.direction}${ageStr})`);
+
+        // 💎 CONFIRMED alert — fires once at the moment a macro reversal's
+        // LTF (1HR) structure confirms the reversal direction. This is the
+        // transition-to-tradeable moment per the 2026-07-08 promotion rule
+        // (ltfConfirmed macro reversals join the tradeable bucket). User
+        // asked for macro reversals as "big flashing lights" — this is the
+        // earliest actionable ping in the lifecycle, before triggering, before
+        // momentum, giving max lead time to set the limit order.
+        // Cooldown 6h per pair+type — the same reversal won't re-fire if
+        // it re-confirms on the next scan pass with fresh bars.
+        if (!wasAlreadyConfirmed) {
+          const d = item.symbol.includes('JPY') ? 2 : 4;
+          const targets = item.alert.targets || {};
+          const entryStr = item.alert.entryZone
+            ? `${item.alert.entryZone.low.toFixed(d)}-${item.alert.entryZone.high.toFixed(d)}`
+            : (item.alert.entryLevel ?? item.price ?? 0).toFixed(d);
+          const slStr = targets.sl != null ? fmtPrice(targets.sl, d) : 'TBD';
+          const tp1Str = targets.tp1 != null ? fmtPrice(targets.tp1, d) : 'TBD';
+          notifyOnce(`MACROLTF:${item.symbol}:${item.alert.type}`, {
+            title: `💎✅ ${shortName(item.symbol)} ${shortType(item.alert.type)} — LTF confirmed`,
+            message: `1HR ${ltf.eventType} ${ltf.direction}${ageStr}\nEntry ${entryStr} | SL ${slStr} | TP1 ${tp1Str}\nHTF Daily ${item.alert.htf?.dRSI ?? '?'} / Weekly ${item.alert.htf?.wRSI ?? '?'}`,
+            priority: 1,
+            sound: 'magic',
+          }, 6 * 3600 * 1000);
+        }
       } else {
         console.log(` waiting (${ltf.reason})`);
       }
@@ -2271,8 +2297,13 @@ async function printReport(allAlerts) {
         const planLine = hasLevels
           ? `SL ${fmtPrice(t.sl, d)} | TP1 ${fmtPrice(t.tp1, d)}${t.tp2 != null ? ' | TP2 ' + fmtPrice(t.tp2, d) : ''}${t.tp3 != null ? ' | TP3 ' + fmtPrice(t.tp3, d) : ''}`
           : 'levels TBD — set manually';
+        // 💎 prefix marks this as a macro reversal — the highest-EV setup
+        // class per health-report data (76%+ WR post-2026-07-08 promotion).
+        // User asked for "big flashing lights" on macro reversals — the diamond
+        // matches the report's macro-reversal convention so signals stand out
+        // on the phone as a class of trade, not just individual pings.
         notifyOnce(`ALLGREEN:${symbol}:${alert.type}`, {
-          title: `🌟 ${shortName(symbol)} ${shortType(alert.type)}`,
+          title: `💎🌟 ${shortName(symbol)} ${shortType(alert.type)}`,
           message: `Entry ${entryDisplay}\n${planLine}${catalystSuffix}`,
           priority: 1,
           sound: 'magic',
@@ -3058,8 +3089,13 @@ async function reviewSetups() {
             const slLine = effectiveSL != null
               ? `MFE +${mfePipsFromRef}p (${Math.round(plPips / mfePipsFromRef * 100)}% of high)`
               : `MFE +${mfePipsFromRef}p — ⚠️ NO SL SET`;
+            // 💎 prefix for momentum on a macro reversal — mirrors the ALL GREEN
+            // treatment so the highest-EV trade class is visually distinct across
+            // its full lifecycle (detection → LTF-confirmed → momentum → TP).
+            const isMacroRev = !!setup.macroReversal;
+            const titlePrefix = isMacroRev ? '💎🚀' : '🚀';
             notifyOnce(`MOMENTUM:${setup.symbol}:${setup.triggerTime}`, {
-              title: `🚀 ${shortName(setup.symbol)} ${shortType(effectiveType)} — momentum favorable`,
+              title: `${titlePrefix} ${shortName(setup.symbol)} ${shortType(effectiveType)} — momentum favorable`,
               message: `Triggered ${hoursSinceTrigger.toFixed(1)}h ago @ ${refPx.toFixed(priceDigits)}
 Now ${currentPrice.toFixed(priceDigits)} (+${plPips}p, ${rAchieved.toFixed(1)}R)
 ${slLine}
