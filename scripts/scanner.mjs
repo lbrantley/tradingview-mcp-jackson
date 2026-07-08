@@ -3184,7 +3184,18 @@ function printHealthReport(log) {
   const isStrong = (s) => {
     if (s.pullbackAlert && s.ltfConfirmed) return true;  // Phase 3: confirmed continuations are tradeable
     if (s.pullbackAlert) return false;
-    if (s.macroReversal) return s.macroConfidence === 'high' || s.macroConfidence === 'moderate';
+    if (s.macroReversal) {
+      // Trust LTF confirmation as much as upfront confidence. Phase 3b bumps
+      // strength to ≥3 when 1HR CHoCH/BOS confirms the reversal direction —
+      // that structural evidence is worth as much as the upfront confluence
+      // score. Previously the classifier only trusted the initial confidence
+      // (high|moderate), which filtered out structurally-confirmed winners
+      // (measured 16W/3L=84% WR on 2026-07-08). Adding ltfConfirmed promotes
+      // those to the tradeable bucket where they belong.
+      return s.ltfConfirmed
+        || s.macroConfidence === 'high'
+        || s.macroConfidence === 'moderate';
+    }
     return s.strength >= 4;  // HTF-aligned
   };
 
