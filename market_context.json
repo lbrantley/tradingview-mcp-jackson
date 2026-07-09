@@ -3,36 +3,37 @@
     "lastUpdated": "2026-07-09",
     "description": "Live macro themes affecting currencies but not on the scheduled news calendar. Update as regime-changing events happen. Scanner reads this at brief generation time and displays it in the daily/weekly review.",
     "howToUse": "Each theme should include: (1) short title, (2) start date, (3) currency implications with brief reasoning, (4) a specific watchLevel that would invalidate the theme, (5) affectedPairs for scanner correlation. Retire themes by moving to _retired[] with an endDate.",
-    "maintenance": "Manual updates + Claude WebSearch each session. 2026-07-09: Iran/oil theme reactivated after Trump declared ceasefire 'over'; oil spiked $75.7 intraday. Fed pivot theme softened — hawkish June minutes but DXY still weakened."
+    "maintenance": "Manual updates + Claude WebSearch each session. 2026-07-09: Iran/oil theme escalated — US bombed 80+ Iran targets, Iran retaliated at 85 US sites, 3 vessels attacked near Hormuz, Treasury revoked Iran oil authorization, Brent hit $80.59 intraday."
   },
   "themes": [
     {
-      "id": "iran-oil-cad-2026-07-reactivated",
-      "title": "Iran ceasefire declared over — oil back to $73-75 range",
+      "id": "iran-oil-escalation-2026-07-09",
+      "title": "Iran/US escalation — full military exchange, Brent spiked to $80",
       "started": "2026-07-08",
-      "summary": "Trump declared temporary US-Iran ceasefire 'over.' WTI crude spiked toward $75.7 intraday on Jul 8 before easing to ~$73.8 on Strait of Hormuz + reciprocal-strike risk. CAD tailwind is RE-ACTIVATED after briefly retracing. Watch $70 as prior low — theme dies below $70 sustained.",
+      "summary": "This is no longer a ceasefire-uncertainty story — it's an active military exchange. US bombed 80+ Iranian targets (air defense, C&C, radar, anti-ship missile capabilities). Iran retaliated at 85 US sites in Bahrain and Kuwait. 3 vessels attacked near Hormuz. Treasury revoked Iran's oil sale authorization. WTI +4.4% to $73.52; Brent hit $80.59 intraday (+8.7%). Brent-WTI spread widening reflects Middle East supply premium. Safe-haven flows now active — USD getting haven bid despite Fed pivot fatigue.",
       "implications": {
-        "CAD": "tailwind reactivated — oil bid back on",
-        "JPY": "tailwind — safe haven bid returning",
-        "CHF": "tailwind — safe haven",
-        "USD": "mixed — haven bid vs Fed pivot fatigue (DXY weakened even on hawkish minutes)",
-        "AUD": "mixed — risk-off drag vs commodity currency lift",
-        "NZD": "headwind — risk-off pressure"
+        "CAD": "STRONG tailwind — WTI holding $73+ and Brent >$78 = firm oil support",
+        "JPY": "STRONG tailwind — safe-haven bid active on escalation",
+        "CHF": "STRONG tailwind — safe-haven bid",
+        "USD": "haven-bid returning — DXY may hold premium despite Fed pivot fatigue; risk-off USD-positive",
+        "AUD": "headwind — risk-off pressure dominant",
+        "NZD": "headwind — risk-off pressure dominant",
+        "GBP": "mixed — safe-haven neutral, but GBP-JPY/CHF crosses see JPY/CHF strength"
       },
-      "watchLevel": "CL1! sustained below $70 = CAD-strength commodity leg gone; $77+ = escalation extending",
-      "affectedPairs": ["USDCAD", "GBPCAD", "AUDCAD", "CADJPY", "CADCHF", "EURCAD", "NZDCAD"]
+      "watchLevel": "Brent sustained below $75 = escalation priced out / de-escalation begun. WTI sustained below $70 = CAD leg gone. Brent >$85 = full-crisis pricing, look for USD/JPY spike",
+      "affectedPairs": ["USDCAD", "GBPCAD", "AUDCAD", "CADJPY", "CADCHF", "EURCAD", "NZDCAD", "USDJPY", "AUDUSD", "NZDUSD", "EURUSD"]
     },
     {
       "id": "fed-pivot-fatigue-2026-07",
-      "title": "Fed's hawkish June minutes met with USD weakness — pivot may be priced in",
+      "title": "Fed's hawkish June minutes met with USD weakness — but haven bid may reverse this",
       "started": "2026-07-08",
-      "summary": "FOMC held rates at 3.5-3.75%. June meeting minutes showed a few officials wanted to hike, which should have supported USD but DXY weakened against every G10 except JPY. Signal: the data-dependent hawkish stance is already priced. Additional hawkish surprises now needed to move DXY up. Watch CPI Tue.",
+      "summary": "FOMC held rates at 3.5-3.75%. June meeting minutes showed a few officials wanted to hike, which should have supported USD but DXY weakened against every G10 except JPY on Jul 8. NOTE: with Iran escalation on Jul 9, USD haven bid is returning — this theme may be muted by the risk-off flow above. Watch CPI Tuesday for the real test.",
       "implications": {
-        "USD": "softening tailwind — hawkish news losing bite",
-        "CAD": "less headwind than the pure Warsh theme implied",
-        "GBP": "tailwind — bounced hardest against USD weakness",
-        "EUR": "tailwind — same",
-        "JPY": "headwind persisting — carry gap keeps yen weakest of G10"
+        "USD": "softening tailwind pre-Iran; now competing with haven bid",
+        "CAD": "less pure Warsh headwind; Iran theme dominates",
+        "GBP": "mixed — bounced hard on Jul 8 USD weakness but haven flows now different story",
+        "EUR": "mixed — same",
+        "JPY": "headwind persisting from carry gap; but haven bid partially offsets"
       },
       "watchLevel": "DXY closes below 100 = pivot theme officially over; CPI Tue is the resolver",
       "affectedPairs": ["USDCAD", "USDCHF", "USDJPY", "EURUSD", "GBPUSD", "AUDUSD", "NZDUSD"]
@@ -57,7 +58,14 @@
       "title": "US-Iran conflict jump largely retraced — oil hovering near $70-74",
       "started": "2026-07-01",
       "endDate": "2026-07-08",
-      "endReason": "Reactivated as new theme after Trump declared ceasefire over on Jul 8; oil back to $73-75 range"
+      "endReason": "Reactivated as Trump declared ceasefire over Jul 8; oil back to $73-75 range"
+    },
+    {
+      "id": "iran-oil-cad-2026-07-reactivated",
+      "title": "Iran ceasefire declared over — oil back to $73-75 range",
+      "started": "2026-07-08",
+      "endDate": "2026-07-09",
+      "endReason": "Escalated to active military exchange (US-Iran mutual strikes, Hormuz attacks, Brent $80). Replaced by iran-oil-escalation-2026-07-09."
     }
   ]
 }
