@@ -140,6 +140,15 @@ async function main() {
     }
   }
 
+  // Step 1b: refresh currency index cache so the review has fresh backdrop
+  log('Refreshing currency index cache...');
+  const idxOut = run('node scripts/refresh_currency_indices.mjs', { timeout: 3 * 60 * 1000 });
+  if (idxOut) {
+    for (const line of idxOut.split('\n')) {
+      if (line.trim()) log(`  ${line}`);
+    }
+  }
+
   // Step 2: find scanner, pause it
   const scannerPid = findScannerPid();
   if (scannerPid) log(`Found running scanner: PID ${scannerPid}`);

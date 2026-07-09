@@ -22,6 +22,7 @@ import { evaluate, disconnect } from '../src/connection.js';
 import { notify, notifyOnce } from '../src/notify.js';
 import { observe, observeOnce } from '../src/observe.js';
 import { generateBriefData } from '../src/brief_data.js';
+import { loadCurrencyIndices, evaluatePairVsIndices } from '../src/currency_indices.js';
 import { execSync } from 'child_process';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
@@ -1844,9 +1845,11 @@ async function scanAll(pairs) {
             : (item.alert.entryLevel ?? item.price ?? 0).toFixed(d);
           const slStr = targets.sl != null ? fmtPrice(targets.sl, d) : 'TBD';
           const tp1Str = targets.tp1 != null ? fmtPrice(targets.tp1, d) : 'TBD';
+          const idxCtxL = evaluatePairVsIndices(item.symbol, item.alert.type, loadCurrencyIndices());
+          const idxLineL = idxCtxL ? `\nIndices ${idxCtxL.glyph} ${idxCtxL.label} (${idxCtxL.dayNote})` : '';
           notifyOnce(`MACROLTF:${item.symbol}:${item.alert.type}`, {
             title: `💎✅ ${shortName(item.symbol)} ${shortType(item.alert.type)} — LTF confirmed`,
-            message: `1HR ${ltf.eventType} ${ltf.direction}${ageStr}\nEntry ${entryStr} | SL ${slStr} | TP1 ${tp1Str}\nHTF Daily ${item.alert.htf?.dRSI ?? '?'} / Weekly ${item.alert.htf?.wRSI ?? '?'}`,
+            message: `1HR ${ltf.eventType} ${ltf.direction}${ageStr}\nEntry ${entryStr} | SL ${slStr} | TP1 ${tp1Str}\nHTF Daily ${item.alert.htf?.dRSI ?? '?'} / Weekly ${item.alert.htf?.wRSI ?? '?'}${idxLineL}`,
             priority: 1,
             sound: 'magic',
           }, 6 * 3600 * 1000);
@@ -2303,9 +2306,13 @@ async function printReport(allAlerts) {
         // User asked for "big flashing lights" on macro reversals — the diamond
         // matches the report's macro-reversal convention so signals stand out
         // on the phone as a class of trade, not just individual pings.
+        // Cross-reference currency indices for the base/quote to note whether
+        // the HTF currency-strength read supports the direction.
+        const idxCtx = evaluatePairVsIndices(symbol, alert.type, loadCurrencyIndices());
+        const idxLine = idxCtx ? `\nIndices ${idxCtx.glyph} ${idxCtx.label} (${idxCtx.dayNote})` : '';
         notifyOnce(`ALLGREEN:${symbol}:${alert.type}`, {
           title: `💎🌟 ${shortName(symbol)} ${shortType(alert.type)}`,
-          message: `Entry ${entryDisplay}\n${planLine}${catalystSuffix}`,
+          message: `Entry ${entryDisplay}\n${planLine}${catalystSuffix}${idxLine}`,
           priority: 1,
           sound: 'magic',
         });
@@ -3095,12 +3102,14 @@ async function reviewSetups() {
             // its full lifecycle (detection → LTF-confirmed → momentum → TP).
             const isMacroRev = !!setup.macroReversal;
             const titlePrefix = isMacroRev ? '💎🚀' : '🚀';
+            const idxCtxM = evaluatePairVsIndices(setup.symbol, effectiveType, loadCurrencyIndices());
+            const idxLineM = idxCtxM ? `\nIndices ${idxCtxM.glyph} ${idxCtxM.label} (${idxCtxM.dayNote})` : '';
             notifyOnce(`MOMENTUM:${setup.symbol}:${setup.triggerTime}`, {
               title: `${titlePrefix} ${shortName(setup.symbol)} ${shortType(effectiveType)} — momentum favorable`,
               message: `Triggered ${hoursSinceTrigger.toFixed(1)}h ago @ ${refPx.toFixed(priceDigits)}
 Now ${currentPrice.toFixed(priceDigits)} (+${plPips}p, ${rAchieved.toFixed(1)}R)
 ${slLine}
-TP1 ${effectiveTP1.toFixed(priceDigits)} = +${tp1DistFromNow}p (${rRemaining.toFixed(1)}R remaining)`,
+TP1 ${effectiveTP1.toFixed(priceDigits)} = +${tp1DistFromNow}p (${rRemaining.toFixed(1)}R remaining)${idxLineM}`,
               priority: 1,
               sound: 'incoming',
             }, 24 * 3600 * 1000);
@@ -3152,6 +3161,39 @@ TP1 ${effectiveTP1.toFixed(priceDigits)} = +${tp1DistFromNow}p (${rRemaining.toF
         },
       });
     }
+  }
+
+  // ── CURRENCY INDEX BACKDROP — structural read on each currency ──
+  // Reads currency_index_cache.json (refreshed by deliver_review before each
+  // review run, or on-demand). Shows day % change, structural zone (premium/
+  // discount/mid), and HTF trend for each of the 8 major currency indices.
+  // Gives user a currency-strength ranking + structural context above and
+  // beyond the pair-level analysis.
+  const indexCache = loadCurrencyIndices();
+  if (indexCache && indexCache.indices && Object.keys(indexCache.indices).length > 0) {
+    const rows = Object.values(indexCache.indices)
+      .sort((a, b) => b.dayChangePct - a.dayChangePct);
+    console.log(`\n  🎯 CURRENCY INDEX BACKDROP  (cache age ${((Date.now() - new Date(indexCache.generatedAt).getTime()) / 3600000).toFixed(1)}h)`);
+    console.log(`  ${'─'.repeat(95)}`);
+    console.log(`  ${'Rank'.padEnd(5)} ${'Idx'.padEnd(4)} ${'Cur'.padEnd(4)} ${'Last'.padEnd(9)} ${'Day%'.padEnd(8)} ${'Zone'.padEnd(9)} ${'Trend'.padEnd(6)} ${'MA20'.padEnd(9)}`);
+    console.log(`  ${'─'.repeat(95)}`);
+    rows.forEach((r, i) => {
+      const arrow = r.dayChangePct >= 0.15 ? '▲▲' : r.dayChangePct >= 0.05 ? '▲' : r.dayChangePct <= -0.15 ? '▼▼' : r.dayChangePct <= -0.05 ? '▼' : '·';
+      const zoneMark = r.zone === 'premium' ? '⚠premium' : r.zone === 'discount' ? '⚠discount' : 'mid';
+      const trendMark = r.trend === 'up' ? '↑' : r.trend === 'down' ? '↓' : '~';
+      const pctStr = (r.dayChangePct >= 0 ? '+' : '') + r.dayChangePct.toFixed(2) + '%';
+      console.log(`  ${('#' + (i + 1)).padEnd(5)} ${r.label.padEnd(4)} ${r.currency.padEnd(4)} ${r.lastClose.toFixed(2).padEnd(9)} ${(arrow + ' ' + pctStr).padEnd(8)} ${zoneMark.padEnd(9)} ${trendMark.padEnd(6)} ${r.ma20.toFixed(2).padEnd(9)}`);
+    });
+    console.log(`  ${'─'.repeat(95)}`);
+    const strongest = rows[0];
+    const weakest = rows[rows.length - 1];
+    console.log(`  Strongest today: ${strongest.currency} (${strongest.label} ${strongest.dayChangePct >= 0 ? '+' : ''}${strongest.dayChangePct}%)`);
+    console.log(`  Weakest today:   ${weakest.currency} (${weakest.label} ${weakest.dayChangePct >= 0 ? '+' : ''}${weakest.dayChangePct}%)`);
+    const atExtremes = rows.filter(r => r.zone === 'premium' || r.zone === 'discount');
+    if (atExtremes.length > 0) {
+      console.log(`  At structural extreme: ${atExtremes.map(r => `${r.currency}(${r.zone})`).join(', ')}`);
+    }
+    console.log();
   }
 
   // ── MACRO CONTEXT — unscheduled themes affecting the book ──
