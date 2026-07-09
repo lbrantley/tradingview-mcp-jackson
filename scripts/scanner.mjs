@@ -32,6 +32,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const AUDIT_LOG = join(__dirname, '..', 'scanner_audit.json');
 const NEWS_CACHE = join(__dirname, '..', 'news_cache.json');
 const NEWS_OVERRIDES = join(__dirname, '..', 'news_overrides.json');
+const MARKET_CONTEXT = join(__dirname, '..', 'market_context.json');
 const STRENGTH_CACHE = join(__dirname, '..', 'strength_cache.json');
 
 // ═══════════════════════════════════════════════════════════════════
@@ -3151,6 +3152,40 @@ TP1 ${effectiveTP1.toFixed(priceDigits)} = +${tp1DistFromNow}p (${rRemaining.toF
         },
       });
     }
+  }
+
+  // ── MACRO CONTEXT — unscheduled themes affecting the book ──
+  // Reads market_context.json for live macro themes (geopolitics, commodity
+  // moves, tariff regimes, etc.) that don't appear on the scheduled news
+  // calendar but move currencies. User maintains the file manually as
+  // regime-changing events happen. Displayed first so it frames the news
+  // and open-positions sections below it.
+  try {
+    if (existsSync(MARKET_CONTEXT)) {
+      const ctx = JSON.parse(readFileSync(MARKET_CONTEXT, 'utf8'));
+      const themes = (ctx.themes || []).filter(t => t && t.title);
+      if (themes.length > 0) {
+        console.log(`\n  🌐 MACRO CONTEXT (${themes.length} active theme${themes.length > 1 ? 's' : ''})`);
+        console.log(`  ${'─'.repeat(95)}`);
+        for (const t of themes) {
+          console.log(`  ${t.title}${t.started ? ` (since ${t.started})` : ''}`);
+          if (t.summary) console.log(`    ${t.summary}`);
+          if (t.implications) {
+            const impLines = Object.entries(t.implications)
+              .map(([cur, note]) => `${cur}: ${note}`);
+            for (const line of impLines) console.log(`      • ${line}`);
+          }
+          if (t.watchLevel) console.log(`    ⚠  Invalidation: ${t.watchLevel}`);
+          if (t.affectedPairs && t.affectedPairs.length) {
+            console.log(`    Affects: ${t.affectedPairs.join(', ')}`);
+          }
+          console.log();
+        }
+        console.log(`  ${'─'.repeat(95)}`);
+      }
+    }
+  } catch (e) {
+    console.log(`  [market_context] read failed: ${e.message}`);
   }
 
   // ── NEWS AHEAD FOR OPEN TRADES (next 24h) ──

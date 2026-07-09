@@ -1,0 +1,26 @@
+{
+  "_meta": {
+    "lastUpdated": "2026-07-08",
+    "description": "Live macro themes affecting currencies but not on the scheduled news calendar. Update as regime-changing events happen (geopolitics, commodities, central bank rhetoric shifts, tariff/trade announcements). Scanner reads this at brief generation time and displays it in the daily/weekly review.",
+    "howToUse": "Each theme should include: (1) short title, (2) start date, (3) currency implications with brief reasoning, (4) a specific watchLevel that would invalidate the theme, (5) affectedPairs for scanner correlation. Retire themes by moving to _retired[] with an endDate."
+  },
+  "themes": [
+    {
+      "id": "iran-oil-cad-2026-07",
+      "title": "US-Iran escalation supporting oil >$74",
+      "started": "2026-07-01",
+      "summary": "US strikes on Iran + ceasefire breakdown keeping crude bid. WCS follows Brent, so CAD gets a real tailwind independent of Canadian data. JPY/CHF get safe-haven bid; USD mixed (haven vs deficit concerns).",
+      "implications": {
+        "CAD": "tailwind — oil exporter",
+        "JPY": "tailwind — safe haven",
+        "CHF": "tailwind — safe haven",
+        "USD": "mixed — haven bid vs deficit",
+        "AUD": "mixed — commodity currency but risk-off drag",
+        "NZD": "headwind — risk-off drag"
+      },
+      "watchLevel": "CL1! sustained below $70 = thesis broken",
+      "affectedPairs": ["USDCAD", "GBPCAD", "AUDCAD", "CADJPY", "CADCHF", "EURCAD", "NZDCAD"]
+    }
+  ],
+  "_retired": []
+}
