@@ -1,24 +1,55 @@
 {
   "_meta": {
     "lastUpdated": "2026-07-08",
-    "description": "Live macro themes affecting currencies but not on the scheduled news calendar. Update as regime-changing events happen (geopolitics, commodities, central bank rhetoric shifts, tariff/trade announcements). Scanner reads this at brief generation time and displays it in the daily/weekly review.",
-    "howToUse": "Each theme should include: (1) short title, (2) start date, (3) currency implications with brief reasoning, (4) a specific watchLevel that would invalidate the theme, (5) affectedPairs for scanner correlation. Retire themes by moving to _retired[] with an endDate."
+    "description": "Live macro themes affecting currencies but not on the scheduled news calendar. Update as regime-changing events happen. Scanner reads this at brief generation time and displays it in the daily/weekly review.",
+    "howToUse": "Each theme should include: (1) short title, (2) start date, (3) currency implications with brief reasoning, (4) a specific watchLevel that would invalidate the theme, (5) affectedPairs for scanner correlation. Retire themes by moving to _retired[] with an endDate.",
+    "maintenance": "Manual updates + Claude WebSearch each session. Themes refreshed 2026-07-08 after proactive theme scan revealed Fed pivot + USMCA/tariff themes that were previously missed."
   },
   "themes": [
     {
       "id": "iran-oil-cad-2026-07",
-      "title": "US-Iran escalation supporting oil >$74",
+      "title": "US-Iran conflict jump largely retraced — oil hovering near $70-74",
       "started": "2026-07-01",
-      "summary": "US strikes on Iran + ceasefire breakdown keeping crude bid. WCS follows Brent, so CAD gets a real tailwind independent of Canadian data. JPY/CHF get safe-haven bid; USD mixed (haven vs deficit concerns).",
+      "summary": "US-Iran hostilities and ceasefire drama drove crude higher in June but WTI has retraced most of the spike, briefly touching sub-$70 in late June and now around $74. CAD tailwind is REAL but WEAKER than a sustained oil spike would provide. Watch $70 — if it breaks and holds, the CAD-strength thesis loses its commodity leg.",
       "implications": {
-        "CAD": "tailwind — oil exporter",
-        "JPY": "tailwind — safe haven",
-        "CHF": "tailwind — safe haven",
-        "USD": "mixed — haven bid vs deficit",
-        "AUD": "mixed — commodity currency but risk-off drag",
-        "NZD": "headwind — risk-off drag"
+        "CAD": "modest tailwind — real but retraced; not a strong wind",
+        "JPY": "modest tailwind — safe haven demand fading",
+        "CHF": "modest tailwind — safe haven demand fading",
+        "USD": "mixed — haven bid vs deficit concerns",
+        "AUD": "mixed — commodity currency lift muted",
+        "NZD": "neutral — risk-off drag has eased"
       },
-      "watchLevel": "CL1! sustained below $70 = thesis broken",
+      "watchLevel": "CL1! sustained below $70 = CAD-strength commodity leg is gone",
+      "affectedPairs": ["USDCAD", "GBPCAD", "AUDCAD", "CADJPY", "CADCHF", "EURCAD", "NZDCAD"]
+    },
+    {
+      "id": "fed-warsh-data-dependent-2026-07",
+      "title": "Fed Chair Warsh pivots to strict data-dependent framework — USD strengthening",
+      "started": "2026-06",
+      "summary": "Warsh removed traditional forward guidance at the last FOMC and signaled a stronger data-dependent framework. Markets read this as hawkish — DXY broke above 101 on the pivot, equities sold off. Every USD-side data print now has amplified impact because the Fed has explicitly said 'we'll respond to what prints.' Puts extra weight on next week's CPI Tuesday and PPI Wednesday.",
+      "implications": {
+        "USD": "structural tailwind — DXY breakout above 101 held",
+        "CAD": "headwind — fights CAD-strength thesis (USDCAD floor higher than the setup implies)",
+        "GBP": "mixed — high UK inflation makes GBP data-relatively resilient",
+        "EUR": "headwind — carry math worse if USD carry stays elevated",
+        "JPY": "headwind — carry unwind risk if USD rates persist",
+        "AUD": "headwind — risk currency vs stronger USD",
+        "NZD": "headwind — risk currency vs stronger USD"
+      },
+      "watchLevel": "DXY sustained below 100 = pivot has been priced out, thesis over",
+      "affectedPairs": ["USDCAD", "USDCHF", "USDJPY", "EURUSD", "GBPUSD", "AUDUSD", "NZDUSD"]
+    },
+    {
+      "id": "usmca-tariff-uncertainty-2026-07",
+      "title": "USMCA review + Supreme Court tariff ruling create headline risk on CAD/USD",
+      "started": "2026-07",
+      "summary": "USMCA agreement review is slated for July 2026 (in progress now) and Supreme Court is expected to rule on the 'Reciprocal Tariff' executive orders. Either announcement can hit CAD/MXN/USD sharply and unpredictably. Adds ~2× normal headline vol to CAD crosses this month.",
+      "implications": {
+        "CAD": "elevated vol both directions — soften position sizes",
+        "USD": "elevated vol both directions",
+        "MXN": "highest exposure but not in your book"
+      },
+      "watchLevel": "USMCA outcome announced OR Supreme Court ruling released = theme resolves to either supportive or destructive",
       "affectedPairs": ["USDCAD", "GBPCAD", "AUDCAD", "CADJPY", "CADCHF", "EURCAD", "NZDCAD"]
     }
   ],
