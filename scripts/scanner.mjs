@@ -2781,6 +2781,12 @@ async function reviewSetups() {
   console.log(`\n[${now()}] Reviewing ${pending.length} pending setup(s)...\n`);
   const EXPIRY_MARKET_HOURS = 72; // setups expire after 72 MARKET hours (excludes weekends)
 
+  // Collect pending-not-transitioned reviews here so we can print them grouped
+  // by pair with narrative verdicts at the end. Same-pair setups going opposite
+  // directions (macro thesis + micro pullback) are two views of the same market
+  // move at different resolutions — grouping tells that story.
+  const pendingReviews = [];
+
   for (const setup of pending) {
     const sym = shortName(setup.symbol);
     process.stdout.write(`  Reviewing ${sym} ${setup.type}...`);
@@ -3118,14 +3124,151 @@ TP1 ${effectiveTP1.toFixed(priceDigits)} = +${tp1DistFromNow}p (${rRemaining.toF
         }
       }
 
-      // Still pending
+      // Still pending — collect for grouped narrative print at end of loop.
+      // Print just ' pending' to complete the progress ticker; the grouped
+      // section below shows the actual story.
       const pnlPips = isLong ? currentPrice - setup.entryPrice : setup.entryPrice - currentPrice;
       const direction = pnlPips >= 0 ? 'favorable' : 'adverse';
-      console.log(` still pending (${direction}, ${marketHours.toFixed(0)} market hrs)`);
+      console.log(` pending`);
+      pendingReviews.push({
+        symbol: setup.symbol,
+        symShort: sym,
+        type: effectiveType,
+        isLong,
+        isMacro: !!setup.macroReversal,
+        isPullback: !!setup.pullbackAlert,
+        isCont: effectiveType.startsWith('CONTINUATION'),
+        favorable: pnlPips >= 0,
+        marketHours,
+        triggered: !!setup.triggered,
+        entryLevel: setup.entryLevel ?? setup.entryPrice,
+        currentPrice,
+        sl: effectiveSL,
+        tp1: effectiveTP1,
+        tp3Trailing: !!setup.tp3Trailing,
+      });
 
     } catch (err) {
       console.log(` error: ${err.message}`);
     }
+  }
+
+  // ── PENDING THESIS VIEW — grouped by pair with narrative verdict ──
+  // Replaces the per-setup "still pending (favorable/adverse, X hrs)" lines
+  // with a story-oriented view. Same-pair setups going different directions
+  // are two views of the same market at different resolutions (macro thesis
+  // vs micro pullback). Grouping tells that story explicitly rather than
+  // leaving user to reconcile contradictory-looking entries.
+  if (pendingReviews.length > 0) {
+    // Group by symbol
+    const byPair = {};
+    for (const r of pendingReviews) {
+      (byPair[r.symbol] = byPair[r.symbol] || []).push(r);
+    }
+    const groups = Object.values(byPair).sort((a, b) => a[0].symShort.localeCompare(b[0].symShort));
+
+    // Classify each review: MACRO (macroReversal) vs MICRO (pullback/continuation)
+    const classify = (r) => r.isMacro ? 'MACRO' : (r.isPullback || r.isCont) ? 'MICRO' : 'HTF';
+
+    console.log(`\n  📖 PENDING THESIS VIEW — ${pendingReviews.length} setup(s) across ${groups.length} pair(s)`);
+    console.log(`  ${'─'.repeat(108)}`);
+
+    for (const group of groups) {
+      const sym = group[0].symShort;
+      const digits = group[0].symbol.includes('JPY') ? 2 : 4;
+
+      if (group.length === 1) {
+        // Single setup — simple line
+        const r = group[0];
+        const tier = classify(r);
+        const dir = r.isLong ? '↑' : '↓';
+        const state = r.favorable ? '✓ favorable' : '✗ adverse';
+        const shortTypeStr = r.type.startsWith('REVERSAL') ? r.type.replace('REVERSAL ', 'REV ') : r.type.replace('CONTINUATION ', 'CONT ');
+        console.log(`  ${sym.padEnd(7)} ${tier.padEnd(6)} ${dir} ${shortTypeStr.padEnd(10)} ${r.marketHours.toFixed(0).padStart(3)}h  ${state}`);
+        if (r.tp1 != null) {
+          const dist = Math.abs(r.tp1 - r.currentPrice) * (r.symbol.includes('JPY') ? 100 : 10000);
+          console.log(`          → TP1 @ ${r.tp1.toFixed(digits)} (${Math.round(dist)}p away)`);
+        }
+        continue;
+      }
+
+      // Multi-setup — build narrative
+      const macros = group.filter(r => classify(r) === 'MACRO');
+      const micros = group.filter(r => classify(r) === 'MICRO');
+      const htfs = group.filter(r => classify(r) === 'HTF');
+
+      // Direction summary — which way is each layer betting?
+      const macroDir = macros.length ? (macros[0].isLong ? 'LONG' : 'SHORT') : null;
+      const microDir = micros.length ? (micros[0].isLong ? 'LONG' : 'SHORT') : null;
+      const opposing = macroDir && microDir && macroDir !== microDir;
+
+      // Aggregate favorable/adverse across each tier (any adverse = tier adverse)
+      const macroFav = macros.length && macros.every(r => r.favorable);
+      const microFav = micros.length && micros.every(r => r.favorable);
+
+      // Verdict
+      let verdict = '';
+      let icon = '·';
+      if (opposing) {
+        if (macros.length && micros.length && macroFav && !microFav) {
+          icon = '✓';
+          verdict = 'MACRO thesis playing out — pullback attempt failing';
+        } else if (macros.length && micros.length && !macroFav && microFav) {
+          icon = '⚠';
+          verdict = 'Pullback expanding — macro thesis under pressure';
+        } else {
+          verdict = 'Mixed — thesis + pullback both active';
+        }
+      } else if (macros.length && micros.length) {
+        // Same direction: aligned confluence
+        if (macroFav && microFav) {
+          icon = '✓✓';
+          verdict = 'Macro + micro aligned same direction — full-strength move';
+        } else {
+          icon = '⚠⚠';
+          verdict = 'Macro + micro aligned but both against setup — structural break may be developing';
+        }
+      } else if (macros.length > 1) {
+        verdict = `${macros.length} macro entries same pair (stacked thesis)`;
+        icon = macroFav ? '✓' : '⚠';
+      } else if (micros.length > 1) {
+        verdict = `${micros.length} micro entries same pair`;
+        icon = microFav ? '✓' : '⚠';
+      }
+
+      // Structural break level: for opposing macro+micro, use the macro's SL
+      // (if macro SL breaks, macro thesis is invalidated → micro pullback wins).
+      let breakLevel = null;
+      if (macros.length && macros[0].sl != null) {
+        breakLevel = macros[0].sl;
+      } else if (group[0].sl != null) {
+        breakLevel = group[0].sl;
+      }
+
+      const macroLabel = macros.length ? `${macros.length} MACRO ${macroDir}` : '';
+      const microLabel = micros.length ? `${micros.length} MICRO ${microDir}` : '';
+      const htfLabel = htfs.length ? `${htfs.length} HTF` : '';
+      const layerSummary = [macroLabel, microLabel, htfLabel].filter(Boolean).join(' + ');
+
+      console.log(`\n  ${sym}  (${layerSummary})`);
+      for (const r of group) {
+        const tier = classify(r);
+        const dir = r.isLong ? '↑' : '↓';
+        const state = r.favorable ? '✓ fav' : '✗ adv';
+        const shortTypeStr = r.type.startsWith('REVERSAL') ? r.type.replace('REVERSAL ', 'REV ') : r.type.replace('CONTINUATION ', 'CONT ');
+        console.log(`    ${tier.padEnd(6)} ${dir} ${shortTypeStr.padEnd(10)} ${r.marketHours.toFixed(0).padStart(3)}h  ${state}`);
+      }
+      if (verdict) console.log(`    ${icon} ${verdict}`);
+      if (breakLevel != null) {
+        const label = macros.length && macros[0].isLong
+          ? 'Below this = macro invalidated'
+          : macros.length && !macros[0].isLong
+            ? 'Above this = macro invalidated'
+            : 'Structural invalidation';
+        console.log(`    ⚠  ${label}: ${breakLevel.toFixed(digits)}`);
+      }
+    }
+    console.log(`  ${'─'.repeat(108)}\n`);
   }
 
   // Update totals
