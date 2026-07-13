@@ -26,6 +26,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import https from 'https';
+import { findScannerPid, pauseScanner, resumeScanner } from '../src/process_control.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = join(__dirname, '..');
@@ -47,28 +48,9 @@ function run(cmd, opts = {}) {
   }
 }
 
-// Find running scanner PID (if any) so we can SIGSTOP/SIGCONT around the review.
-function findScannerPid() {
-  const out = run('ps aux | grep "node scripts/scanner.mjs" | grep -v grep | grep -v deliver_review | grep -v prune_news');
-  if (!out) return null;
-  // First column that's not the shell wrapper — scanner is the process running "node scripts/scanner.mjs" only
-  const lines = out.split('\n').filter(l => /node scripts\/scanner\.mjs\s*$/.test(l.trim()) || /node scripts\/scanner\.mjs$/.test(l));
-  if (lines.length === 0) return null;
-  const parts = lines[0].trim().split(/\s+/);
-  return parseInt(parts[1], 10);
-}
-
-function pauseScanner(pid) {
-  if (!pid) return;
-  log(`Pausing scanner PID ${pid} (SIGSTOP)`);
-  try { process.kill(pid, 'SIGSTOP'); } catch (e) { log(`  pause failed: ${e.message}`); }
-}
-
-function resumeScanner(pid) {
-  if (!pid) return;
-  log(`Resuming scanner PID ${pid} (SIGCONT)`);
-  try { process.kill(pid, 'SIGCONT'); } catch (e) { log(`  resume failed: ${e.message}`); }
-}
+// findScannerPid / pauseScanner / resumeScanner are imported from
+// src/process_control.js — they're cross-platform (SIGSTOP on Unix,
+// kill+detached-restart on Windows since Windows lacks SIGSTOP).
 
 // Extract a tight summary (title + up to ~4 lines) from the review output for
 // the Pushover body. Keys off known section anchors in the review format.
@@ -153,7 +135,7 @@ async function main() {
   const scannerPid = findScannerPid();
   if (scannerPid) log(`Found running scanner: PID ${scannerPid}`);
   else log('No running scanner detected — proceeding without pause');
-  pauseScanner(scannerPid);
+  const pauseCtx = pauseScanner(scannerPid, { log, cwd: REPO });
 
   // Step 3: run review, capture output
   let reviewText = '';
@@ -169,7 +151,7 @@ async function main() {
     log(`Review captured: ${reviewText.length} bytes`);
   } finally {
     // Step 4: always resume scanner even if review failed
-    resumeScanner(scannerPid);
+    resumeScanner(pauseCtx, { log });
   }
 
   if (reviewText.length < 100) {
