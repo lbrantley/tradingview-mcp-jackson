@@ -370,6 +370,26 @@ const SETTLE_MS = 2500;  // wait for chart + indicators to load after symbol swi
 
 // ─── Helpers ─────────────────────────────────────────────────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Verify chart has actually switched to expectedSymbol before caller reads the
+// quote. Fixes a Azure-VM race where getQuote() returned the PREVIOUS pair's
+// price because the chart hadn't finished switching. Polls getQuote() and
+// compares its returned symbol; only returns success when they match.
+async function waitForSymbolAndQuote(expectedSymbol, { maxAttempts = 8, pollMs = 500, initialWaitMs = 1500 } = {}) {
+  await sleep(initialWaitMs);
+  let lastQuote = null;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const q = await getQuote();
+      lastQuote = q;
+      if (q && q.symbol === expectedSymbol) {
+        return { ok: true, quote: q, attempts: i + 1 };
+      }
+    } catch (_) { /* chart mid-switch; retry */ }
+    await sleep(pollMs);
+  }
+  return { ok: false, quote: lastQuote, attempts: maxAttempts };
+}
 const shortName = sym => sym.replace('OANDA:', '');
 const shortType = (t) => {
   if (t === 'REVERSAL LONG')     return 'REV LONG';
@@ -1536,12 +1556,21 @@ async function scanAll(pairs) {
     process.stdout.write(`  Scanning ${sym}...`);
 
     try {
-      // Switch to pair
+      // Switch to pair, then verify chart has actually switched before reading
+      // the quote (Azure-VM race — see waitForSymbolAndQuote for details).
       await setSymbol({ symbol: pair });
-      await sleep(SETTLE_MS);
-
-      // Get price
-      const quote = await getQuote();
+      const swr = await waitForSymbolAndQuote(pair);
+      if (!swr.ok) {
+        observe({
+          type: 'chart_switch_timeout',
+          severity: 'warn',
+          message: `${sym} chart-switch did not settle to correct symbol`,
+          data: { expected: pair, got: swr.quote?.symbol || null, attempts: swr.attempts },
+        });
+        console.log(` chart-switch stuck (last=${swr.quote?.symbol || 'null'}), skipping`);
+        continue;
+      }
+      const quote = swr.quote;
       const price = quote.close || quote.last;
 
       if (!price) {
@@ -1718,7 +1747,10 @@ async function scanAll(pairs) {
             }
           }
 
-          allAlerts.push({ symbol: pair, price, alert: a });
+          // `data` is retained on the item so Phase 3 can recompute targets
+          // with the correct direction if the alert gets flipped from a
+          // counter-trend pullback into a CONTINUATION during LTF confirm.
+          allAlerts.push({ symbol: pair, price, alert: a, data });
         }
       } else {
         console.log(' no setups');
@@ -1758,6 +1790,20 @@ async function scanAll(pairs) {
         item.alert.ltfBarsAgo = ltf.barsAgo;
         item.alert.continuationLevels = ltf.levels;
         item.alert.continuationDirection = ltf.direction;
+
+        // Recompute targets for the NEW (LTF-confirmed) direction. The alert
+        // originated as a counter-trend pullback (e.g. REVERSAL LONG) and its
+        // targets were computed with the LONG direction (TP3 above entry).
+        // LTF confirmation flips it to CONTINUATION SHORT — targets on the
+        // long side of price are now nonsensical (and were previously
+        // triggering "TP3 on wrong side" skips in the review loop).
+        if (item.data) {
+          const newDir = ltf.direction === 'bullish' ? 'long' : 'short';
+          const newTargets = calcTargets(newDir, item.price, item.data);
+          item.alert.targets = newTargets;
+          item.alert.tpSource = 'ltf-confirmed';
+        }
+
         // Update stars based on confirmation (3 stars baseline for confirmed CONT)
         // Boost to 4★ if the confirmation is fresh (within last 3 1HR bars)
         if (ltf.barsAgo != null && ltf.barsAgo <= 3) {

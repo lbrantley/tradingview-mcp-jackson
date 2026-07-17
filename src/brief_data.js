@@ -64,7 +64,10 @@ function perfSummary(items) {
 
 export function generateBriefData(log) {
   const now = Date.now();
-  const setups = log.setups || [];
+  // corrupt_purged setups are kept in scanner_audit.json as an audit trail but
+  // must not contaminate the stats (they were never real setups — see
+  // scripts/purge_corrupt_setups.mjs).
+  const setups = (log.setups || []).filter(s => s.status !== 'corrupt_purged');
 
   const last24hCutoff = now - 24 * 3600000;
   const last7dCutoff  = now - 7 * 24 * 3600000;
