@@ -3170,6 +3170,36 @@ async function reviewSetups() {
         }
       }
 
+      // ═══ +0.5R MFE ping — MOVE SL TO BE ═══
+      // Fires once per setup when MFE reaches +0.5R from trigger. Manual SL
+      // discipline is the user's main defense against prop-firm drawdown
+      // limits (see user_prop_firm_strategy). Doesn't move the SL for them —
+      // just tells them the moment is here so they can decide. Prop-grade
+      // setups get 🎯 prefix so they stand out from general-account trades.
+      if (setup.triggered && !setup.mfeHalfRPinged && setup.maxFavorable != null && effectiveSL != null) {
+        const refPx = setup.triggerPrice ?? setup.entryLevel ?? setup.entryPrice;
+        if (refPx != null) {
+          const pipMul = setup.symbol.includes('JPY') ? 100 : 10000;
+          const priceDigits = setup.symbol.includes('JPY') ? 2 : 4;
+          const slDist = Math.abs(refPx - effectiveSL);
+          const mfeDist = isLong ? (setup.maxFavorable - refPx) : (refPx - setup.maxFavorable);
+          const rAchieved = slDist > 0 ? mfeDist / slDist : 0;
+          if (rAchieved >= 0.5) {
+            setup.mfeHalfRPinged = true;
+            setup.mfeHalfRPingedAt = new Date().toISOString();
+            const mfePips = Math.round(mfeDist * pipMul);
+            const isPropGrade = !!setup.propGrade;
+            const prefix = isPropGrade ? '🎯🛡️' : '🛡️';
+            notify({
+              title: `${prefix} ${shortName(setup.symbol)} ${shortType(effectiveType)} — MFE +0.5R, move SL to BE`,
+              message: `Trigger ${refPx.toFixed(priceDigits)} | MFE ${setup.maxFavorable.toFixed(priceDigits)} (+${mfePips}p, ${rAchieved.toFixed(2)}R)\nSL currently ${effectiveSL.toFixed(priceDigits)} — moving to BE caps risk on this trade.`,
+              priority: 1,
+              sound: 'pushover',
+            });
+          }
+        }
+      }
+
       // Momentum-confirmation alert — fires for triggered setups moving
       // favorably so the user can enter on confirmation. Once per setup
       // lifetime (24h cooldown via notifyOnce).
