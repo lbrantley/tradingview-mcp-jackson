@@ -48,6 +48,23 @@ function run(cmd, opts = {}) {
   }
 }
 
+// Same as run() but surfaces errors instead of swallowing them. Use for git
+// operations where a silent failure is unacceptable (push, rebase, commit).
+// Returns { ok, stdout, stderr, exitCode }.
+function runVerbose(cmd, opts = {}) {
+  try {
+    const out = execSync(cmd, { cwd: REPO, stdio: 'pipe', ...opts }).toString();
+    return { ok: true, stdout: out, stderr: '', exitCode: 0 };
+  } catch (e) {
+    return {
+      ok: false,
+      stdout: e.stdout ? e.stdout.toString() : '',
+      stderr: e.stderr ? e.stderr.toString() : (e.message || 'unknown error'),
+      exitCode: e.status ?? -1,
+    };
+  }
+}
+
 // findScannerPid / pauseScanner / resumeScanner are imported from
 // src/process_control.js — they're cross-platform (SIGSTOP on Unix,
 // kill+detached-restart on Windows since Windows lacks SIGSTOP).
@@ -167,16 +184,37 @@ async function main() {
   log(`Wrote ${OUT_FILE}`);
 
   // Step 6: git commit + push
+  // Pull-rebase before push so we reconcile with anything the dev pushed
+  // from the Mac between reviews. Silent-push-fail was hiding this — now
+  // any git failure fires a Pushover so we hear about it immediately.
   const doPush = process.env.BRIEF_GIT_PUSH !== '0';
+  let gitError = null;
   if (doPush) {
     log('Committing + pushing to GitHub...');
     run(`git add ${OUT_REL_PATH}`);
     const status = run(`git diff --cached --name-only`);
     if (status && status.trim()) {
       const msg = `review: ${KIND} @ ${TODAY}`;
-      run(`git commit -m "${msg}" --quiet`);
-      const pushOut = run('git push origin main --quiet');
-      log('  pushed');
+      const commitR = runVerbose(`git commit -m "${msg}" --quiet`);
+      if (!commitR.ok) {
+        gitError = `git commit failed (exit ${commitR.exitCode}): ${commitR.stderr.trim().split('\n')[0]}`;
+        log(`  ❌ ${gitError}`);
+      } else {
+        // Rebase-pull so remote's newer commits don't reject our push.
+        const pullR = runVerbose('git pull --rebase origin main');
+        if (!pullR.ok) {
+          gitError = `git pull --rebase failed (exit ${pullR.exitCode}): ${pullR.stderr.trim().split('\n').slice(-2).join(' | ')}`;
+          log(`  ❌ ${gitError}`);
+        } else {
+          const pushR = runVerbose('git push origin main');
+          if (!pushR.ok) {
+            gitError = `git push failed (exit ${pushR.exitCode}): ${pushR.stderr.trim().split('\n').slice(-2).join(' | ')}`;
+            log(`  ❌ ${gitError}`);
+          } else {
+            log('  ✅ pushed');
+          }
+        }
+      }
     } else {
       log('  nothing to commit');
     }
@@ -187,10 +225,24 @@ async function main() {
   // Step 7: send Pushover with URL
   const { summary, gradeLine } = extractSummary(reviewText);
   const url = `https://github.com/lbrantley/tradingview-mcp-jackson/blob/main/${OUT_REL_PATH}`;
-  const title = KIND === 'weekly' ? `📊 Weekly review — ${TODAY}` : `🔍 Daily review — ${TODAY}`;
-  const message = [summary, gradeLine, 'Tap to open full review.'].filter(Boolean).join('\n');
+  const title = gitError
+    ? `⚠️ ${KIND === 'weekly' ? 'Weekly' : 'Daily'} review — GIT PUSH FAILED (${TODAY})`
+    : (KIND === 'weekly' ? `📊 Weekly review — ${TODAY}` : `🔍 Daily review — ${TODAY}`);
+  const messageParts = [summary, gradeLine];
+  if (gitError) {
+    messageParts.push(`❌ ${gitError}`);
+    messageParts.push(`File written locally on VM at briefs/${TODAY}-${KIND}-review.md — SSH in and push manually.`);
+  } else {
+    messageParts.push('Tap to open full review.');
+  }
+  const message = messageParts.filter(Boolean).join('\n');
   log('Sending Pushover...');
-  const result = await sendPushover({ title, message, url, url_title: 'Open review on GitHub' });
+  const result = await sendPushover({
+    title,
+    message,
+    url: gitError ? undefined : url,
+    url_title: gitError ? undefined : 'Open review on GitHub',
+  });
   log(`  ${JSON.stringify(result)}`);
 
   log('Done.');
