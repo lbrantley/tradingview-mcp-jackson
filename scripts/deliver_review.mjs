@@ -35,6 +35,9 @@ const KIND = (process.argv[2] || 'daily').toLowerCase();
 const TODAY = new Date().toISOString().slice(0, 10);
 const OUT_FILE = join(BRIEFS, `${TODAY}-${KIND}-review.md`);
 const OUT_REL_PATH = `briefs/${TODAY}-${KIND}-review.md`;
+const NEWS_CACHE = join(REPO, 'news_cache.json');
+const NEWS_UPCOMING = join(REPO, 'news_upcoming.json');
+const NEWS_UPCOMING_REL = 'news_upcoming.json';
 
 function log(msg) {
   console.log(`[${new Date().toISOString()}] ${msg}`);
@@ -183,6 +186,47 @@ async function main() {
   writeFileSync(OUT_FILE, header + reviewText + footer);
   log(`Wrote ${OUT_FILE}`);
 
+  // Step 5b: write a trimmed news_upcoming.json (next 72h high+medium impact)
+  // for dev-session use. news_cache.json is gitignored (large, noisy diffs),
+  // so this small git-tracked snapshot lets Claude Code see the current
+  // calendar without needing screenshots. Non-fatal on failure.
+  try {
+    if (existsSync(NEWS_CACHE)) {
+      const cache = JSON.parse(readFileSync(NEWS_CACHE, 'utf8'));
+      const now = Date.now();
+      const horizon = now + 72 * 3600 * 1000;
+      const upcoming = (cache.events || [])
+        .filter(e => {
+          const t = new Date(e.date).getTime();
+          return t >= now && t <= horizon;
+        })
+        .filter(e => e.impact === 'High' || e.impact === 'Medium')
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .map(e => ({
+          date: e.date,
+          currency: e.currency,
+          impact: e.impact,
+          title: e.title,
+          forecast: e.forecast ?? null,
+          previous: e.previous ?? null,
+          affectedPairs: e.affectedPairs || [],
+        }));
+      const out = {
+        generatedAt: new Date().toISOString(),
+        horizonHours: 72,
+        sourceCacheAt: cache.fetchedAt ? new Date(cache.fetchedAt).toISOString() : null,
+        count: upcoming.length,
+        events: upcoming,
+      };
+      writeFileSync(NEWS_UPCOMING, JSON.stringify(out, null, 2));
+      log(`Wrote ${NEWS_UPCOMING} (${upcoming.length} events, next 72h)`);
+    } else {
+      log('news_cache.json not found — skipping news_upcoming write');
+    }
+  } catch (e) {
+    log(`news_upcoming write failed (non-fatal): ${e.message}`);
+  }
+
   // Step 6: git commit + push
   // Pull-rebase before push so we reconcile with anything the dev pushed
   // from the Mac between reviews. Silent-push-fail was hiding this — now
@@ -192,6 +236,7 @@ async function main() {
   if (doPush) {
     log('Committing + pushing to GitHub...');
     run(`git add ${OUT_REL_PATH}`);
+    if (existsSync(NEWS_UPCOMING)) run(`git add ${NEWS_UPCOMING_REL}`);
     const status = run(`git diff --cached --name-only`);
     if (status && status.trim()) {
       const msg = `review: ${KIND} @ ${TODAY}`;
