@@ -582,15 +582,21 @@ async function getHTFTrend() {
     if (b.low < weeklyLow)  weeklyLow  = b.low;
   }
 
-  // Switch back to 4H
+  // Switch back to 4H and grab 4H RSI (needed for PROP-GRADE tier's strict
+  // 4H+D+W+1H RSI alignment check — see user_prop_firm_strategy memory).
   await setTimeframe({ timeframe: '240' });
   await sleep(SETTLE_MS);
+  const h4Ohlcv = await getOhlcv({ count: 30 });
+  const h4Bars = h4Ohlcv?.bars || [];
+  const hRSI = calculateRSI(h4Bars, 14);
 
   return {
     dRSI: Math.round(dRSI * 10) / 10,
     wRSI: Math.round(wRSI * 10) / 10,
+    hRSI: Math.round(hRSI * 10) / 10,
     daily: dRSI > 50 ? 'bullish' : 'bearish',
     weekly: wRSI > 50 ? 'bullish' : 'bearish',
+    h4: hRSI > 50 ? 'bullish' : 'bearish',
     htfBullish: dRSI > 50 && wRSI > 50,
     htfBearish: dRSI < 50 && wRSI < 50,
     aligned: (dRSI > 50) === (wRSI > 50),
@@ -967,6 +973,11 @@ async function checkLTFConfirmation(pair, expectedDirection) {
     const price = quote.close || quote.last;
     const levels = calcContinuationLevels(pair, price, bars, expectedDirection);
 
+    // Compute 1H RSI at confirmation time — needed for PROP-GRADE alignment
+    // check in Phase 3b. RSI must sit on the same side of 50 as the CHoCH
+    // direction for the setup to qualify.
+    const ltfRsi = calculateRSI(bars, 14);
+
     return {
       confirmed: true,
       direction,
@@ -975,6 +986,7 @@ async function checkLTFConfirmation(pair, expectedDirection) {
       barsAgo,
       currentPrice: price,
       levels,
+      rsi: Math.round(ltfRsi * 10) / 10,
     };
   } catch (err) {
     return { confirmed: false, reason: `error: ${err.message}` };
@@ -1861,18 +1873,43 @@ async function scanAll(pairs) {
       const ltf = await checkLTFConfirmation(item.symbol, expectedDirection);
       if (ltf.confirmed) {
         const wasAlreadyConfirmed = item.alert.ltfConfirmed === true;
+        const wasAlreadyPropGrade = item.alert.propGrade === true;
         item.alert.ltfConfirmed = true;
         item.alert.ltfEvent = ltf.eventType;
         item.alert.ltfEventPrice = ltf.eventPrice;
         item.alert.ltfBarsAgo = ltf.barsAgo;
+        item.alert.ltfRsi = ltf.rsi;
         // Fresh confirmation boosts to 4★, otherwise 3★ floor.
         if (ltf.barsAgo != null && ltf.barsAgo <= 3) {
           item.alert.strength = Math.max(4, item.alert.strength);
         } else {
           item.alert.strength = Math.max(3, item.alert.strength);
         }
+
+        // ═══ PROP-GRADE evaluation ═══
+        // Strict subset for prop-firm trades. Requires 4H+D+W+1H RSI all
+        // aligned with reversal direction (past 50) — user's sniper filter
+        // from [[user_prop_firm_strategy]]. macroReversal is already true
+        // (that's how we reached Phase 3b), so the remaining gate is RSI
+        // stacking. Fires distinct 🎯 notification on transition.
+        const htf = item.alert.htf || {};
+        const rsiThreshold = 50;
+        const rsisAlignedForLong = isLong
+          && (htf.hRSI ?? 0) > rsiThreshold
+          && (htf.dRSI ?? 0) > rsiThreshold
+          && (htf.wRSI ?? 0) > rsiThreshold
+          && (ltf.rsi ?? 0) > rsiThreshold;
+        const rsisAlignedForShort = !isLong
+          && (htf.hRSI ?? 100) < rsiThreshold
+          && (htf.dRSI ?? 100) < rsiThreshold
+          && (htf.wRSI ?? 100) < rsiThreshold
+          && (ltf.rsi ?? 100) < rsiThreshold;
+        const propGrade = rsisAlignedForLong || rsisAlignedForShort;
+        item.alert.propGrade = propGrade;
+
         const ageStr = ltf.barsAgo != null ? ` ${ltf.barsAgo}b ago` : '';
-        console.log(` ✅ CONFIRMED REVERSAL (${ltf.eventType} ${ltf.direction}${ageStr})`);
+        const propTag = propGrade ? ' 🎯 PROP-GRADE' : '';
+        console.log(` ✅ CONFIRMED REVERSAL (${ltf.eventType} ${ltf.direction}${ageStr})${propTag}`);
 
         // 💎 CONFIRMED alert — fires once at the moment a macro reversal's
         // LTF (1HR) structure confirms the reversal direction. This is the
@@ -1899,6 +1936,27 @@ async function scanAll(pairs) {
             priority: 1,
             sound: 'magic',
           }, 6 * 3600 * 1000);
+        }
+
+        // Distinct 🎯 PROP-GRADE notification — fires ONLY when full RSI
+        // alignment stack (4H+D+W+1H) confirms. Sniper-tier setup for prop
+        // account trades. Longer cooldown (12h) — these are supposed to be
+        // rare by design; if it re-confirms on the next scan pass, don't
+        // ping again for half a day.
+        if (propGrade && !wasAlreadyPropGrade) {
+          const d = item.symbol.includes('JPY') ? 2 : 4;
+          const targets = item.alert.targets || {};
+          const entryStr = item.alert.entryZone
+            ? `${item.alert.entryZone.low.toFixed(d)}-${item.alert.entryZone.high.toFixed(d)}`
+            : (item.alert.entryLevel ?? item.price ?? 0).toFixed(d);
+          const slStr = targets.sl != null ? fmtPrice(targets.sl, d) : 'TBD';
+          const tp1Str = targets.tp1 != null ? fmtPrice(targets.tp1, d) : 'TBD';
+          notifyOnce(`PROPGRADE:${item.symbol}:${item.alert.type}`, {
+            title: `🎯 PROP-GRADE ${shortName(item.symbol)} ${shortType(item.alert.type)}`,
+            message: `RSI stack aligned — 4H ${item.alert.htf?.hRSI ?? '?'} · D ${item.alert.htf?.dRSI ?? '?'} · W ${item.alert.htf?.wRSI ?? '?'} · 1H ${ltf.rsi ?? '?'}\n1HR ${ltf.eventType} ${ltf.direction}${ageStr}\nEntry ${entryStr} | SL ${slStr} | TP1 ${tp1Str}`,
+            priority: 1,
+            sound: 'siren',
+          }, 12 * 3600 * 1000);
         }
       } else {
         console.log(` waiting (${ltf.reason})`);
@@ -2646,6 +2704,12 @@ function logSetups(allAlerts) {
       htfWeekly: alert.htf?.weekly ?? null,
       htfDRSI: alert.htf?.dRSI ?? null,
       htfWRSI: alert.htf?.wRSI ?? null,
+      htfHRSI: alert.htf?.hRSI ?? null,
+      ltfRsi: alert.ltfRsi ?? null,
+      // PROP-GRADE — strict 4H+D+W+1H RSI stack aligned with macro reversal.
+      // Tracked separately in brief_data.js perfByPropGrade bucket so prop-tier
+      // WR is measurable independent of general scanner WR.
+      propGrade: alert.propGrade ?? false,
       originalType: alert.originalType ?? null,
       suggestedDirection: alert.suggestedDirection ?? null,
       // Phase 5: Currency strength confluence at log time
@@ -3103,6 +3167,36 @@ async function reviewSetups() {
           console.log(` TP1 HIT at ${currentPrice.toFixed(4)} (win)`);
           notifyTP('TP1 hit');
           continue;
+        }
+      }
+
+      // ═══ +0.5R MFE ping — MOVE SL TO BE ═══
+      // Fires once per setup when MFE reaches +0.5R from trigger. Manual SL
+      // discipline is the user's main defense against prop-firm drawdown
+      // limits (see user_prop_firm_strategy). Doesn't move the SL for them —
+      // just tells them the moment is here so they can decide. Prop-grade
+      // setups get 🎯 prefix so they stand out from general-account trades.
+      if (setup.triggered && !setup.mfeHalfRPinged && setup.maxFavorable != null && effectiveSL != null) {
+        const refPx = setup.triggerPrice ?? setup.entryLevel ?? setup.entryPrice;
+        if (refPx != null) {
+          const pipMul = setup.symbol.includes('JPY') ? 100 : 10000;
+          const priceDigits = setup.symbol.includes('JPY') ? 2 : 4;
+          const slDist = Math.abs(refPx - effectiveSL);
+          const mfeDist = isLong ? (setup.maxFavorable - refPx) : (refPx - setup.maxFavorable);
+          const rAchieved = slDist > 0 ? mfeDist / slDist : 0;
+          if (rAchieved >= 0.5) {
+            setup.mfeHalfRPinged = true;
+            setup.mfeHalfRPingedAt = new Date().toISOString();
+            const mfePips = Math.round(mfeDist * pipMul);
+            const isPropGrade = !!setup.propGrade;
+            const prefix = isPropGrade ? '🎯🛡️' : '🛡️';
+            notify({
+              title: `${prefix} ${shortName(setup.symbol)} ${shortType(effectiveType)} — MFE +0.5R, move SL to BE`,
+              message: `Trigger ${refPx.toFixed(priceDigits)} | MFE ${setup.maxFavorable.toFixed(priceDigits)} (+${mfePips}p, ${rAchieved.toFixed(2)}R)\nSL currently ${effectiveSL.toFixed(priceDigits)} — moving to BE caps risk on this trade.`,
+              priority: 1,
+              sound: 'pushover',
+            });
+          }
         }
       }
 

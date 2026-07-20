@@ -120,6 +120,19 @@ export function generateBriefData(log) {
     Object.entries(byType).map(([t, items]) => [t, perfSummary(items)])
   );
 
+  // PROP-GRADE bucket — strict RSI-stack macro reversals.
+  // Tracked separately so prop-tier WR is visible independent of general
+  // scanner WR (see user_prop_firm_strategy memory).
+  const propGrade7d = closed7d.filter(s => s.propGrade);
+  const propGrade30d = closedSetups
+    .filter(s => new Date(s.exitTime).getTime() >= now - 30 * 24 * 3600000)
+    .filter(s => s.propGrade);
+  const perfByPropGrade = {
+    last7d: perfSummary(propGrade7d),
+    last30d: perfSummary(propGrade30d),
+    all: perfSummary(setups.filter(s => s.propGrade)),
+  };
+
   // Top / bottom pair by pip total
   const pairEntries = Object.entries(perfByPair);
   pairEntries.sort((a, b) => b[1].pipsTotal - a[1].pipsTotal);
@@ -148,10 +161,13 @@ export function generateBriefData(log) {
     last7d: perfSummary(closed7d),
     perfByPair,
     perfByType,
+    perfByPropGrade,
     topPair,
     worstPair,
     openPositions,
+    propGradeOpen: openPositions.filter(p => setups.find(s => s.symbol === p.symbol && s.propGrade && s.status === 'pending' && s.triggered)).length,
     pendingTotal: setups.filter(s => s.status === 'pending').length,
+    propGradePending: setups.filter(s => s.status === 'pending' && s.propGrade).length,
     tp3TrailingCount: setups.filter(s => s.tp3Trailing && s.status === 'pending').length,
   };
 
