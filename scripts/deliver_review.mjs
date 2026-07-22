@@ -237,6 +237,14 @@ async function main() {
     log('Committing + pushing to GitHub...');
     run(`git add ${OUT_REL_PATH}`);
     if (existsSync(NEWS_UPCOMING)) run(`git add ${NEWS_UPCOMING_REL}`);
+    // Also stage runtime files the scanner just wrote to, otherwise the
+    // subsequent `git pull --rebase` refuses ("cannot pull with rebase: You
+    // have unstaged changes"). These are tracked files that legitimately
+    // move as part of every review pass — bundling them into the review
+    // commit is the correct behavior anyway.
+    for (const f of ['brief_data.json', 'observations.jsonl']) {
+      if (existsSync(join(REPO, f))) run(`git add ${f}`);
+    }
     const status = run(`git diff --cached --name-only`);
     if (status && status.trim()) {
       const msg = `review: ${KIND} @ ${TODAY}`;
@@ -245,6 +253,19 @@ async function main() {
         gitError = `git commit failed (exit ${commitR.exitCode}): ${commitR.stderr.trim().split('\n')[0]}`;
         log(`  ❌ ${gitError}`);
       } else {
+        // Safety net: if any files are STILL unstaged after our explicit
+        // git adds above, stash them so pull --rebase doesn't refuse. Any
+        // stashed changes get restored after the rebase completes. Rare in
+        // practice — the explicit adds cover the known runtime files —
+        // but this handles unexpected scanner state or manual VM edits.
+        const dirty = run(`git status --porcelain`);
+        const hasUnstaged = !!(dirty && dirty.trim());
+        let stashed = false;
+        if (hasUnstaged) {
+          log(`  ⚠  unstaged files present, stashing before rebase:\n${dirty.trim()}`);
+          const stashR = runVerbose(`git stash push --include-untracked --quiet -m "deliver_review auto-stash ${new Date().toISOString()}"`);
+          stashed = stashR.ok;
+        }
         // Rebase-pull so remote's newer commits don't reject our push.
         const pullR = runVerbose('git pull --rebase origin main');
         if (!pullR.ok) {
@@ -257,6 +278,13 @@ async function main() {
             log(`  ❌ ${gitError}`);
           } else {
             log('  ✅ pushed');
+          }
+        }
+        // Restore any stashed changes so the scanner sees consistent state.
+        if (stashed) {
+          const popR = runVerbose(`git stash pop --quiet`);
+          if (!popR.ok) {
+            log(`  ⚠  stash pop failed (${popR.exitCode}) — check stash list manually. stderr: ${popR.stderr.trim().split('\n')[0]}`);
           }
         }
       }
