@@ -1,60 +1,9 @@
 {
-  "generatedAt": "2026-07-22T11:08:31.088Z",
+  "generatedAt": "2026-07-23T11:08:27.950Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-07-22T08:43:06.091Z",
-  "count": 14,
+  "sourceCacheAt": "2026-07-23T09:33:49.120Z",
+  "count": 11,
   "events": [
-    {
-      "date": "2026-07-22T15:00:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "President Trump Speaks",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-07-22T21:30:00-04:00",
-      "currency": "AUD",
-      "impact": "High",
-      "title": "Employment Change",
-      "forecast": "16.4K",
-      "previous": "40.3K",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
-    {
-      "date": "2026-07-22T21:30:00-04:00",
-      "currency": "AUD",
-      "impact": "High",
-      "title": "Unemployment Rate",
-      "forecast": "4.4%",
-      "previous": "4.4%",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
     {
       "date": "2026-07-23T08:15:00-04:00",
       "currency": "EUR",
