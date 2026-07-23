@@ -940,3 +940,4 @@
 {"ts":"2026-07-22T11:08:04.045Z","type":"detection_anomaly","severity":"warn","message":"NZDCAD quote 46.7% off entry — skipping","data":{"symbol":"OANDA:NZDCAD","entry":0.81946,"badQuote":1.20243}}
 {"ts":"2026-07-22T11:08:17.529Z","type":"detection_anomaly","severity":"warn","message":"GBPCHF quote 46.9% off entry — skipping","data":{"symbol":"OANDA:GBPCHF","entry":1.08652,"badQuote":0.5764}}
 {"ts":"2026-07-22T11:08:31.020Z","type":"detection_anomaly","severity":"warn","message":"GBPCAD quote 74.9% off entry — skipping","data":{"symbol":"OANDA:GBPCAD","entry":1.88436,"badQuote":0.47262}}
+{"ts":"2026-07-23T08:55:54.016Z","type":"stat_pattern","severity":"warn","message":"AUDNZD stopped 3× in last 24h","data":{"symbol":"OANDA:AUDNZD","stopCount":3,"windowHours":24}}
