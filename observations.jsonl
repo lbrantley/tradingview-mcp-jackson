@@ -941,3 +941,17 @@
 {"ts":"2026-07-22T11:08:17.529Z","type":"detection_anomaly","severity":"warn","message":"GBPCHF quote 46.9% off entry — skipping","data":{"symbol":"OANDA:GBPCHF","entry":1.08652,"badQuote":0.5764}}
 {"ts":"2026-07-22T11:08:31.020Z","type":"detection_anomaly","severity":"warn","message":"GBPCAD quote 74.9% off entry — skipping","data":{"symbol":"OANDA:GBPCAD","entry":1.88436,"badQuote":0.47262}}
 {"ts":"2026-07-23T08:55:54.016Z","type":"stat_pattern","severity":"warn","message":"AUDNZD stopped 3× in last 24h","data":{"symbol":"OANDA:AUDNZD","stopCount":3,"windowHours":24}}
+{"ts":"2026-07-24T11:02:30.698Z","type":"detection_anomaly","severity":"warn","message":"EURGBP quote 19101.3% off entry — skipping","data":{"symbol":"OANDA:EURGBP","entry":0.85292,"badQuote":163.772}}
+{"ts":"2026-07-24T11:03:11.179Z","type":"detection_anomaly","severity":"warn","message":"NZDCHF quote 39228.7% off entry — skipping","data":{"symbol":"OANDA:NZDCHF","entry":0.47404,"badQuote":186.434}}
+{"ts":"2026-07-24T11:03:24.902Z","type":"detection_anomaly","severity":"warn","message":"GBPCHF quote 25.0% off entry — skipping","data":{"symbol":"OANDA:GBPCHF","entry":1.08652,"badQuote":0.81484}}
+{"ts":"2026-07-24T11:03:38.455Z","type":"detection_anomaly","severity":"warn","message":"USDCHF quote 40.1% off entry — skipping","data":{"symbol":"OANDA:USDCHF","entry":0.81262,"badQuote":1.13838}}
+{"ts":"2026-07-24T11:04:05.473Z","type":"detection_anomaly","severity":"warn","message":"CHFJPY quote 99.5% off entry — skipping","data":{"symbol":"OANDA:CHFJPY","entry":200.298,"badQuote":0.98442}}
+{"ts":"2026-07-24T11:04:18.995Z","type":"detection_anomaly","severity":"warn","message":"AUDCHF quote 49.6% off entry — skipping","data":{"symbol":"OANDA:AUDCHF","entry":0.57095,"badQuote":0.85434}}
+{"ts":"2026-07-24T11:04:32.893Z","type":"detection_anomaly","severity":"warn","message":"EURJPY quote 49.1% off entry — skipping","data":{"symbol":"OANDA:EURJPY","entry":186.339,"badQuote":94.799}}
+{"ts":"2026-07-24T11:04:47.990Z","type":"detection_anomaly","severity":"warn","message":"CADJPY quote 99.5% off entry — skipping","data":{"symbol":"OANDA:CADJPY","entry":117.362,"badQuote":0.57884}}
+{"ts":"2026-07-24T11:05:14.665Z","type":"detection_anomaly","severity":"warn","message":"NZDCAD quote 24467.2% off entry — skipping","data":{"symbol":"OANDA:NZDCAD","entry":0.81627,"badQuote":200.535}}
+{"ts":"2026-07-24T11:05:41.720Z","type":"detection_anomaly","severity":"warn","message":"GBPNZD quote 59.7% off entry — skipping","data":{"symbol":"OANDA:GBPNZD","entry":2.30728,"badQuote":0.9298}}
+{"ts":"2026-07-24T11:05:55.412Z","type":"detection_anomaly","severity":"warn","message":"EURNZD quote 70.6% off entry — skipping","data":{"symbol":"OANDA:EURNZD","entry":1.97085,"badQuote":0.58011}}
+{"ts":"2026-07-24T11:06:08.855Z","type":"detection_anomaly","severity":"warn","message":"USDJPY quote 99.0% off entry — skipping","data":{"symbol":"OANDA:USDJPY","entry":163.814,"badQuote":1.62809}}
+{"ts":"2026-07-24T11:06:49.683Z","type":"detection_anomaly","severity":"warn","message":"CADCHF quote 87.5% off entry — skipping","data":{"symbol":"OANDA:CADCHF","entry":0.58054,"badQuote":1.08836}}
+{"ts":"2026-07-24T11:07:03.206Z","type":"detection_anomaly","severity":"warn","message":"EURAUD quote 65.0% off entry — skipping","data":{"symbol":"OANDA:EURAUD","entry":1.6303,"badQuote":0.57114}}
