@@ -1,54 +1,56 @@
 {
   "_meta": {
-    "lastUpdated": "2026-07-09",
+    "lastUpdated": "2026-07-28",
     "description": "Live macro themes affecting currencies but not on the scheduled news calendar. Update as regime-changing events happen. Scanner reads this at brief generation time and displays it in the daily/weekly review.",
     "howToUse": "Each theme should include: (1) short title, (2) start date, (3) currency implications with brief reasoning, (4) a specific watchLevel that would invalidate the theme, (5) affectedPairs for scanner correlation. Retire themes by moving to _retired[] with an endDate.",
-    "maintenance": "Manual updates + Claude WebSearch each session. 2026-07-09: Iran/oil theme escalated — US bombed 80+ Iran targets, Iran retaliated at 85 US sites, 3 vessels attacked near Hormuz, Treasury revoked Iran oil authorization, Brent hit $80.59 intraday."
+    "maintenance": "Manual updates + Claude WebSearch each session. 2026-07-28 refresh: Iran/US fighting paused Jul 27 at Iran's request (Brent -11.3% to $85.87 — biggest single-day drop since Apr 8, but level still elevated); Warsh Fed remains hawkish with 5th consecutive hold expected + 9/18 members forecast at least one hike this year; USMCA joint review opened Jul 1 with Section 122 10% Mexico surcharge expiring ~Jul 24 (renewal decision imminent)."
   },
   "themes": [
     {
-      "id": "iran-oil-escalation-2026-07-09",
-      "title": "Iran/US escalation — full military exchange, Brent spiked to $80",
-      "started": "2026-07-08",
-      "summary": "This is no longer a ceasefire-uncertainty story — it's an active military exchange. US bombed 80+ Iranian targets (air defense, C&C, radar, anti-ship missile capabilities). Iran retaliated at 85 US sites in Bahrain and Kuwait. 3 vessels attacked near Hormuz. Treasury revoked Iran's oil sale authorization. WTI +4.4% to $73.52; Brent hit $80.59 intraday (+8.7%). Brent-WTI spread widening reflects Middle East supply premium. Safe-haven flows now active — USD getting haven bid despite Fed pivot fatigue.",
+      "id": "iran-us-fighting-pause-2026-07-27",
+      "title": "US-Iran active fighting paused Jul 27 — Brent -11.3% but still elevated, Hormuz traffic thin",
+      "started": "2026-07-27",
+      "summary": "US halted strikes on Iran Jul 27 at Iran's request after ~2 weeks of active fighting that collapsed the 60-day ceasefire. Trump warned strikes resume if new ceasefire deal isn't reached — this is a PAUSE, not resolution. Brent closed $85.87 Jul 27 (-11.3%, biggest single-day drop since Apr 8) but remains historically elevated. Strait of Hormuz shipping still catastrophically low: <10 vessels/day vs ~100 pre-war. Houthi Red Sea threat still active on Saudi tankers. Two-sided regime: risk-off UNWIND (haven trades bleeding) vs residual supply premium in oil. Trades that were correct in escalation phase (long JPY/CHF, long CAD via oil) are now the loser side if pause holds.",
       "implications": {
-        "CAD": "STRONG tailwind — WTI holding $73+ and Brent >$78 = firm oil support",
-        "JPY": "STRONG tailwind — safe-haven bid active on escalation",
-        "CHF": "STRONG tailwind — safe-haven bid",
-        "USD": "haven-bid returning — DXY may hold premium despite Fed pivot fatigue; risk-off USD-positive",
-        "AUD": "headwind — risk-off pressure dominant",
-        "NZD": "headwind — risk-off pressure dominant",
-        "GBP": "mixed — safe-haven neutral, but GBP-JPY/CHF crosses see JPY/CHF strength"
+        "CAD": "WEAKENING tailwind — oil premium unwinding as Brent slides toward $80s. Still supported if Hormuz stays constrained, but the pure crisis bid is gone. Trim aggressive long-CAD exposure.",
+        "JPY": "haven bid FADING — risk-off unwinding, JPY strength driver weakening. Bearish JPY if pause holds.",
+        "CHF": "haven bid FADING — same story as JPY. CHF crosses that were long-CHF start reversing.",
+        "USD": "haven premium unwinding — DXY was elevated on crisis bid, that's now leaking out. Neutral USD.",
+        "AUD": "TAILWIND returning — risk-off compression lifting, high-beta / commodity currencies get relief bid",
+        "NZD": "TAILWIND returning — same as AUD, risk-on rotation",
+        "GBP": "neutral — was mixed during escalation, less directly affected either way"
       },
-      "watchLevel": "Brent sustained below $75 = escalation priced out / de-escalation begun. WTI sustained below $70 = CAD leg gone. Brent >$85 = full-crisis pricing, look for USD/JPY spike",
-      "affectedPairs": ["USDCAD", "GBPCAD", "AUDCAD", "CADJPY", "CADCHF", "EURCAD", "NZDCAD", "USDJPY", "AUDUSD", "NZDUSD", "EURUSD"]
+      "watchLevel": "Brent >$88 = pause breaking, escalation resuming (revert to prior playbook). Brent <$78 = full de-escalation priced in, drop all haven premium. Hormuz traffic recovery to >30 vessels/day = supply premium collapses further.",
+      "affectedPairs": ["USDCAD", "GBPCAD", "AUDCAD", "CADJPY", "CADCHF", "EURCAD", "NZDCAD", "USDJPY", "AUDUSD", "NZDUSD", "EURUSD", "CHFJPY", "AUDCHF", "NZDCHF"]
     },
     {
-      "id": "fed-pivot-fatigue-2026-07",
-      "title": "Fed's hawkish June minutes met with USD weakness — but haven bid may reverse this",
-      "started": "2026-07-08",
-      "summary": "FOMC held rates at 3.5-3.75%. June meeting minutes showed a few officials wanted to hike, which should have supported USD but DXY weakened against every G10 except JPY on Jul 8. NOTE: with Iran escalation on Jul 9, USD haven bid is returning — this theme may be muted by the risk-off flow above. Watch CPI Tuesday for the real test.",
+      "id": "fed-warsh-hawkish-2026-07",
+      "title": "Warsh Fed hawkish — 5th consecutive hold expected, 9/18 forecast a 2026 hike",
+      "started": "2026-07-28",
+      "summary": "Kevin Warsh (Fed Chair since May) sticking with hawkish framing at July FOMC. Rates held 3.5-3.75% for fifth straight meeting. June CPI declined -0.4% m/m taking annual to 3.5% (from 4.2% May) — cooling but Warsh has explicitly said FOMC has 'no tolerance for persistently elevated inflation.' Median year-end 2026 rate forecast raised to 3.8% (from 3.4%); 9 of 18 members now expect at least one hike this year. Traditional forward guidance eliminated — pure data-dependent. Net: USD carry stays firm, hike risk is one-sided (higher, not lower).",
       "implications": {
-        "USD": "softening tailwind pre-Iran; now competing with haven bid",
-        "CAD": "less pure Warsh headwind; Iran theme dominates",
-        "GBP": "mixed — bounced hard on Jul 8 USD weakness but haven flows now different story",
-        "EUR": "mixed — same",
-        "JPY": "headwind persisting from carry gap; but haven bid partially offsets"
+        "USD": "STRUCTURAL tailwind — hawkish Warsh + hike-tilted dots = USD carry defended",
+        "JPY": "STRUCTURAL headwind — persistent carry gap; BoJ still ultra-loose relative to Fed",
+        "EUR": "headwind — ECB cutting while Fed holds hawkish widens rate diff against EUR",
+        "GBP": "headwind — BoE also cutting; USD carry differential works vs GBP too",
+        "CAD": "mixed — USD strength offsets oil support; USDCAD structurally biased up unless oil rerates",
+        "AUD": "headwind — RBA on hold with easing bias; carry disadvantaged vs USD",
+        "NZD": "headwind — RBNZ same story"
       },
-      "watchLevel": "DXY closes below 100 = pivot theme officially over; CPI Tue is the resolver",
+      "watchLevel": "Any hint of Warsh softening in speeches = pivot back in play, unwinds this theme. Sub-3.0% Y/Y CPI print = dovish tolerance returns. DXY closing below 100 = market rejecting hawkish read.",
       "affectedPairs": ["USDCAD", "USDCHF", "USDJPY", "EURUSD", "GBPUSD", "AUDUSD", "NZDUSD"]
     },
     {
-      "id": "usmca-tariff-uncertainty-2026-07",
-      "title": "USMCA review + Supreme Court tariff ruling create headline risk on CAD/USD",
-      "started": "2026-07",
-      "summary": "USMCA agreement review is in progress. Supreme Court expected to rule on Reciprocal Tariff executive orders. Either announcement can hit CAD/MXN/USD sharply and unpredictably.",
+      "id": "usmca-mexico-tariff-deadline-2026-07",
+      "title": "USMCA review live + Section 122 Mexico surcharge expires ~Jul 24 — binary event",
+      "started": "2026-07-28",
+      "summary": "Two live threads. (1) USMCA joint review opened Jul 1 — Trump said 'not renewing in current form.' First US-Mexico bilateral round done May, tackled auto rules of origin + steel/alu + economic security. (2) Section 122 10% Mexico surcharge (imposed after SCOTUS struck down IEEPA tariffs Feb 20) expires ~Jul 24 by 150-day statutory limit — 15% version announced but no formal proclamation. Extension mechanism, replacement action, or lapse each move CAD/MXN differently. Result: CAD trades in a headline-driven regime with binary risk that could hit within days.",
       "implications": {
-        "CAD": "elevated vol both directions — soften position sizes",
-        "USD": "elevated vol both directions",
-        "MXN": "highest exposure but not in your book"
+        "CAD": "elevated vol BOTH directions — surcharge lapse/extend + USMCA framing decisions land in a compressed window. Wider SLs, smaller sizes on CAD-crosses.",
+        "USD": "moderate vol — indirect via trade-policy narrative; less directly hit than CAD/MXN",
+        "MXN": "highest exposure (not in book) — but MXN moves telegraph CAD next-day"
       },
-      "watchLevel": "USMCA outcome OR Supreme Court ruling released = theme resolves",
+      "watchLevel": "Section 122 formal extension proclamation OR clean lapse resolves half the theme. USMCA renewal terms announcement resolves the other half. Watch for USDMXN / USDCAD gaps on any Trump trade-policy speech.",
       "affectedPairs": ["USDCAD", "GBPCAD", "AUDCAD", "CADJPY", "CADCHF", "EURCAD", "NZDCAD"]
     }
   ],
@@ -66,6 +68,20 @@
       "started": "2026-07-08",
       "endDate": "2026-07-09",
       "endReason": "Escalated to active military exchange (US-Iran mutual strikes, Hormuz attacks, Brent $80). Replaced by iran-oil-escalation-2026-07-09."
+    },
+    {
+      "id": "iran-oil-escalation-2026-07-09",
+      "title": "Iran/US escalation — full military exchange, Brent spiked to $80",
+      "started": "2026-07-08",
+      "endDate": "2026-07-28",
+      "endReason": "US-Iran active fighting PAUSED Jul 27 at Iran's request. Brent -11.3% to $85.87 = biggest drop since Apr 8. Not a full resolution (Trump said strikes resume if no new ceasefire) but a real inflection. Replaced by iran-us-fighting-pause-2026-07-27 which flips the currency implications."
+    },
+    {
+      "id": "fed-pivot-fatigue-2026-07",
+      "title": "Fed's hawkish June minutes met with USD weakness — but haven bid may reverse this",
+      "started": "2026-07-08",
+      "endDate": "2026-07-28",
+      "endReason": "Warsh explicitly hawkish since; 9/18 FOMC now forecast a 2026 hike, dots raised to 3.8% year-end. Theme resolved in the hawkish direction — replaced by fed-warsh-hawkish-2026-07 which makes it structural."
     }
   ]
 }

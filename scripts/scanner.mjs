@@ -889,10 +889,15 @@ function assessConfluence(symbol, alertType, strengths) {
 // with LTF-based SL/TP levels.
 // ═══════════════════════════════════════════════════════════════════
 async function checkLTFConfirmation(pair, expectedDirection) {
-  // Assumes chart is already on 1HR (caller switches once for batch)
+  // Assumes chart is already on 1HR (caller switches once for batch).
+  // Verify the chart has actually switched to `pair` before reading labels/
+  // ohlcv/quote — same chart-switch race that hit detection + review loops.
   try {
     await setSymbol({ symbol: pair });
-    await sleep(SETTLE_MS);
+    const swrLTF = await waitForSymbolAndQuote(pair);
+    if (!swrLTF.ok) {
+      return { confirmed: false, reason: `chart-switch stuck (last=${swrLTF.quote?.symbol || 'null'})` };
+    }
 
     const [labels, ohlcv, quote] = await Promise.all([
       getPineLabels({ study_filter: 'Price Action Concepts', verbose: true, max_labels: 10 }),
@@ -2906,9 +2911,14 @@ async function reviewSetups() {
       const marketHours = calcMarketHours(new Date(setup.timestamp), new Date());
 
       if (marketHours > EXPIRY_MARKET_HOURS) {
-        // Before expiring, switch to pair and check OHLCV to see if TP/SL were hit historically
+        // Before expiring, switch to pair and check OHLCV to see if TP/SL were hit historically.
+        // Use symbol-verification helper to avoid the chart-switch race (see waitForSymbolAndQuote).
         await setSymbol({ symbol: setup.symbol });
-        await sleep(SETTLE_MS);
+        const swrExp = await waitForSymbolAndQuote(setup.symbol);
+        if (!swrExp.ok) {
+          console.log(` chart-switch stuck (last=${swrExp.quote?.symbol || 'null'}), skipping this pass`);
+          continue;
+        }
 
         const hitResult = await checkHistoricalHit(setup);
         if (hitResult) {
@@ -2929,10 +2939,23 @@ async function reviewSetups() {
         continue;
       }
 
-      // Get current price
+      // Get current price — use symbol-verification helper to avoid the
+      // chart-switch race that was returning the PREVIOUS pair's price
+      // and triggering false "bad quote" skips across the review loop.
+      // (Fix from 2026-07-17 covered detection only; this covers review.)
       await setSymbol({ symbol: setup.symbol });
-      await sleep(SETTLE_MS);
-      const quote = await getQuote();
+      const swrRev = await waitForSymbolAndQuote(setup.symbol);
+      if (!swrRev.ok) {
+        observe({
+          type: 'chart_switch_timeout',
+          severity: 'warn',
+          message: `${sym} review chart-switch did not settle to correct symbol`,
+          data: { expected: setup.symbol, got: swrRev.quote?.symbol || null, attempts: swrRev.attempts },
+        });
+        console.log(` chart-switch stuck (last=${swrRev.quote?.symbol || 'null'}), skipping`);
+        continue;
+      }
+      const quote = swrRev.quote;
       const currentPrice = quote.close || quote.last;
 
       if (!currentPrice) {
