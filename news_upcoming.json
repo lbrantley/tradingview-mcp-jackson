@@ -1,32 +1,15 @@
 {
-  "generatedAt": "2026-07-27T11:07:12.853Z",
+  "generatedAt": "2026-07-28T11:06:11.719Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-07-27T10:27:05.072Z",
-  "count": 14,
+  "sourceCacheAt": "2026-07-28T10:52:49.317Z",
+  "count": 25,
   "events": [
-    {
-      "date": "2026-07-27T23:05:00-04:00",
-      "currency": "AUD",
-      "impact": "High",
-      "title": "RBA Gov Bullock Speaks",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
     {
       "date": "2026-07-28T10:00:00-04:00",
       "currency": "USD",
       "impact": "Medium",
       "title": "CB Consumer Confidence",
-      "forecast": "92.1",
+      "forecast": "92.4",
       "previous": "91.2",
       "affectedPairs": [
         "GBPUSD",
@@ -77,7 +60,7 @@
       "currency": "AUD",
       "impact": "High",
       "title": "Trimmed Mean CPI m/m",
-      "forecast": "0.4%",
+      "forecast": "0.3%",
       "previous": "0.4%",
       "affectedPairs": [
         "AUDUSD",
@@ -239,6 +222,210 @@
         "GBPNZD",
         "GBPCAD",
         "GBPAUD",
+        "EURGBP"
+      ]
+    },
+    {
+      "date": "2026-07-30T07:30:00-04:00",
+      "currency": "GBP",
+      "impact": "High",
+      "title": "BOE Gov Bailey Speaks",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "GBPUSD",
+        "GBPJPY",
+        "GBPCHF",
+        "GBPNZD",
+        "GBPCAD",
+        "GBPAUD",
+        "EURGBP"
+      ]
+    },
+    {
+      "date": "2026-07-30T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "Advance GDP q/q",
+      "forecast": "2.0%",
+      "previous": "2.0%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-07-30T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "Core PCE Price Index m/m",
+      "forecast": "0.2%",
+      "previous": "0.3%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-07-30T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "Advance GDP Price Index q/q",
+      "forecast": "4.1%",
+      "previous": "3.6%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-07-30T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "Unemployment Claims",
+      "forecast": "201K",
+      "previous": "187K",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-07-30T19:30:00-04:00",
+      "currency": "JPY",
+      "impact": "Medium",
+      "title": "Tokyo Core CPI y/y",
+      "forecast": "1.8%",
+      "previous": "1.6%",
+      "affectedPairs": [
+        "USDJPY",
+        "GBPJPY",
+        "EURJPY",
+        "AUDJPY",
+        "NZDJPY",
+        "CADJPY",
+        "CHFJPY"
+      ]
+    },
+    {
+      "date": "2026-07-30T22:30:00-04:00",
+      "currency": "JPY",
+      "impact": "High",
+      "title": "BOJ Policy Rate",
+      "forecast": "<1.00%",
+      "previous": "<1.00%",
+      "affectedPairs": [
+        "USDJPY",
+        "GBPJPY",
+        "EURJPY",
+        "AUDJPY",
+        "NZDJPY",
+        "CADJPY",
+        "CHFJPY"
+      ]
+    },
+    {
+      "date": "2026-07-30T22:30:00-04:00",
+      "currency": "JPY",
+      "impact": "High",
+      "title": "Monetary Policy Statement",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "USDJPY",
+        "GBPJPY",
+        "EURJPY",
+        "AUDJPY",
+        "NZDJPY",
+        "CADJPY",
+        "CHFJPY"
+      ]
+    },
+    {
+      "date": "2026-07-30T22:31:00-04:00",
+      "currency": "JPY",
+      "impact": "High",
+      "title": "BOJ Outlook Report",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "USDJPY",
+        "GBPJPY",
+        "EURJPY",
+        "AUDJPY",
+        "NZDJPY",
+        "CADJPY",
+        "CHFJPY"
+      ]
+    },
+    {
+      "date": "2026-07-31T01:30:00-04:00",
+      "currency": "JPY",
+      "impact": "High",
+      "title": "BOJ Press Conference",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "USDJPY",
+        "GBPJPY",
+        "EURJPY",
+        "AUDJPY",
+        "NZDJPY",
+        "CADJPY",
+        "CHFJPY"
+      ]
+    },
+    {
+      "date": "2026-07-31T05:00:00-04:00",
+      "currency": "EUR",
+      "impact": "Medium",
+      "title": "Core CPI Flash Estimate y/y",
+      "forecast": "2.4%",
+      "previous": "2.4%",
+      "affectedPairs": [
+        "EURUSD",
+        "EURJPY",
+        "EURCHF",
+        "EURNZD",
+        "EURCAD",
+        "EURAUD",
+        "EURGBP"
+      ]
+    },
+    {
+      "date": "2026-07-31T05:00:00-04:00",
+      "currency": "EUR",
+      "impact": "Medium",
+      "title": "CPI Flash Estimate y/y",
+      "forecast": "2.9%",
+      "previous": "2.8%",
+      "affectedPairs": [
+        "EURUSD",
+        "EURJPY",
+        "EURCHF",
+        "EURNZD",
+        "EURCAD",
+        "EURAUD",
         "EURGBP"
       ]
     }
