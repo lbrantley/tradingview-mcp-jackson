@@ -375,20 +375,43 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // quote. Fixes a Azure-VM race where getQuote() returned the PREVIOUS pair's
 // price because the chart hadn't finished switching. Polls getQuote() and
 // compares its returned symbol; only returns success when they match.
-async function waitForSymbolAndQuote(expectedSymbol, { maxAttempts = 8, pollMs = 500, initialWaitMs = 1500 } = {}) {
+//
+// TV Desktop silently rejects/queues setSymbol calls after ~10 rapid switches
+// (observed 2026-07-29 in reviewSetups): chart stays on a symbol from 10 rows
+// back, causing every subsequent switch to appear stuck. Fix: on stuck, this
+// function RE-ISSUES setSymbol partway through the retry window with a longer
+// wait. Requires the caller to pass the symbol so we can re-send it.
+async function waitForSymbolAndQuote(expectedSymbol, {
+  maxAttempts = 12,        // was 8 — give TV more retries under load
+  pollMs = 500,
+  initialWaitMs = 1500,
+  reissueAt = 5,           // re-issue setSymbol after this many failed polls
+  reissueWaitMs = 2000,    // extra wait after re-issue
+} = {}) {
   await sleep(initialWaitMs);
   let lastQuote = null;
+  let reissued = false;
   for (let i = 0; i < maxAttempts; i++) {
     try {
       const q = await getQuote();
       lastQuote = q;
       if (q && q.symbol === expectedSymbol) {
-        return { ok: true, quote: q, attempts: i + 1 };
+        return { ok: true, quote: q, attempts: i + 1, reissued };
       }
     } catch (_) { /* chart mid-switch; retry */ }
+    // Halfway through the retry window, TV might have dropped the setSymbol.
+    // Re-send it and give it a longer settle before continuing to poll.
+    if (i === reissueAt && !reissued) {
+      try {
+        await setSymbol({ symbol: expectedSymbol });
+        reissued = true;
+        await sleep(reissueWaitMs);
+        continue;
+      } catch (_) { /* if the re-issue itself fails, fall through to poll */ }
+    }
     await sleep(pollMs);
   }
-  return { ok: false, quote: lastQuote, attempts: maxAttempts };
+  return { ok: false, quote: lastQuote, attempts: maxAttempts, reissued };
 }
 const shortName = sym => sym.replace('OANDA:', '');
 const shortType = (t) => {
@@ -1579,7 +1602,7 @@ async function scanAll(pairs) {
       const swr = await waitForSymbolAndQuote(pair);
       if (!swr.ok) {
         observe({
-          type: 'chart_switch_timeout',
+          type: 'op_health',
           severity: 'warn',
           message: `${sym} chart-switch did not settle to correct symbol`,
           data: { expected: pair, got: swr.quote?.symbol || null, attempts: swr.attempts },
@@ -2902,9 +2925,20 @@ async function reviewSetups() {
   // move at different resolutions — grouping tells that story.
   const pendingReviews = [];
 
+  // Track consecutive chart-switch stuck failures — if TV Desktop starts
+  // dropping setSymbol calls (observed after ~10 rapid switches), an extra
+  // recovery pause between pairs gives it time to clear its internal queue.
+  let consecutiveStuck = 0;
+
   for (const setup of pending) {
     const sym = shortName(setup.symbol);
     process.stdout.write(`  Reviewing ${sym} ${setup.type}...`);
+    // Escalating cooldown when TV is choking. First stuck = small pause;
+    // repeated stuck = longer recovery. Resets on any successful review.
+    if (consecutiveStuck > 0) {
+      const cooldownMs = Math.min(consecutiveStuck * 1000, 8000);
+      await sleep(cooldownMs);
+    }
 
     try {
       // Calculate market hours elapsed (skip weekends: Fri 17:00 EST → Sun 17:00 EST)
@@ -2916,9 +2950,11 @@ async function reviewSetups() {
         await setSymbol({ symbol: setup.symbol });
         const swrExp = await waitForSymbolAndQuote(setup.symbol);
         if (!swrExp.ok) {
-          console.log(` chart-switch stuck (last=${swrExp.quote?.symbol || 'null'}), skipping this pass`);
+          consecutiveStuck++;
+          console.log(` chart-switch stuck (last=${swrExp.quote?.symbol || 'null'}, stuck=${consecutiveStuck}), skipping this pass`);
           continue;
         }
+        consecutiveStuck = 0;
 
         const hitResult = await checkHistoricalHit(setup);
         if (hitResult) {
@@ -2946,15 +2982,17 @@ async function reviewSetups() {
       await setSymbol({ symbol: setup.symbol });
       const swrRev = await waitForSymbolAndQuote(setup.symbol);
       if (!swrRev.ok) {
+        consecutiveStuck++;
         observe({
-          type: 'chart_switch_timeout',
+          type: 'op_health',
           severity: 'warn',
           message: `${sym} review chart-switch did not settle to correct symbol`,
-          data: { expected: setup.symbol, got: swrRev.quote?.symbol || null, attempts: swrRev.attempts },
+          data: { expected: setup.symbol, got: swrRev.quote?.symbol || null, attempts: swrRev.attempts, consecutiveStuck },
         });
-        console.log(` chart-switch stuck (last=${swrRev.quote?.symbol || 'null'}), skipping`);
+        console.log(` chart-switch stuck (last=${swrRev.quote?.symbol || 'null'}, stuck=${consecutiveStuck}), skipping`);
         continue;
       }
+      consecutiveStuck = 0;
       const quote = swrRev.quote;
       const currentPrice = quote.close || quote.last;
 
