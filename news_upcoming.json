@@ -1,77 +1,9 @@
 {
-  "generatedAt": "2026-07-28T11:06:11.719Z",
+  "generatedAt": "2026-07-29T11:08:19.245Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-07-28T10:52:49.317Z",
+  "sourceCacheAt": "2026-07-29T05:25:42.104Z",
   "count": 25,
   "events": [
-    {
-      "date": "2026-07-28T10:00:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "CB Consumer Confidence",
-      "forecast": "92.4",
-      "previous": "91.2",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-07-28T21:30:00-04:00",
-      "currency": "AUD",
-      "impact": "High",
-      "title": "CPI m/m",
-      "forecast": "0.2%",
-      "previous": "-0.7%",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
-    {
-      "date": "2026-07-28T21:30:00-04:00",
-      "currency": "AUD",
-      "impact": "High",
-      "title": "CPI y/y",
-      "forecast": "4.0%",
-      "previous": "4.0%",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
-    {
-      "date": "2026-07-28T21:30:00-04:00",
-      "currency": "AUD",
-      "impact": "High",
-      "title": "Trimmed Mean CPI m/m",
-      "forecast": "0.3%",
-      "previous": "0.4%",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
     {
       "date": "2026-07-29T14:00:00-04:00",
       "currency": "USD",
@@ -247,7 +179,7 @@
       "currency": "USD",
       "impact": "High",
       "title": "Advance GDP q/q",
-      "forecast": "2.0%",
+      "forecast": "2.1%",
       "previous": "2.0%",
       "affectedPairs": [
         "GBPUSD",
@@ -427,6 +359,74 @@
         "EURCAD",
         "EURAUD",
         "EURGBP"
+      ]
+    },
+    {
+      "date": "2026-07-31T08:30:00-04:00",
+      "currency": "CAD",
+      "impact": "High",
+      "title": "GDP m/m",
+      "forecast": "0.2%",
+      "previous": "0.5%",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
+      ]
+    },
+    {
+      "date": "2026-07-31T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "Employment Cost Index q/q",
+      "forecast": "0.8%",
+      "previous": "0.9%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-07-31T10:00:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "Revised UoM Consumer Sentiment",
+      "forecast": "53.9",
+      "previous": "54.4",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-07-31T10:00:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "Revised UoM Inflation Expectations",
+      "forecast": "—",
+      "previous": "4.2%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
       ]
     }
   ]
