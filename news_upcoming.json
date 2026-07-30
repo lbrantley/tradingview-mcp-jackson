@@ -1,26 +1,9 @@
 {
-  "generatedAt": "2026-07-30T11:17:13.679Z",
+  "generatedAt": "2026-07-30T12:20:24.702Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-07-30T06:04:33.613Z",
-  "count": 16,
+  "sourceCacheAt": "2026-07-30T12:11:58.414Z",
+  "count": 15,
   "events": [
-    {
-      "date": "2026-07-30T07:30:00-04:00",
-      "currency": "GBP",
-      "impact": "High",
-      "title": "BOE Gov Bailey Speaks",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "GBPUSD",
-        "GBPJPY",
-        "GBPCHF",
-        "GBPNZD",
-        "GBPCAD",
-        "GBPAUD",
-        "EURGBP"
-      ]
-    },
     {
       "date": "2026-07-30T08:30:00-04:00",
       "currency": "USD",
