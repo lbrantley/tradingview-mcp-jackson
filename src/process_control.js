@@ -18,9 +18,16 @@ const IS_WIN = process.platform === 'win32';
  */
 export function findScannerPid() {
   if (IS_WIN) {
-    // Windows: use CIM to query processes with their command lines
+    // Windows: use CIM to query processes with their command lines.
+    // Regex just matches 'scanner.mjs' anywhere in the command line — the old
+    // pattern 'scripts.\\\\scanner.mjs' required TWO chars between "scripts"
+    // and "scanner.mjs" (wildcard `.` + literal `\`) but the actual arg is
+    // "scripts\scanner.mjs" (only ONE char). Off-by-one meant every pause
+    // call silently failed on Windows and the main + review scanners fought
+    // over CDP concurrently for weeks. Diagnosed 2026-07-30.
+    // The -notmatch clause still excludes helper scripts.
     try {
-      const psScript = "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'scripts.\\\\scanner.mjs' -and $_.CommandLine -notmatch 'deliver_review|prune_news|refresh_currency' } | Select-Object -First 1 -ExpandProperty ProcessId";
+      const psScript = "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'scanner\\.mjs' -and $_.CommandLine -notmatch 'deliver_review|prune_news|refresh_currency|--review|--once' } | Select-Object -First 1 -ExpandProperty ProcessId";
       const out = execSync(`powershell -NoProfile -Command "${psScript}"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
       const pid = parseInt(out.trim(), 10);
       return isNaN(pid) ? null : pid;
@@ -30,7 +37,7 @@ export function findScannerPid() {
   } else {
     // Unix: use ps aux + grep
     try {
-      const out = execSync('ps aux | grep "node scripts/scanner.mjs" | grep -v grep | grep -v deliver_review | grep -v prune_news | grep -v refresh_currency', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+      const out = execSync('ps aux | grep "node scripts/scanner.mjs" | grep -v grep | grep -v deliver_review | grep -v prune_news | grep -v refresh_currency | grep -v -- "--review" | grep -v -- "--once"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
       const lines = out.split('\n').filter(l => /node scripts\/scanner\.mjs$/.test(l.trim()));
       if (lines.length === 0) return null;
       const parts = lines[0].trim().split(/\s+/);
