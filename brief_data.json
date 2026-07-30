@@ -1,243 +1,203 @@
 {
-  "generatedAt": "2026-07-29T10:49:22.586Z",
+  "generatedAt": "2026-07-30T10:42:58.398Z",
   "overall": {
-    "total": 205,
-    "wins": 65,
-    "losses": 61,
-    "expired": 54,
-    "pipsTotal": -5764,
-    "winRate": 51.6
+    "total": 228,
+    "wins": 74,
+    "losses": 70,
+    "expired": 55,
+    "pipsTotal": -5839,
+    "winRate": 51.4
   },
   "last24h": {
     "total": 19,
-    "wins": 8,
-    "losses": 6,
-    "expired": 5,
-    "pipsTotal": -2185,
-    "winRate": 57.1,
+    "wins": 9,
+    "losses": 9,
+    "expired": 1,
+    "pipsTotal": -75,
+    "winRate": 50,
     "outcomes": [
       {
-        "symbol": "OANDA:USDCHF",
+        "symbol": "OANDA:USDJPY",
         "type": "CONTINUATION LONG",
-        "status": "tp1_hit",
-        "entry": 0.81736,
-        "exit": 0.81982,
-        "pips": 25,
-        "exitTime": "2026-07-29T09:59:55.176Z"
-      },
-      {
-        "symbol": "OANDA:AUDUSD",
-        "type": "REVERSAL LONG",
-        "status": "expired",
-        "entry": 0.69866,
-        "exit": null,
-        "pips": 0,
-        "exitTime": "2026-07-29T07:36:17.841Z"
-      },
-      {
-        "symbol": "OANDA:EURAUD",
-        "type": "CONTINUATION SHORT",
         "status": "stopped",
-        "entry": 1.6328,
-        "exit": 1.63988,
-        "pips": -71,
-        "exitTime": "2026-07-29T02:03:13.046Z"
+        "entry": 163.454,
+        "exit": 162.766,
+        "pips": -69,
+        "exitTime": "2026-07-30T10:25:49.308Z"
       },
       {
-        "symbol": "OANDA:AUDCAD",
+        "symbol": "OANDA:GBPJPY",
         "type": "REVERSAL SHORT",
         "status": "tp1_hit",
-        "entry": 0.98358,
-        "exit": 0.97935,
-        "pips": 42,
-        "exitTime": "2026-07-29T02:01:34.645Z"
-      },
-      {
-        "symbol": "OANDA:GBPAUD",
-        "type": "REVERSAL LONG",
-        "status": "tp2_hit",
-        "entry": 1.90536,
-        "exit": 1.91462,
-        "pips": 93,
-        "exitTime": "2026-07-29T01:30:20.679Z"
-      },
-      {
-        "symbol": "OANDA:NZDJPY",
-        "type": "CONTINUATION LONG",
-        "status": "tp2_hit",
-        "entry": 94.844,
-        "exit": 94.822,
-        "pips": -2,
-        "exitTime": "2026-07-28T19:34:05.877Z"
-      },
-      {
-        "symbol": "OANDA:NZDCAD",
-        "type": "CONTINUATION LONG",
-        "status": "stopped",
-        "entry": 0.81634,
-        "exit": 0.81642,
-        "pips": 1,
-        "exitTime": "2026-07-28T18:58:06.333Z"
-      },
-      {
-        "symbol": "OANDA:NZDJPY",
-        "type": "REVERSAL SHORT",
-        "status": "expired",
-        "entry": 94.505,
-        "exit": null,
-        "pips": 0,
-        "exitTime": "2026-07-28T18:39:40.669Z"
-      },
-      {
-        "symbol": "OANDA:GBPCHF",
-        "type": "REVERSAL SHORT",
-        "status": "tp3_extended",
-        "entry": 1.0859,
-        "exit": 1.08806,
-        "pips": -22,
-        "exitTime": "2026-07-28T17:33:24.332Z"
-      },
-      {
-        "symbol": "OANDA:GBPNZD",
-        "type": "REVERSAL SHORT",
-        "status": "tp2_hit",
-        "entry": 2.3057,
-        "exit": 2.29634,
-        "pips": 94,
-        "exitTime": "2026-07-28T15:37:04.999Z"
-      },
-      {
-        "symbol": "OANDA:CHFJPY",
-        "type": "REVERSAL LONG",
-        "status": "stopped",
-        "entry": 200.028,
-        "exit": 186.577,
-        "pips": -1345,
-        "exitTime": "2026-07-28T15:18:06.729Z"
-      },
-      {
-        "symbol": "OANDA:EURAUD",
-        "type": "REVERSAL LONG",
-        "status": "expired",
-        "entry": 1.6303,
-        "exit": null,
-        "pips": 0,
-        "exitTime": "2026-07-28T15:01:50.935Z"
-      },
-      {
-        "symbol": "OANDA:EURCAD",
-        "type": "CONTINUATION SHORT",
-        "status": "stopped",
-        "entry": 1.60473,
-        "exit": 1.63168,
-        "pips": -270,
-        "exitTime": "2026-07-28T13:38:37.623Z"
-      },
-      {
-        "symbol": "OANDA:CADCHF",
-        "type": "REVERSAL SHORT",
-        "status": "expired",
-        "entry": 0.58054,
-        "exit": null,
-        "pips": 0,
-        "exitTime": "2026-07-28T13:37:44.835Z"
+        "entry": 218.233,
+        "exit": 217.884,
+        "pips": 35,
+        "exitTime": "2026-07-30T10:24:32.172Z"
       },
       {
         "symbol": "OANDA:USDJPY",
         "type": "REVERSAL SHORT",
+        "status": "tp1_hit",
+        "entry": 163.856,
+        "exit": 162.894,
+        "pips": 96,
+        "exitTime": "2026-07-30T10:22:38.528Z"
+      },
+      {
+        "symbol": "OANDA:GBPUSD",
+        "type": "CONTINUATION SHORT",
+        "status": "stopped",
+        "entry": 1.32963,
+        "exit": 1.33814,
+        "pips": -85,
+        "exitTime": "2026-07-30T10:22:25.000Z"
+      },
+      {
+        "symbol": "OANDA:AUDNZD",
+        "type": "CONTINUATION SHORT",
+        "status": "tp1_hit",
+        "entry": 1.19988,
+        "exit": 1.19568,
+        "pips": 42,
+        "exitTime": "2026-07-30T09:46:25.194Z"
+      },
+      {
+        "symbol": "OANDA:NZDUSD",
+        "type": "CONTINUATION LONG",
+        "status": "tp1_hit",
+        "entry": 0.58071,
+        "exit": 0.58244,
+        "pips": 17,
+        "exitTime": "2026-07-30T09:11:12.107Z"
+      },
+      {
+        "symbol": "OANDA:NZDUSD",
+        "type": "REVERSAL LONG",
+        "status": "tp1_hit",
+        "entry": 0.57691,
+        "exit": 0.58198,
+        "pips": 51,
+        "exitTime": "2026-07-30T08:29:33.860Z"
+      },
+      {
+        "symbol": "OANDA:GBPNZD",
+        "type": "REVERSAL SHORT",
+        "status": "tp1_hit",
+        "entry": 2.30207,
+        "exit": 2.29624,
+        "pips": 58,
+        "exitTime": "2026-07-30T07:17:58.242Z"
+      },
+      {
+        "symbol": "OANDA:AUDUSD",
+        "type": "REVERSAL SHORT",
         "status": "expired",
-        "entry": 163.814,
+        "entry": 0.69967,
         "exit": null,
         "pips": 0,
-        "exitTime": "2026-07-28T13:37:17.569Z"
+        "exitTime": "2026-07-30T01:01:49.490Z"
+      },
+      {
+        "symbol": "OANDA:GBPNZD",
+        "type": "CONTINUATION SHORT",
+        "status": "stopped",
+        "entry": 2.29609,
+        "exit": 2.30652,
+        "pips": -104,
+        "exitTime": "2026-07-29T21:20:06.747Z"
       },
       {
         "symbol": "OANDA:GBPAUD",
-        "type": "CONTINUATION SHORT",
-        "status": "tp2_hit",
-        "entry": 1.90652,
-        "exit": 1.90736,
-        "pips": -8,
-        "exitTime": "2026-07-28T13:27:37.986Z"
-      },
-      {
-        "symbol": "OANDA:NZDCAD",
-        "type": "CONTINUATION LONG",
-        "status": "tp3_extended",
-        "entry": 0.8127,
-        "exit": 0.81491,
-        "pips": 22,
-        "exitTime": "2026-07-28T12:51:00.272Z"
-      },
-      {
-        "symbol": "OANDA:GBPAUD",
-        "type": "CONTINUATION SHORT",
+        "type": "REVERSAL SHORT",
         "status": "stopped",
-        "entry": 1.90614,
-        "exit": 1.90698,
-        "pips": -8,
-        "exitTime": "2026-07-28T12:20:44.661Z"
+        "entry": 1.91164,
+        "exit": 1.92244,
+        "pips": -108,
+        "exitTime": "2026-07-29T20:45:03.538Z"
       },
       {
-        "symbol": "OANDA:EURCHF",
+        "symbol": "OANDA:EURCAD",
+        "type": "REVERSAL LONG",
+        "status": "tp1_hit",
+        "entry": 1.6036,
+        "exit": 1.61088,
+        "pips": 73,
+        "exitTime": "2026-07-29T20:43:49.392Z"
+      },
+      {
+        "symbol": "OANDA:GBPCHF",
+        "type": "REVERSAL SHORT",
+        "status": "tp1_hit",
+        "entry": 1.08914,
+        "exit": 1.08773,
+        "pips": 14,
+        "exitTime": "2026-07-29T20:11:13.134Z"
+      },
+      {
+        "symbol": "OANDA:EURJPY",
+        "type": "CONTINUATION LONG",
+        "status": "tp1_hit",
+        "entry": 186.326,
+        "exit": 187.219,
+        "pips": 89,
+        "exitTime": "2026-07-29T20:09:57.175Z"
+      },
+      {
+        "symbol": "OANDA:USDCHF",
         "type": "CONTINUATION LONG",
         "status": "stopped",
-        "entry": 0.92928,
-        "exit": 0.85564,
-        "pips": -736,
-        "exitTime": "2026-07-28T11:04:25.622Z"
+        "entry": 0.81776,
+        "exit": 0.81532,
+        "pips": -24,
+        "exitTime": "2026-07-29T19:34:45.354Z"
+      },
+      {
+        "symbol": "OANDA:EURJPY",
+        "type": "REVERSAL SHORT",
+        "status": "stopped",
+        "entry": 186.568,
+        "exit": 187.134,
+        "pips": -57,
+        "exitTime": "2026-07-29T19:32:16.361Z"
+      },
+      {
+        "symbol": "OANDA:GBPJPY",
+        "type": "REVERSAL SHORT",
+        "status": "stopped",
+        "entry": 217.882,
+        "exit": 218.294,
+        "pips": -41,
+        "exitTime": "2026-07-29T18:58:43.000Z"
+      },
+      {
+        "symbol": "OANDA:GBPCHF",
+        "type": "REVERSAL SHORT",
+        "status": "stopped",
+        "entry": 1.08786,
+        "exit": 1.0909,
+        "pips": -30,
+        "exitTime": "2026-07-29T17:44:28.735Z"
+      },
+      {
+        "symbol": "OANDA:GBPCAD",
+        "type": "CONTINUATION LONG",
+        "status": "stopped",
+        "entry": 1.87529,
+        "exit": 1.87204,
+        "pips": -32,
+        "exitTime": "2026-07-29T12:53:08.895Z"
       }
     ]
   },
   "last7d": {
-    "total": 77,
+    "total": 72,
     "wins": 33,
-    "losses": 27,
-    "expired": 17,
-    "pipsTotal": -1704,
-    "winRate": 55
+    "losses": 25,
+    "expired": 14,
+    "pipsTotal": -2432,
+    "winRate": 56.9
   },
   "perfByPair": {
-    "OANDA:NZDJPY": {
-      "total": 5,
-      "wins": 2,
-      "losses": 1,
-      "expired": 2,
-      "pipsTotal": 9,
-      "winRate": 66.7
-    },
-    "OANDA:NZDUSD": {
-      "total": 3,
-      "wins": 1,
-      "losses": 1,
-      "expired": 1,
-      "pipsTotal": 493,
-      "winRate": 50
-    },
-    "OANDA:EURNZD": {
-      "total": 4,
-      "wins": 3,
-      "losses": 0,
-      "expired": 1,
-      "pipsTotal": 476,
-      "winRate": 100
-    },
-    "OANDA:AUDCHF": {
-      "total": 2,
-      "wins": 0,
-      "losses": 1,
-      "expired": 1,
-      "pipsTotal": -66,
-      "winRate": 0
-    },
-    "OANDA:GBPJPY": {
-      "total": 2,
-      "wins": 1,
-      "losses": 0,
-      "expired": 1,
-      "pipsTotal": 31,
-      "winRate": 100
-    },
     "OANDA:AUDCAD": {
       "total": 3,
       "wins": 1,
@@ -254,14 +214,6 @@
       "pipsTotal": -71,
       "winRate": 0
     },
-    "OANDA:USDCHF": {
-      "total": 3,
-      "wins": 2,
-      "losses": 1,
-      "expired": 0,
-      "pipsTotal": -11,
-      "winRate": 66.7
-    },
     "OANDA:EURGBP": {
       "total": 3,
       "wins": 1,
@@ -271,92 +223,28 @@
       "winRate": 100
     },
     "OANDA:AUDUSD": {
-      "total": 4,
+      "total": 5,
       "wins": 0,
       "losses": 2,
-      "expired": 2,
+      "expired": 3,
       "pipsTotal": -56,
       "winRate": 0
     },
     "OANDA:GBPAUD": {
-      "total": 4,
+      "total": 5,
       "wins": 3,
-      "losses": 1,
+      "losses": 2,
       "expired": 0,
-      "pipsTotal": 135,
-      "winRate": 75
+      "pipsTotal": 27,
+      "winRate": 60
     },
     "OANDA:GBPUSD": {
-      "total": 5,
+      "total": 6,
       "wins": 4,
-      "losses": 1,
-      "expired": 0,
-      "pipsTotal": 519,
-      "winRate": 80
-    },
-    "OANDA:USDJPY": {
-      "total": 3,
-      "wins": 0,
-      "losses": 2,
-      "expired": 1,
-      "pipsTotal": -83,
-      "winRate": 0
-    },
-    "OANDA:EURCAD": {
-      "total": 2,
-      "wins": 0,
       "losses": 2,
       "expired": 0,
-      "pipsTotal": -368,
-      "winRate": 0
-    },
-    "OANDA:CADJPY": {
-      "total": 3,
-      "wins": 3,
-      "losses": 0,
-      "expired": 0,
-      "pipsTotal": 510,
-      "winRate": 100
-    },
-    "OANDA:EURJPY": {
-      "total": 2,
-      "wins": 0,
-      "losses": 2,
-      "expired": 0,
-      "pipsTotal": -62,
-      "winRate": 0
-    },
-    "OANDA:EURUSD": {
-      "total": 1,
-      "wins": 0,
-      "losses": 1,
-      "expired": 0,
-      "pipsTotal": -35,
-      "winRate": 0
-    },
-    "OANDA:CHFJPY": {
-      "total": 4,
-      "wins": 3,
-      "losses": 1,
-      "expired": 0,
-      "pipsTotal": -1281,
-      "winRate": 75
-    },
-    "OANDA:AUDJPY": {
-      "total": 1,
-      "wins": 1,
-      "losses": 0,
-      "expired": 0,
-      "pipsTotal": 1437,
-      "winRate": 100
-    },
-    "OANDA:AUDNZD": {
-      "total": 3,
-      "wins": 0,
-      "losses": 3,
-      "expired": 0,
-      "pipsTotal": -1209,
-      "winRate": 0
+      "pipsTotal": 434,
+      "winRate": 66.7
     },
     "OANDA:CADCHF": {
       "total": 2,
@@ -366,79 +254,175 @@
       "pipsTotal": -42,
       "winRate": 0
     },
-    "OANDA:EURCHF": {
+    "OANDA:GBPCHF": {
+      "total": 5,
+      "wins": 2,
+      "losses": 2,
+      "expired": 1,
+      "pipsTotal": -1075,
+      "winRate": 50
+    },
+    "OANDA:GBPCAD": {
+      "total": 2,
+      "wins": 1,
+      "losses": 1,
+      "expired": 0,
+      "pipsTotal": 20,
+      "winRate": 50
+    },
+    "OANDA:CHFJPY": {
+      "total": 3,
+      "wins": 2,
+      "losses": 1,
+      "expired": 0,
+      "pipsTotal": -1328,
+      "winRate": 66.7
+    },
+    "OANDA:NZDCAD": {
+      "total": 4,
+      "wins": 2,
+      "losses": 2,
+      "expired": 0,
+      "pipsTotal": -24,
+      "winRate": 50
+    },
+    "OANDA:AUDCHF": {
+      "total": 1,
+      "wins": 0,
+      "losses": 0,
+      "expired": 1,
+      "pipsTotal": 0,
+      "winRate": null
+    },
+    "OANDA:EURJPY": {
+      "total": 3,
+      "wins": 1,
+      "losses": 2,
+      "expired": 0,
+      "pipsTotal": 7,
+      "winRate": 33.3
+    },
+    "OANDA:NZDJPY": {
       "total": 4,
       "wins": 2,
       "losses": 1,
       "expired": 1,
-      "pipsTotal": -647,
+      "pipsTotal": 9,
       "winRate": 66.7
     },
-    "OANDA:NZDCAD": {
-      "total": 5,
-      "wins": 2,
-      "losses": 3,
-      "expired": 0,
-      "pipsTotal": -34,
-      "winRate": 40
-    },
-    "OANDA:GBPCHF": {
-      "total": 3,
-      "wins": 1,
-      "losses": 1,
-      "expired": 1,
-      "pipsTotal": -1059,
-      "winRate": 50
-    },
-    "OANDA:GBPCAD": {
+    "OANDA:CADJPY": {
       "total": 1,
       "wins": 1,
       "losses": 0,
       "expired": 0,
-      "pipsTotal": 52,
+      "pipsTotal": 315,
       "winRate": 100
     },
-    "OANDA:GBPNZD": {
-      "total": 2,
-      "wins": 2,
+    "OANDA:NZDUSD": {
+      "total": 3,
+      "wins": 3,
       "losses": 0,
       "expired": 0,
-      "pipsTotal": 182,
+      "pipsTotal": 580,
+      "winRate": 100
+    },
+    "OANDA:USDJPY": {
+      "total": 4,
+      "wins": 1,
+      "losses": 2,
+      "expired": 1,
+      "pipsTotal": -19,
+      "winRate": 33.3
+    },
+    "OANDA:EURCHF": {
+      "total": 2,
+      "wins": 0,
+      "losses": 1,
+      "expired": 1,
+      "pipsTotal": -736,
+      "winRate": 0
+    },
+    "OANDA:GBPNZD": {
+      "total": 4,
+      "wins": 3,
+      "losses": 1,
+      "expired": 0,
+      "pipsTotal": 136,
+      "winRate": 75
+    },
+    "OANDA:EURNZD": {
+      "total": 1,
+      "wins": 1,
+      "losses": 0,
+      "expired": 0,
+      "pipsTotal": 44,
+      "winRate": 100
+    },
+    "OANDA:GBPJPY": {
+      "total": 3,
+      "wins": 2,
+      "losses": 1,
+      "expired": 0,
+      "pipsTotal": 25,
+      "winRate": 66.7
+    },
+    "OANDA:EURCAD": {
+      "total": 2,
+      "wins": 1,
+      "losses": 1,
+      "expired": 0,
+      "pipsTotal": -197,
+      "winRate": 50
+    },
+    "OANDA:USDCHF": {
+      "total": 2,
+      "wins": 1,
+      "losses": 1,
+      "expired": 0,
+      "pipsTotal": 1,
+      "winRate": 50
+    },
+    "OANDA:AUDNZD": {
+      "total": 1,
+      "wins": 1,
+      "losses": 0,
+      "expired": 0,
+      "pipsTotal": 42,
       "winRate": 100
     }
   },
   "perfByType": {
-    "REVERSAL SHORT": {
-      "total": 32,
-      "wins": 16,
-      "losses": 7,
-      "expired": 9,
-      "pipsTotal": 2254,
-      "winRate": 69.6
-    },
-    "REVERSAL LONG": {
-      "total": 12,
-      "wins": 3,
-      "losses": 3,
-      "expired": 6,
-      "pipsTotal": -2231,
-      "winRate": 50
-    },
     "CONTINUATION LONG": {
       "total": 17,
-      "wins": 7,
-      "losses": 8,
+      "wins": 6,
+      "losses": 9,
       "expired": 2,
-      "pipsTotal": -1595,
-      "winRate": 46.7
+      "pipsTotal": -1860,
+      "winRate": 40
+    },
+    "REVERSAL LONG": {
+      "total": 11,
+      "wins": 4,
+      "losses": 2,
+      "expired": 5,
+      "pipsTotal": -1172,
+      "winRate": 66.7
+    },
+    "REVERSAL SHORT": {
+      "total": 30,
+      "wins": 16,
+      "losses": 7,
+      "expired": 7,
+      "pipsTotal": 741,
+      "winRate": 69.6
     },
     "CONTINUATION SHORT": {
-      "total": 16,
+      "total": 14,
       "wins": 7,
-      "losses": 9,
+      "losses": 7,
       "expired": 0,
-      "pipsTotal": -132,
-      "winRate": 43.8
+      "pipsTotal": -141,
+      "winRate": 50
     }
   },
   "perfByPropGrade": {
@@ -468,42 +452,26 @@
     }
   },
   "topPair": {
-    "pair": "OANDA:AUDJPY",
-    "pips": 1437
+    "pair": "OANDA:NZDUSD",
+    "pips": 580
   },
   "worstPair": {
     "pair": "OANDA:CHFJPY",
-    "pips": -1281
+    "pips": -1328
   },
   "openPositions": [
-    {
-      "symbol": "OANDA:AUDUSD",
-      "type": "REVERSAL SHORT",
-      "entry": 0.69953,
-      "currentPrice": 0.69434,
-      "sl": null,
-      "tp1": null,
-      "tp2": null,
-      "tp3": null,
-      "plPips": 52,
-      "mfePips": 52,
-      "maePips": 13,
-      "triggered": true,
-      "triggerTime": "2026-07-27T01:02:19.893Z",
-      "tp3Trailing": false
-    },
     {
       "symbol": "OANDA:NZDCHF",
       "type": "REVERSAL SHORT",
       "entry": 0.47362,
-      "currentPrice": 0.47392,
+      "currentPrice": 0.47496,
       "sl": 0.47680964,
       "tp1": 0.4687266666666667,
       "tp2": 0.45788473684210534,
       "tp3": null,
-      "plPips": -3,
-      "mfePips": 18,
-      "maePips": 6,
+      "plPips": -13,
+      "mfePips": 22,
+      "maePips": 14,
       "triggered": true,
       "triggerTime": "2026-07-27T13:35:04.032Z",
       "tp3Trailing": false
@@ -512,14 +480,14 @@
       "symbol": "OANDA:EURNZD",
       "type": "CONTINUATION SHORT",
       "entry": 1.97107,
-      "currentPrice": 1.9712,
+      "currentPrice": 1.96456,
       "sl": 1.9833290000000001,
       "tp1": 1.9537565,
       "tp2": 1.9360129999999998,
       "tp3": 1.9239512999999997,
-      "plPips": -1,
-      "mfePips": 41,
-      "maePips": 12,
+      "plPips": 65,
+      "mfePips": 65,
+      "maePips": 78,
       "triggered": true,
       "triggerTime": "2026-07-28T05:32:32.042Z",
       "tp3Trailing": false
@@ -528,13 +496,13 @@
       "symbol": "OANDA:CADJPY",
       "type": "CONTINUATION LONG",
       "entry": 115.956,
-      "currentPrice": 116.049,
+      "currentPrice": 116.042,
       "sl": 115.22845600000001,
       "tp1": 116.96731600000001,
       "tp2": 118.010632,
       "tp3": 119.66784500000001,
       "plPips": 9,
-      "mfePips": 27,
+      "mfePips": 45,
       "maePips": 2,
       "triggered": true,
       "triggerTime": "2026-07-28T05:32:45.322Z",
@@ -544,14 +512,14 @@
       "symbol": "OANDA:USDCHF",
       "type": "REVERSAL SHORT",
       "entry": 0.81944,
-      "currentPrice": 0.82006,
+      "currentPrice": 0.81336,
       "sl": null,
       "tp1": null,
       "tp2": null,
       "tp3": null,
-      "plPips": -6,
-      "mfePips": 24,
-      "maePips": 10,
+      "plPips": 61,
+      "mfePips": 61,
+      "maePips": 11,
       "triggered": true,
       "triggerTime": "2026-07-28T05:47:55.199Z",
       "tp3Trailing": false
@@ -560,14 +528,14 @@
       "symbol": "OANDA:EURCHF",
       "type": "REVERSAL SHORT",
       "entry": 0.93202,
-      "currentPrice": 0.9341,
+      "currentPrice": 0.93306,
       "sl": 0.94558336,
       "tp1": 0.9302357142857142,
       "tp2": 0.9155046666666667,
       "tp3": null,
-      "plPips": -21,
+      "plPips": -10,
       "mfePips": 10,
-      "maePips": 21,
+      "maePips": 27,
       "triggered": true,
       "triggerTime": "2026-07-28T12:20:31.333Z",
       "tp3Trailing": false
@@ -576,158 +544,46 @@
       "symbol": "OANDA:AUDJPY",
       "type": "REVERSAL SHORT",
       "entry": 114.338,
-      "currentPrice": 113.628,
+      "currentPrice": 113.68,
       "sl": 117.91800000000005,
       "tp1": 112.33425,
       "tp2": 111.242,
       "tp3": 100.2485,
-      "plPips": 71,
-      "mfePips": 82,
+      "plPips": 66,
+      "mfePips": 85,
       "maePips": 183,
       "triggered": true,
       "triggerTime": "2026-07-28T16:27:41.393Z",
       "tp3Trailing": false
     },
     {
-      "symbol": "OANDA:NZDUSD",
-      "type": "REVERSAL LONG",
-      "entry": 0.57696,
-      "currentPrice": 0.57789,
-      "sl": 0.569711545,
-      "tp1": 0.58195,
-      "tp2": 0.59758,
-      "tp3": 0.6129022750000003,
-      "plPips": 9,
-      "mfePips": 42,
-      "maePips": 0,
-      "triggered": true,
-      "triggerTime": "2026-07-28T11:45:53.793Z",
-      "tp3Trailing": false
-    },
-    {
-      "symbol": "OANDA:GBPUSD",
-      "type": "CONTINUATION SHORT",
-      "entry": 1.33002,
-      "currentPrice": 1.3292,
-      "sl": 1.33801018,
-      "tp1": 1.3180597300000003,
-      "tp2": 1.3060894600000004,
-      "tp3": null,
-      "plPips": 8,
-      "mfePips": 19,
-      "maePips": 8,
-      "triggered": true,
-      "triggerTime": "2026-07-28T13:59:26.741Z",
-      "tp3Trailing": false
-    },
-    {
-      "symbol": "OANDA:USDJPY",
-      "type": "REVERSAL SHORT",
-      "entry": 163.832,
-      "currentPrice": 163.653,
-      "sl": 164.201928,
-      "tp1": 163.24,
-      "tp2": 162.567,
-      "tp3": 161.417,
-      "plPips": 18,
-      "mfePips": 47,
-      "maePips": 5,
-      "triggered": true,
-      "triggerTime": "2026-07-28T13:59:39.940Z",
-      "tp3Trailing": false
-    },
-    {
-      "symbol": "OANDA:EURCAD",
-      "type": "REVERSAL LONG",
-      "entry": 1.6034,
-      "currentPrice": 1.60632,
-      "sl": 1.5991982,
-      "tp1": 1.61,
-      "tp2": 1.61423,
-      "tp3": 1.62548,
-      "plPips": 29,
-      "mfePips": 34,
-      "maePips": 0,
-      "triggered": true,
-      "triggerTime": "2026-07-28T13:59:53.165Z",
-      "tp3Trailing": false
-    },
-    {
-      "symbol": "OANDA:GBPNZD",
-      "type": "CONTINUATION SHORT",
-      "entry": 2.29582,
-      "currentPrice": 2.3001,
-      "sl": 2.30638782,
-      "tp1": 2.2795182700000005,
-      "tp2": 2.263396540000001,
-      "tp3": 2.2707997750000013,
-      "plPips": -43,
-      "mfePips": 0,
-      "maePips": 52,
-      "triggered": true,
-      "triggerTime": "2026-07-28T18:42:46.733Z",
-      "tp3Trailing": false
-    },
-    {
-      "symbol": "OANDA:EURJPY",
-      "type": "REVERSAL SHORT",
-      "entry": 186.573,
-      "currentPrice": 186.442,
-      "sl": 187.133284,
-      "tp1": 185.98,
-      "tp2": 185.175,
-      "tp3": 183.909,
-      "plPips": 13,
-      "mfePips": 32,
-      "maePips": 6,
-      "triggered": true,
-      "triggerTime": "2026-07-28T18:43:26.538Z",
-      "tp3Trailing": false
-    },
-    {
       "symbol": "OANDA:CHFJPY",
       "type": "REVERSAL LONG",
       "entry": 200.05,
-      "currentPrice": 199.592,
+      "currentPrice": 200.26,
       "sl": null,
       "tp1": null,
       "tp2": null,
       "tp3": null,
-      "plPips": -46,
-      "mfePips": 5,
+      "plPips": 21,
+      "mfePips": 85,
       "maePips": 48,
       "triggered": true,
       "triggerTime": "2026-07-28T18:43:53.323Z",
       "tp3Trailing": false
     },
     {
-      "symbol": "OANDA:GBPCHF",
-      "type": "REVERSAL SHORT",
-      "entry": 1.08837,
-      "currentPrice": 1.0899,
-      "sl": 1.0905439300000002,
-      "tp1": 1.08,
-      "tp2": 1.06971,
-      "tp3": 1.05152,
-      "plPips": -15,
-      "mfePips": 16,
-      "maePips": 18,
-      "triggered": true,
-      "triggerTime": "2026-07-28T18:44:06.564Z",
-      "tp3Trailing": false
-    },
-    {
       "symbol": "OANDA:NZDCAD",
       "type": "REVERSAL SHORT",
       "entry": 0.81659,
-      "currentPrice": 0.81483,
+      "currentPrice": 0.81994,
       "sl": 0.82040821,
       "tp1": 0.81225,
       "tp2": 0.81,
       "tp3": 0.80065,
-      "plPips": 18,
-      "mfePips": 20,
-      "maePips": 1,
+      "plPips": -33,
+      "mfePips": 43,
+      "maePips": 33,
       "triggered": true,
       "triggerTime": "2026-07-28T19:18:57.478Z",
       "tp3Trailing": false
@@ -736,101 +592,213 @@
       "symbol": "OANDA:NZDJPY",
       "type": "CONTINUATION LONG",
       "entry": 94.811,
-      "currentPrice": 94.566,
+      "currentPrice": 95.116,
       "sl": 94.423585,
       "tp1": 95.43962249999998,
       "tp2": 96.04924499999998,
       "tp3": null,
-      "plPips": -25,
-      "mfePips": 2,
-      "maePips": 25,
+      "plPips": 30,
+      "mfePips": 45,
+      "maePips": 34,
       "triggered": true,
       "triggerTime": "2026-07-28T20:53:37.963Z",
-      "tp3Trailing": false
-    },
-    {
-      "symbol": "OANDA:GBPAUD",
-      "type": "REVERSAL SHORT",
-      "entry": 1.9128,
-      "currentPrice": 1.91464,
-      "sl": 1.9209558199999999,
-      "tp1": 1.90677,
-      "tp2": 1.88296,
-      "tp3": 1.8650609000000007,
-      "plPips": -18,
-      "mfePips": 10,
-      "maePips": 36,
-      "triggered": true,
-      "triggerTime": "2026-07-29T02:04:38.707Z",
       "tp3Trailing": false
     },
     {
       "symbol": "OANDA:EURAUD",
       "type": "CONTINUATION SHORT",
       "entry": 1.64166,
-      "currentPrice": 1.6408,
+      "currentPrice": 1.64426,
       "sl": 1.65062468,
       "tp1": 1.6260129799999998,
       "tp2": 1.6112459599999998,
       "tp3": 1.5890187000000002,
-      "plPips": 9,
+      "plPips": -26,
       "mfePips": 36,
-      "maePips": 0,
+      "maePips": 80,
       "triggered": true,
       "triggerTime": "2026-07-29T04:17:11.877Z",
-      "tp3Trailing": false
-    },
-    {
-      "symbol": "OANDA:EURJPY",
-      "type": "CONTINUATION LONG",
-      "entry": 186.356,
-      "currentPrice": 186.423,
-      "sl": 185.77,
-      "tp1": 187.15999999999997,
-      "tp2": 187.99399999999994,
-      "tp3": 189.1059999999999,
-      "plPips": 7,
-      "mfePips": 14,
-      "maePips": 1,
-      "triggered": true,
-      "triggerTime": "2026-07-29T05:59:34.456Z",
       "tp3Trailing": false
     },
     {
       "symbol": "OANDA:AUDCAD",
       "type": "REVERSAL LONG",
       "entry": 0.98008,
-      "currentPrice": 0.97892,
+      "currentPrice": 0.97956,
       "sl": null,
       "tp1": null,
       "tp2": null,
       "tp3": null,
-      "plPips": -12,
-      "mfePips": 2,
-      "maePips": 15,
+      "plPips": -5,
+      "mfePips": 3,
+      "maePips": 42,
       "triggered": true,
       "triggerTime": "2026-07-29T05:59:59.236Z",
       "tp3Trailing": false
     },
     {
+      "symbol": "OANDA:GBPUSD",
+      "type": "REVERSAL SHORT",
+      "entry": 1.33649,
+      "currentPrice": 1.3377,
+      "sl": 1.34066842,
+      "tp1": 1.33388,
+      "tp2": 1.33,
+      "tp3": 1.31611,
+      "plPips": -12,
+      "mfePips": 25,
+      "maePips": 14,
+      "triggered": true,
+      "triggerTime": "2026-07-29T20:46:42.561Z",
+      "tp3Trailing": false
+    },
+    {
+      "symbol": "OANDA:CHFJPY",
+      "type": "CONTINUATION LONG",
+      "entry": 200.638,
+      "currentPrice": 200.17,
+      "sl": 199.41667999999999,
+      "tp1": 202.47498,
+      "tp2": 204.30996,
+      "tp3": null,
+      "plPips": -47,
+      "mfePips": 27,
+      "maePips": 47,
+      "triggered": true,
+      "triggerTime": "2026-07-29T20:11:37.898Z",
+      "tp3Trailing": false
+    },
+    {
+      "symbol": "OANDA:EURJPY",
+      "type": "REVERSAL SHORT",
+      "entry": 187.242,
+      "currentPrice": 186.748,
+      "sl": 187.5136245,
+      "tp1": 186.69,
+      "tp2": 185.417,
+      "tp3": 183.934,
+      "plPips": 49,
+      "mfePips": 49,
+      "maePips": 21,
+      "triggered": true,
+      "triggerTime": "2026-07-29T20:11:50.338Z",
+      "tp3Trailing": false
+    },
+    {
+      "symbol": "OANDA:EURAUD",
+      "type": "REVERSAL SHORT",
+      "entry": 1.64784,
+      "currentPrice": 1.64434,
+      "sl": 1.6508225399999998,
+      "tp1": 1.64,
+      "tp2": 1.62721,
+      "tp3": 1.6163673000000014,
+      "plPips": 35,
+      "mfePips": 38,
+      "maePips": 18,
+      "triggered": true,
+      "triggerTime": "2026-07-29T20:12:02.655Z",
+      "tp3Trailing": false
+    },
+    {
+      "symbol": "OANDA:GBPCHF",
+      "type": "REVERSAL LONG",
+      "entry": 1.08719,
+      "currentPrice": 1.08816,
+      "sl": 1.07945613,
+      "tp1": 1.092,
+      "tp2": 1.1125916099999995,
+      "tp3": 1.1291593499999992,
+      "plPips": 10,
+      "mfePips": 32,
+      "maePips": 0,
+      "triggered": true,
+      "triggerTime": "2026-07-29T20:47:31.696Z",
+      "tp3Trailing": false
+    },
+    {
       "symbol": "OANDA:GBPCAD",
       "type": "CONTINUATION LONG",
-      "entry": 1.87504,
-      "currentPrice": 1.87445,
-      "sl": 1.87217275,
-      "tp1": 1.877990875,
-      "tp2": 1.88148175,
-      "tp3": 1.906428224999999,
-      "plPips": -6,
-      "mfePips": 0,
-      "maePips": 6,
+      "entry": 1.8768,
+      "currentPrice": 1.8786,
+      "sl": 1.8703417100000002,
+      "tp1": 1.8859374349999996,
+      "tp2": 1.8952948699999992,
+      "tp3": 1.9193936249999994,
+      "plPips": 18,
+      "mfePips": 27,
+      "maePips": 24,
       "triggered": true,
-      "triggerTime": "2026-07-29T10:00:44.558Z",
+      "triggerTime": "2026-07-29T22:00:12.005Z",
+      "tp3Trailing": false
+    },
+    {
+      "symbol": "OANDA:USDCAD",
+      "type": "CONTINUATION LONG",
+      "entry": 1.40457,
+      "currentPrice": 1.40433,
+      "sl": 1.40163781,
+      "tp1": 1.408493285,
+      "tp2": 1.41260657,
+      "tp3": 1.4311715249999994,
+      "plPips": -2,
+      "mfePips": 21,
+      "maePips": 10,
+      "triggered": true,
+      "triggerTime": "2026-07-29T22:00:24.416Z",
+      "tp3Trailing": false
+    },
+    {
+      "symbol": "OANDA:EURUSD",
+      "type": "CONTINUATION LONG",
+      "entry": 1.14654,
+      "currentPrice": 1.14729,
+      "sl": 1.136886795,
+      "tp1": 1.1606948075,
+      "tp2": 1.174979615,
+      "tp3": 1.181205975000001,
+      "plPips": 8,
+      "mfePips": 8,
+      "maePips": 28,
+      "triggered": true,
+      "triggerTime": "2026-07-29T22:00:36.755Z",
+      "tp3Trailing": false
+    },
+    {
+      "symbol": "OANDA:GBPCHF",
+      "type": "REVERSAL SHORT",
+      "entry": 1.08858,
+      "currentPrice": 1.08807,
+      "sl": 1.090544235,
+      "tp1": 1.0844,
+      "tp2": 1.08,
+      "tp3": 1.0780988249999999,
+      "plPips": 5,
+      "mfePips": 5,
+      "maePips": 17,
+      "triggered": true,
+      "triggerTime": "2026-07-30T05:27:09.648Z",
+      "tp3Trailing": false
+    },
+    {
+      "symbol": "OANDA:EURGBP",
+      "type": "CONTINUATION LONG",
+      "entry": 0.8569,
+      "currentPrice": 0.8573,
+      "sl": 0.85467,
+      "tp1": 0.86,
+      "tp2": 0.86781,
+      "tp3": 0.8685299999999996,
+      "plPips": 4,
+      "mfePips": 4,
+      "maePips": 0,
+      "triggered": true,
+      "triggerTime": "2026-07-30T09:49:30.820Z",
       "tp3Trailing": false
     }
   ],
   "propGradeOpen": 0,
-  "pendingTotal": 25,
+  "pendingTotal": 29,
   "propGradePending": 0,
   "tp3TrailingCount": 0
 }
