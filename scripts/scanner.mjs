@@ -3762,6 +3762,18 @@ async function main() {
       continue;
     }
 
+    // Daily self-restart window — exit cleanly between 5:00 and 5:15 AM local
+    // time. The 6:00 AM deliver_review will spawn a fresh instance via
+    // resumeScanner (Windows kill+respawn / Unix SIGCONT). Wipes any
+    // accumulated hangs, memory bloat, or TV Desktop stuck state without
+    // needing external Task Scheduler orchestration. The 15-minute window
+    // means even a slow scan completing at 5:14 AM still catches the exit.
+    const nowLocal = new Date();
+    if (!once && nowLocal.getHours() === 5 && nowLocal.getMinutes() < 15) {
+      console.log(`\n[${now()}] 🔄 Daily restart window (5:00-5:15 AM local) — exiting cleanly. Fresh scanner will spawn from 6:00 AM deliver_review's resumeScanner.\n`);
+      process.exit(0);
+    }
+
     // Review pending setups first
     const log = loadAuditLog();
     if (log.setups.filter(s => s.status === 'pending').length > 0) {
