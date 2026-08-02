@@ -1,33 +1,33 @@
 {
-  "generatedAt": "2026-07-31T11:08:54.385Z",
+  "generatedAt": "2026-08-02T19:08:40.609Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-07-31T06:29:35.516Z",
-  "count": 4,
+  "sourceCacheAt": "2026-08-02T19:08:40.434Z",
+  "count": 8,
   "events": [
     {
-      "date": "2026-07-31T08:30:00-04:00",
-      "currency": "CAD",
-      "impact": "High",
-      "title": "GDP m/m",
-      "forecast": "0.2%",
-      "previous": "0.5%",
+      "date": "2026-08-03T02:30:00-04:00",
+      "currency": "CHF",
+      "impact": "Medium",
+      "title": "CPI m/m",
+      "forecast": "-0.1%",
+      "previous": "0.0%",
       "affectedPairs": [
-        "USDCAD",
-        "GBPCAD",
-        "EURCAD",
-        "AUDCAD",
-        "NZDCAD",
+        "USDCHF",
+        "GBPCHF",
+        "EURCHF",
+        "AUDCHF",
+        "NZDCHF",
         "CADCHF",
-        "CADJPY"
+        "CHFJPY"
       ]
     },
     {
-      "date": "2026-07-31T08:30:00-04:00",
+      "date": "2026-08-03T10:00:00-04:00",
       "currency": "USD",
-      "impact": "Medium",
-      "title": "Employment Cost Index q/q",
-      "forecast": "0.8%",
-      "previous": "0.9%",
+      "impact": "High",
+      "title": "ISM Manufacturing PMI",
+      "forecast": "54.0",
+      "previous": "53.3",
       "affectedPairs": [
         "GBPUSD",
         "EURUSD",
@@ -39,12 +39,12 @@
       ]
     },
     {
-      "date": "2026-07-31T10:00:00-04:00",
+      "date": "2026-08-03T10:00:00-04:00",
       "currency": "USD",
       "impact": "Medium",
-      "title": "Revised UoM Consumer Sentiment",
-      "forecast": "53.9",
-      "previous": "54.4",
+      "title": "ISM Manufacturing Prices",
+      "forecast": "70.0",
+      "previous": "73.0",
       "affectedPairs": [
         "GBPUSD",
         "EURUSD",
@@ -56,12 +56,80 @@
       ]
     },
     {
-      "date": "2026-07-31T10:00:00-04:00",
+      "date": "2026-08-04T10:00:00-04:00",
       "currency": "USD",
       "impact": "Medium",
-      "title": "Revised UoM Inflation Expectations",
-      "forecast": "—",
-      "previous": "4.2%",
+      "title": "JOLTS Job Openings",
+      "forecast": "7.42M",
+      "previous": "7.59M",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-04T18:45:00-04:00",
+      "currency": "NZD",
+      "impact": "High",
+      "title": "Employment Change q/q",
+      "forecast": "0.1%",
+      "previous": "0.2%",
+      "affectedPairs": [
+        "NZDUSD",
+        "NZDJPY",
+        "NZDCAD",
+        "NZDCHF",
+        "AUDNZD",
+        "EURNZD",
+        "GBPNZD"
+      ]
+    },
+    {
+      "date": "2026-08-04T18:45:00-04:00",
+      "currency": "NZD",
+      "impact": "High",
+      "title": "Unemployment Rate",
+      "forecast": "5.4%",
+      "previous": "5.3%",
+      "affectedPairs": [
+        "NZDUSD",
+        "NZDJPY",
+        "NZDCAD",
+        "NZDCHF",
+        "AUDNZD",
+        "EURNZD",
+        "GBPNZD"
+      ]
+    },
+    {
+      "date": "2026-08-05T08:15:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "ADP Non-Farm Employment Change",
+      "forecast": "71K",
+      "previous": "98K",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-05T10:00:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "ISM Services PMI",
+      "forecast": "54.5",
+      "previous": "54.0",
       "affectedPairs": [
         "GBPUSD",
         "EURUSD",
