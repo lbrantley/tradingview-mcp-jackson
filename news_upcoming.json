@@ -1,49 +1,15 @@
 {
-  "generatedAt": "2026-08-03T11:08:19.432Z",
+  "generatedAt": "2026-08-04T11:07:42.065Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-03T07:11:04.109Z",
-  "count": 7,
+  "sourceCacheAt": "2026-08-04T10:19:06.175Z",
+  "count": 6,
   "events": [
-    {
-      "date": "2026-08-03T10:00:00-04:00",
-      "currency": "USD",
-      "impact": "High",
-      "title": "ISM Manufacturing PMI",
-      "forecast": "54.0",
-      "previous": "53.3",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-08-03T10:00:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "ISM Manufacturing Prices",
-      "forecast": "70.0",
-      "previous": "73.0",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
     {
       "date": "2026-08-04T10:00:00-04:00",
       "currency": "USD",
       "impact": "Medium",
       "title": "JOLTS Job Openings",
-      "forecast": "7.42M",
+      "forecast": "7.44M",
       "previous": "7.59M",
       "affectedPairs": [
         "GBPUSD",
@@ -94,7 +60,7 @@
       "currency": "USD",
       "impact": "Medium",
       "title": "ADP Non-Farm Employment Change",
-      "forecast": "71K",
+      "forecast": "68K",
       "previous": "98K",
       "affectedPairs": [
         "GBPUSD",
@@ -113,6 +79,23 @@
       "title": "ISM Services PMI",
       "forecast": "54.5",
       "previous": "54.0",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-06T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "Unemployment Claims",
+      "forecast": "203K",
+      "previous": "197K",
       "affectedPairs": [
         "GBPUSD",
         "EURUSD",
