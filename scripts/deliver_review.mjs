@@ -133,6 +133,35 @@ async function sendPushover({ title, message, url, url_title }) {
 async function main() {
   log(`Delivering ${KIND} review for ${TODAY}`);
 
+  // Step 0: pull latest from GitHub BEFORE running the review, so any dev
+  // updates to tracked files (especially market_context.json — the
+  // MACRO CONTEXT source) actually take effect in today's brief.
+  // Before this pull, macro updates I pushed from Mac between reviews
+  // never propagated to the VM until user manually pulled. The stash-then-
+  // pop protects any unstaged runtime files (scanner_audit.json changes,
+  // etc.) that the running scanner might have touched between 5:00 AM
+  // self-exit and 6:00 AM review start.
+  log('Pulling latest from GitHub for fresh macro context...');
+  const preStatus = run(`git status --porcelain`);
+  const preHasUnstaged = !!(preStatus && preStatus.trim());
+  let prePullStashed = false;
+  if (preHasUnstaged) {
+    log(`  stashing unstaged files before pull:\n${preStatus.trim()}`);
+    const stashR = runVerbose(`git stash push --include-untracked --quiet -m "deliver_review pre-pull stash ${new Date().toISOString()}"`);
+    prePullStashed = stashR.ok;
+  }
+  const prePullR = runVerbose('git pull --rebase origin main');
+  if (!prePullR.ok) {
+    log(`  ⚠  pre-pull failed (exit ${prePullR.exitCode}): ${prePullR.stderr.trim().split('\n').slice(-2).join(' | ')}`);
+    log(`  Continuing with existing local state — macro context may be stale.`);
+  } else {
+    log(`  ✅ pulled — market_context.json + any other dev updates are current`);
+  }
+  if (prePullStashed) {
+    const popR = runVerbose(`git stash pop --quiet`);
+    if (!popR.ok) log(`  ⚠  pre-pull stash pop failed: ${popR.stderr.trim().split('\n')[0]}`);
+  }
+
   // Step 1: prune stale overrides
   log('Pruning news_overrides.json...');
   const pruneOut = run('node scripts/prune_news_overrides.mjs');
