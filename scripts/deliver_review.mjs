@@ -162,6 +162,18 @@ async function main() {
     if (!popR.ok) log(`  ⚠  pre-pull stash pop failed: ${popR.stderr.trim().split('\n')[0]}`);
   }
 
+  // Step 0b: auto-refresh market_context.json via Claude + web_search so
+  // the MACRO CONTEXT block in today's brief reflects the highest-impact
+  // themes RIGHT NOW, not a snapshot from whenever the dev last touched
+  // the file. Non-fatal — logs on any failure and keeps existing content.
+  log('Auto-refreshing macro context (Claude + web_search)...');
+  const macroOut = run('node scripts/refresh_macro_context.mjs', { timeout: 4 * 60 * 1000 });
+  if (macroOut) {
+    for (const line of macroOut.split('\n')) {
+      if (line.trim()) log(`  ${line}`);
+    }
+  }
+
   // Step 1: prune stale overrides
   log('Pruning news_overrides.json...');
   const pruneOut = run('node scripts/prune_news_overrides.mjs');
@@ -271,7 +283,7 @@ async function main() {
     // have unstaged changes"). These are tracked files that legitimately
     // move as part of every review pass — bundling them into the review
     // commit is the correct behavior anyway.
-    for (const f of ['brief_data.json', 'observations.jsonl']) {
+    for (const f of ['brief_data.json', 'observations.jsonl', 'market_context.json']) {
       if (existsSync(join(REPO, f))) run(`git add ${f}`);
     }
     const status = run(`git diff --cached --name-only`);
