@@ -1,58 +1,85 @@
 {
   "_meta": {
-    "lastUpdated": "2026-08-03",
+    "lastUpdated": "2026-08-05",
     "description": "Live macro themes affecting currencies but not on the scheduled news calendar. Update as regime-changing events happen. Scanner reads this at brief generation time and displays it in the daily/weekly review.",
     "howToUse": "Each theme should include: (1) short title, (2) start date, (3) currency implications with brief reasoning, (4) a specific watchLevel that would invalidate the theme, (5) affectedPairs for scanner correlation. Retire themes by moving to _retired[] with an endDate.",
-    "maintenance": "Manual updates + Claude WebSearch each session. 2026-08-03 refresh: Japan MoF/BoJ conducted ~$34B USDJPY intervention Thursday-Friday (US-coordinated per Bloomberg); suspected second intervention today drove JPY +1.18% to 155.20. Yen was at 40-year low pre-intervention. This replaces the Iran-pause theme as the primary JPY driver — haven-fading story from Jul 27 is now stale, JPY strength is now intervention-driven not organic. Warsh Fed + USMCA themes still current."
+    "maintenance": "Manual updates + Claude WebSearch each session. 2026-08-05 refresh: Japan-US joint intervention confirmed officially by both Treasuries — Bessent said 'we will not hesitate to participate in further joint intervention'; USDJPY trading near 157 as of Aug 5 after hitting 40-year low near 164 pre-intervention. BOJ held at 1% in July but hawkish Ueda signaling a Sept hike, adding fundamental support to intervention. USMCA theme materially upgraded: Section 122 expired Jul 24 and was replaced by Section 301 (10-12.5%); Trump invoked Section 338 on Jul 20 imposing 50% on ~$20B of Canadian goods (autos, dairy, alcohol) effective Aug 19 — USMCA compliance no longer guarantees exemption on those baskets. This is a live binary CAD event with Aug 19 hard deadline. Warsh-Fed theme still structurally intact; July FOMC held with three dissents, 30-yr yield hit 5.21%."
   },
   "themes": [
     {
       "id": "japan-fx-intervention-regime-2026-08",
-      "title": "Japan FX intervention regime — ~$34B spent Thu/Fri + suspected re-entry Aug 3, US-coordinated",
+      "title": "Japan-US joint FX intervention regime — ~$72B+ spent, both Treasuries vow further action, USDJPY ~157",
       "started": "2026-07-30",
-      "summary": "Japan MoF spent ~$34B (¥5.33T) intervening in USDJPY on Thursday, first intervention in ~3 months. Suspected second intervention today (Aug 3) drove JPY +1.18% to 155.20 — strongest since early May. Bloomberg reports US Treasury coordination with Japan — this is the critical piece. Coordinated interventions historically STICK because two central banks defending a level scares off short-term shorts. Backdrop: yen had hit 40-year low earlier July under pressure from Iran-war energy costs + fiscal concerns + wide rate differentials. BOJ held policy rate at 1% (highest since 1995) at last meeting — but rate policy is secondary to intervention story right now. Net regime: JPY strength is manufactured, not organic. Doesn't matter for medium-term direction — intervention typically buys 2-5 trading days of directional force before mean-reversion pressures build.",
+      "summary": "The most significant coordinated G2 FX intervention in over a decade is now confirmed and officially bilateral. Japan MoF had already deployed a record ¥11.73T (~$72.8B) in solo intervention across Apr-May 2026 that ultimately failed, with USDJPY hitting a 40-year low near 164. On Jul 30 Japan struck again in NY trading hours, driving USDJPY down ~3% in a single session. The US Treasury then confirmed direct participation on Jul 31 — the Fed NY sold euros for yen via Goldman Sachs and Morgan Stanley. Bessent publicly stated 'we will not hesitate to participate in further joint intervention' and endorsed the yen as 'substantially undervalued.' Trump called it 'a signal of friendship' with Japan. As of Aug 5 USDJPY is holding near 157, -4.5% from its pre-intervention high. Key amplifier: BOJ left rates at 1% in July but Governor Ueda struck a 'noticeably more hawkish' tone, with markets pricing a 25bp hike before year-end — this gives fundamental support to the intervention for the first time. ING flags 157 as the re-intervention tripwire. BofA identifies 155 as the psychological flip level where corporate hedgers activate dollar-selling loops. NFP on Aug 7 (consensus: 91K, 4.3% unemployment) is the next binary: a weak print turbocharges intervention; a strong print reignites carry trade mechanics and tests MoF resolve.",
       "implications": {
-        "JPY": "STRONG tailwind — coordinated US-Japan intervention is defending yen. All JPY-cross SHORTS get an active tailwind; JPY-cross LONGS are fighting central-bank action (very risky). This overrides the Warsh-Fed carry-gap headwind theme in the short term.",
-        "USD": "USDJPY specifically is under intervention pressure DOWN. Other USD pairs unaffected by JPY intervention directly, but USD/JPY move flows into broader dollar sentiment (soft DXY).",
-        "CAD": "no direct effect from intervention; USMCA + oil pause still dominate CAD.",
-        "AUD": "indirect: JPY-cross shorts (AUDJPY down) hurt AUD longs; AUD/USD relatively unaffected.",
-        "NZD": "same as AUD.",
-        "EUR": "EUR/JPY down; watch for spillover into EUR/USD if intervention creates broader risk-off tone.",
-        "GBP": "GBP/JPY down; similar spillover risk to EUR.",
-        "CHF": "CHF/JPY under pressure; independent CHF weakness (SNB / unwind of Iran-haven bid) compounds"
+        "JPY": "STRONG tailwind — dual-authority intervention with explicit re-entry warning is the most credible yen defence in decades. All JPY-cross SHORTS face active central-bank headwind. BOJ rate-hike expectations provide fundamental multiplier absent in prior intervention episodes.",
+        "USD": "USDJPY specifically under sustained intervention pressure. Broad DXY also soft given coordinated nature signals US policy preference for weaker dollar vs yen. Other USD pairs less directly impacted but sentiment headwind is real.",
+        "EUR": "EUR/JPY sold off sharply; note the Fed NY sold euros for yen as the intervention mechanism — EUR bears a mechanical, not just sentiment, role in this episode. EUR/USD testing resistance under unusual distortion.",
+        "GBP": "GBP/JPY under pressure; indirect spillover into GBP/USD from broader USD softness.",
+        "CHF": "CHF/JPY under pressure.",
+        "CAD": "CADJPY down; CAD dynamics primarily driven by Section 338 tariff theme.",
+        "AUD": "AUDJPY down; AUD/USD relatively less affected but risk-off tone from intervention volatility is a modest headwind.",
+        "NZD": "Same as AUD."
       },
-      "watchLevel": "USD/JPY sustained BELOW 150 = intervention doing serious damage, extend JPY-strong bias. USD/JPY BACK ABOVE 158 = intervention effect exhausted, market pushing back hard, exit JPY longs / prepare for reversal. Any Kanda/MoF official statement disclaiming further intervention = theme ends immediately.",
-      "affectedPairs": ["USDJPY", "EURJPY", "GBPJPY", "AUDJPY", "NZDJPY", "CADJPY", "CHFJPY"]
+      "watchLevel": "USDJPY above 157 = ING re-intervention tripwire, expect fresh MoF/Treasury action. USDJPY below 155 = BofA flip level, corporate hedger loops activate, intervention 'winning.' USDJPY back above 160 = market overpowering coordinated defence, theme credibility breaks. Any official MoF/Treasury statement disclaiming further action = theme ends. NFP Aug 7 is the nearest binary catalyst.",
+      "affectedPairs": [
+        "USDJPY",
+        "EURJPY",
+        "GBPJPY",
+        "AUDJPY",
+        "NZDJPY",
+        "CADJPY",
+        "CHFJPY"
+      ]
     },
     {
       "id": "fed-warsh-hawkish-2026-07",
-      "title": "Warsh Fed hawkish — 5th consecutive hold expected, 9/18 forecast a 2026 hike",
+      "title": "Warsh Fed hawkish — 5th consecutive hold, three dissents, 30-yr yield at 19-year high 5.21%",
       "started": "2026-07-28",
-      "summary": "Kevin Warsh (Fed Chair since May) sticking with hawkish framing at July FOMC. Rates held 3.5-3.75% for fifth straight meeting. June CPI declined -0.4% m/m taking annual to 3.5% (from 4.2% May) — cooling but Warsh has explicitly said FOMC has 'no tolerance for persistently elevated inflation.' Median year-end 2026 rate forecast raised to 3.8% (from 3.4%); 9 of 18 members now expect at least one hike this year. Traditional forward guidance eliminated — pure data-dependent. Net: USD carry stays firm, hike risk is one-sided (higher, not lower). NOTE: for USDJPY specifically, this theme is currently OVERRIDDEN by active Japan FX intervention pushing the pair down against carry differential.",
+      "summary": "July 29 FOMC delivered another hold at 3.5-3.75% — the fifth straight — but with three dissents (hawkish) and a long-end bond market that is clearly not buying the pause narrative. The 30-yr Treasury yield surged 12bps to 5.21% during the post-meeting press conference, its highest in 19 years; the 10-yr rose 7bps to 4.67%. Warsh reiterated commitment to reining inflation and said he views it positively when bond markets react to data rather than Fed signalling. He confirmed elimination of forward guidance is permanent. Median 2026 dot remains at 3.8% (raised from 3.4% at June meeting), with 9 of 18 members projecting at least one hike. Markets have fully priced out any 2026 cuts and now assign meaningful probability to a Dec hike. USD carry trade is structurally intact versus every G10 central bank currently cutting or on hold with easing bias (ECB, BoE, RBA, RBNZ, SNB). The only offsetting force is the Japan intervention theme pushing USDJPY lower against the rate differential.",
       "implications": {
-        "USD": "STRUCTURAL tailwind — hawkish Warsh + hike-tilted dots = USD carry defended (except vs JPY, see intervention theme)",
-        "JPY": "STRUCTURAL headwind BUT currently overridden by intervention — do not trade USDJPY on this thesis alone right now",
-        "EUR": "headwind — ECB cutting while Fed holds hawkish widens rate diff against EUR",
-        "GBP": "headwind — BoE also cutting; USD carry differential works vs GBP too",
-        "CAD": "mixed — USD strength offsets oil support; USDCAD structurally biased up unless oil rerates",
-        "AUD": "headwind — RBA on hold with easing bias; carry disadvantaged vs USD",
-        "NZD": "headwind — RBNZ same story"
+        "USD": "STRUCTURAL tailwind — hawkish Warsh + hike-tilted dots + 5.21% 30-yr yield = USD carry strongly defended. Exception: USDJPY overridden by active intervention theme.",
+        "JPY": "STRUCTURAL headwind from rate differential BUT currently overridden by intervention — do not trade USDJPY on this thesis alone.",
+        "EUR": "headwind — ECB cutting while Fed holds hawkish widens rate differential vs EUR. EUR/USD testing major resistance.",
+        "GBP": "headwind — BoE cutting; USD carry differential works against GBP.",
+        "CAD": "mixed — USD structural bid offsets any oil/commodity support; USDCAD structurally biased up, compounded by Section 338 tariff pressure.",
+        "AUD": "headwind — RBA on hold with easing bias; carry disadvantaged vs USD.",
+        "NZD": "headwind — RBNZ same story.",
+        "CHF": "headwind — SNB in easing mode; USDCHF supported."
       },
-      "watchLevel": "Any hint of Warsh softening in speeches = pivot back in play, unwinds this theme. Sub-3.0% Y/Y CPI print = dovish tolerance returns. DXY closing below 100 = market rejecting hawkish read.",
-      "affectedPairs": ["USDCAD", "USDCHF", "EURUSD", "GBPUSD", "AUDUSD", "NZDUSD"]
+      "watchLevel": "Any Warsh softening in speeches or hint of cuts re-entering the dot plot = pivot back in play, unwinds theme. Sub-3.0% Y/Y CPI print = dovish tolerance returns. DXY closing below 100 = market rejecting hawkish read. 30-yr yield sustained above 5.5% = fiscal concerns overtaking carry narrative, complicates USD outlook.",
+      "affectedPairs": [
+        "USDCAD",
+        "USDCHF",
+        "EURUSD",
+        "GBPUSD",
+        "AUDUSD",
+        "NZDUSD"
+      ]
     },
     {
-      "id": "usmca-mexico-tariff-deadline-2026-07",
-      "title": "USMCA review live + Section 122 Mexico surcharge — binary CAD event",
-      "started": "2026-07-28",
-      "summary": "Two live threads. (1) USMCA joint review opened Jul 1 — Trump said 'not renewing in current form.' First US-Mexico bilateral round done May, tackled auto rules of origin + steel/alu + economic security. (2) Section 122 10% Mexico surcharge (imposed after SCOTUS struck down IEEPA tariffs Feb 20) expiry window Jul 24 — extension/replacement decision still pending as of Aug 3. Extension mechanism, replacement action, or lapse each move CAD/MXN differently. Result: CAD trades in a headline-driven regime with binary risk that could hit within days.",
+      "id": "canada-section338-tariff-2026-08",
+      "title": "Section 338 Canada tariffs effective Aug 19 — 50% on autos/dairy/alcohol, USMCA compliance no longer a shield",
+      "started": "2026-07-20",
+      "summary": "The USMCA/Section 122 binary has resolved and materially escalated for CAD. Section 122 expired July 24 by statutory operation and was replaced by Section 301 (10-12.5% on non-USMCA goods). But the genuinely new and market-moving event is Trump's Jul 20 invocation of Section 338 of the Tariff Act of 1930 — the statute's first use since the 1940s. Three presidential proclamations impose 50% duties on approximately $20B of Canadian goods (autos, dairy, alcohol, electrical machinery, cement) effective August 19, 2026 at 12:01am ET. Critically: USMCA certification provides zero protection on these specific product baskets. Canada has not yet announced retaliation publicly but the precedent from IEEPA/Section 122 cycles suggests symmetric response. USDCAD has already moved on this — the pair rebounded from 1.4002 to test 1.4115+ after the proclamations. The Aug 19 effective date is a hard binary: if Canada capitulates or a deal is struck pre-Aug 19 = sharp CAD relief rally. If tariffs land in full = USDCAD gaps higher, CAD crosses reprice. USMCA review sessions are ongoing but the Section 338 action operates outside the USMCA framework entirely, making the review timeline irrelevant to the Aug 19 risk. Also watch: Trump separately invoked Section 338 on Canadian dairy/auto surtax practices, meaning Canada's retaliation on US-made autos (an existing measure) is the formal legal predicate for the 50% duty.",
       "implications": {
-        "CAD": "elevated vol BOTH directions — surcharge status + USMCA framing decisions land in a compressed window. Wider SLs, smaller sizes on CAD-crosses.",
-        "USD": "moderate vol — indirect via trade-policy narrative; less directly hit than CAD/MXN",
-        "MXN": "highest exposure (not in book) — but MXN moves telegraph CAD next-day"
+        "CAD": "STRONG headwind — 50% tariffs on $20B of exports effective Aug 19 with USMCA providing no exemption. Elevated vol both directions into Aug 19 deadline. Wider SLs, smaller sizes on all CAD crosses. USDCAD technically constructive above 1.4002 support.",
+        "USD": "moderate tailwind via trade-policy narrative and CAD weakness; USDCAD structurally supported.",
+        "MXN": "elevated secondary exposure — Mexico is separately facing Section 301 successor regime but not the Section 338 escalation. USDMXN moves can telegraph CAD next-session.",
+        "EUR": "indirect — EU separately under 15% tariff ceiling from Jul 1; EU-Canada trade linkage adds modest contagion risk to EUR crosses.",
+        "AUD": "indirect risk-off if CAD volatility spills into broader commodity bloc; AUDCAD dynamics may shift.",
+        "NZD": "same as AUD."
       },
-      "watchLevel": "Section 122 formal extension proclamation OR clean lapse resolves half the theme. USMCA renewal terms announcement resolves the other half. Watch for USDMXN / USDCAD gaps on any Trump trade-policy speech.",
-      "affectedPairs": ["USDCAD", "GBPCAD", "AUDCAD", "CADJPY", "CADCHF", "EURCAD", "NZDCAD"]
+      "watchLevel": "Aug 19 effective date is the primary binary. Pre-Aug 19 Canada capitulation or bilateral deal = sharp CAD relief, retire theme. Tariffs land as scheduled = USDCAD gap higher, extend CAD-bearish bias post-Aug 19. Any Section 338 legal challenge (injunction filed) that pauses collection = uncertainty spike, re-evaluate. Canada retaliatory proclamation = CAD vol surge, pairs move 100+ pips.",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "AUDCAD",
+        "CADJPY",
+        "CADCHF",
+        "EURCAD",
+        "NZDCAD"
+      ]
     }
   ],
   "_retired": [
@@ -90,6 +117,13 @@
       "started": "2026-07-27",
       "endDate": "2026-08-03",
       "endReason": "JPY-haven-fading portion of this theme was invalidated by Japan FX intervention ~$34B on Thu-Fri + suspected re-entry Aug 3 (US-coordinated per Bloomberg). JPY is now intervention-strong, not organically weak — reversed the read entirely. AUD/NZD tailwind portion is subsumed by broader dynamics. Replaced by japan-fx-intervention-regime-2026-08 which correctly frames the JPY story."
+    },
+    {
+      "id": "usmca-mexico-tariff-deadline-2026-07",
+      "title": "USMCA review live + Section 122 Mexico surcharge — binary CAD event",
+      "started": "2026-07-28",
+      "endDate": "2026-08-05",
+      "endReason": "Section 122 expired July 24 by statutory operation and was replaced by Section 301 (10-12.5%) — the Mexico/Canada surcharge binary is resolved. The USMCA review is ongoing but the dominant near-term CAD binary is now Section 338: Trump's Jul 20 proclamations imposing 50% on ~$20B of Canadian goods effective Aug 19, with zero USMCA exemption. That new and higher-impact event is captured in canada-section338-tariff-2026-08."
     }
   ]
 }

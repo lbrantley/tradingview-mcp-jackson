@@ -1615,3 +1615,6 @@
 {"ts":"2026-07-30T12:15:21.800Z","type":"op_health","severity":"warn","message":"NZDJPY review chart-switch did not settle to correct symbol","data":{"expected":"OANDA:NZDJPY","got":"OANDA:EURCHF","attempts":12,"consecutiveStuck":2}}
 {"ts":"2026-07-30T12:16:06.994Z","type":"op_health","severity":"warn","message":"EURAUD review chart-switch did not settle to correct symbol","data":{"expected":"OANDA:EURAUD","got":"OANDA:NZDCHF","attempts":12,"consecutiveStuck":1}}
 {"ts":"2026-07-31T14:22:01.830Z","type":"stat_pattern","severity":"warn","message":"AUDJPY stopped 3× in last 24h","data":{"symbol":"OANDA:AUDJPY","stopCount":3,"windowHours":24}}
+{"ts":"2026-08-05T11:04:45.094Z","type":"op_health","severity":"warn","message":"EURCAD review chart-switch did not settle to correct symbol","data":{"expected":"OANDA:EURCAD","got":null,"attempts":12,"consecutiveStuck":1}}
+{"ts":"2026-08-05T11:05:16.494Z","type":"op_health","severity":"warn","message":"USDJPY review chart-switch did not settle to correct symbol","data":{"expected":"OANDA:USDJPY","got":null,"attempts":12,"consecutiveStuck":2}}
+{"ts":"2026-08-05T11:08:55.173Z","type":"op_health","severity":"warn","message":"EURCHF review chart-switch did not settle to correct symbol","data":{"expected":"OANDA:EURCHF","got":null,"attempts":12,"consecutiveStuck":1}}
