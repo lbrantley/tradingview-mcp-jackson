@@ -1,60 +1,9 @@
 {
-  "generatedAt": "2026-08-05T11:10:22.741Z",
+  "generatedAt": "2026-08-06T11:09:35.172Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-05T11:10:22.698Z",
-  "count": 10,
+  "sourceCacheAt": "2026-08-06T05:25:29.410Z",
+  "count": 7,
   "events": [
-    {
-      "date": "2026-08-05T08:15:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "ADP Non-Farm Employment Change",
-      "forecast": "68K",
-      "previous": "98K",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-08-05T10:00:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "ISM Services PMI",
-      "forecast": "54.5",
-      "previous": "54.0",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-08-05T16:30:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "President Trump Speaks",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
     {
       "date": "2026-08-06T08:30:00-04:00",
       "currency": "USD",
