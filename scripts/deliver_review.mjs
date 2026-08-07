@@ -166,12 +166,25 @@ async function main() {
   // the MACRO CONTEXT block in today's brief reflects the highest-impact
   // themes RIGHT NOW, not a snapshot from whenever the dev last touched
   // the file. Non-fatal — logs on any failure and keeps existing content.
+  // Track outcome for the Pushover notification so silent failures become
+  // loud within seconds of the 6am run instead of being discovered days
+  // later. (Aug 5-7 briefs had byte-identical macro before we noticed.)
   log('Auto-refreshing macro context (Claude + web_search)...');
   const macroOut = run('node scripts/refresh_macro_context.mjs', { timeout: 4 * 60 * 1000 });
+  let macroStatus = null;
   if (macroOut) {
     for (const line of macroOut.split('\n')) {
       if (line.trim()) log(`  ${line}`);
     }
+    if (macroOut.includes('✅ Refreshed')) macroStatus = 'refreshed';
+    else if (macroOut.includes('Parse failed') || macroOut.includes('No JSON found')) macroStatus = 'parse_fail';
+    else if (macroOut.includes('Shape validation failed')) macroStatus = 'shape_fail';
+    else if (macroOut.includes('API call failed')) macroStatus = 'api_fail';
+    else if (macroOut.includes('ANTHROPIC_API_KEY not set')) macroStatus = 'no_key';
+    else if (macroOut.includes('MACRO_REFRESH_OFF=1')) macroStatus = 'disabled';
+    else macroStatus = 'unknown';
+  } else {
+    macroStatus = 'no_output';  // script didn't produce stdout — either crashed or spawn failed
   }
 
   // Step 1: prune stale overrides
@@ -343,6 +356,18 @@ async function main() {
     ? `⚠️ ${KIND === 'weekly' ? 'Weekly' : 'Daily'} review — GIT PUSH FAILED (${TODAY})`
     : (KIND === 'weekly' ? `📊 Weekly review — ${TODAY}` : `🔍 Daily review — ${TODAY}`);
   const messageParts = [summary, gradeLine];
+  // Macro refresh outcome — makes silent failures loud on the phone.
+  const macroBadge = {
+    refreshed: '🌐 Macro: fresh',
+    parse_fail: '🌐 Macro: ⚠️ parse-fail (stale)',
+    shape_fail: '🌐 Macro: ⚠️ shape-fail (stale)',
+    api_fail: '🌐 Macro: ⚠️ API-fail (stale)',
+    no_key: '🌐 Macro: ⚠️ no API key (stale)',
+    no_output: '🌐 Macro: ⚠️ no output (stale)',
+    unknown: '🌐 Macro: ⚠️ unknown result (stale)',
+    disabled: '🌐 Macro: off (env)',
+  }[macroStatus] || null;
+  if (macroBadge) messageParts.push(macroBadge);
   if (gitError) {
     messageParts.push(`❌ ${gitError}`);
     messageParts.push(`File written locally on VM at briefs/${TODAY}-${KIND}-review.md — SSH in and push manually.`);
