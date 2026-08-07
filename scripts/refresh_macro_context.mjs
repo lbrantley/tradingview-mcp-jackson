@@ -50,8 +50,11 @@ Rules:
 7. Preserve any historical entries already in _retired[] — do not delete them, only append.
 8. Do not touch _meta except to update lastUpdated to today's ISO date, and set autoRefreshSummary to a one-sentence summary of what changed this run.
 
-Output requirements:
-- Reply with ONLY the complete updated market_context.json content — no prose, no code fences, no commentary before or after.
+Output requirements — CRITICAL:
+- After completing your web searches, your final reply must be ONLY raw JSON.
+- Do NOT preface with "Here is the updated file" or "I now have the data" or any explanation.
+- Do NOT use \`\`\`json code fences.
+- Start your reply with { and end with }. Nothing else. No text before, no text after.
 - The content must be valid JSON that parses.`;
 
 function buildUserMessage(currentFile, today) {
@@ -110,6 +113,39 @@ function stripCodeFences(s) {
   return trimmed;
 }
 
+// Robust JSON extractor — handles all three failure modes we've observed:
+//   1. Response is pure JSON (parse directly)
+//   2. Response is JSON wrapped in ```json ... ``` fences
+//   3. Response has prose preamble then JSON ("I now have the data... {...}")
+// Uses depth tracking with string-literal awareness to find the outermost
+// balanced { ... } block that parses.
+function extractJson(text) {
+  const cleaned = stripCodeFences(text);
+  try { JSON.parse(cleaned); return cleaned; } catch {}
+
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\') { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        const candidate = text.slice(start, i + 1);
+        try { JSON.parse(candidate); return candidate; } catch {}
+      }
+    }
+  }
+  return null;
+}
+
 function validateShape(obj) {
   if (!obj || typeof obj !== 'object') return 'not an object';
   if (!Array.isArray(obj.themes)) return 'themes missing or not array';
@@ -149,7 +185,12 @@ async function main() {
     return;
   }
 
-  const cleaned = stripCodeFences(response.text);
+  const cleaned = extractJson(response.text);
+  if (!cleaned) {
+    log(`No JSON found in response — keeping existing file`);
+    log(`Raw response head: ${response.text.slice(0, 300)}`);
+    return;
+  }
   let parsed;
   try {
     parsed = JSON.parse(cleaned);
