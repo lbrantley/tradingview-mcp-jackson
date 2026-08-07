@@ -1,26 +1,9 @@
 {
-  "generatedAt": "2026-08-06T11:09:35.172Z",
+  "generatedAt": "2026-08-07T11:10:23.014Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-06T05:25:29.410Z",
-  "count": 7,
+  "sourceCacheAt": "2026-08-07T06:49:38.723Z",
+  "count": 6,
   "events": [
-    {
-      "date": "2026-08-06T08:30:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "Unemployment Claims",
-      "forecast": "203K",
-      "previous": "197K",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
     {
       "date": "2026-08-07T08:30:00-04:00",
       "currency": "CAD",
