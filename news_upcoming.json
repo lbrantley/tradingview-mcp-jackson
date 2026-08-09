@@ -1,50 +1,84 @@
 {
-  "generatedAt": "2026-08-07T11:10:23.014Z",
+  "generatedAt": "2026-08-09T19:10:21.858Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-07T06:49:38.723Z",
-  "count": 6,
+  "sourceCacheAt": "2026-08-09T19:10:21.802Z",
+  "count": 8,
   "events": [
     {
-      "date": "2026-08-07T08:30:00-04:00",
-      "currency": "CAD",
+      "date": "2026-08-11T00:30:00-04:00",
+      "currency": "AUD",
       "impact": "High",
-      "title": "Employment Change",
-      "forecast": "17.8K",
-      "previous": "18.2K",
+      "title": "Cash Rate",
+      "forecast": "4.35%",
+      "previous": "4.35%",
       "affectedPairs": [
-        "USDCAD",
-        "GBPCAD",
-        "EURCAD",
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
         "AUDCAD",
-        "NZDCAD",
-        "CADCHF",
-        "CADJPY"
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
       ]
     },
     {
-      "date": "2026-08-07T08:30:00-04:00",
-      "currency": "CAD",
+      "date": "2026-08-11T00:30:00-04:00",
+      "currency": "AUD",
       "impact": "High",
-      "title": "Unemployment Rate",
-      "forecast": "6.5%",
-      "previous": "6.5%",
+      "title": "RBA Monetary Policy Statement",
+      "forecast": "—",
+      "previous": "—",
       "affectedPairs": [
-        "USDCAD",
-        "GBPCAD",
-        "EURCAD",
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
         "AUDCAD",
-        "NZDCAD",
-        "CADCHF",
-        "CADJPY"
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
       ]
     },
     {
-      "date": "2026-08-07T08:30:00-04:00",
+      "date": "2026-08-11T00:30:00-04:00",
+      "currency": "AUD",
+      "impact": "High",
+      "title": "RBA Rate Statement",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ]
+    },
+    {
+      "date": "2026-08-11T01:30:00-04:00",
+      "currency": "AUD",
+      "impact": "High",
+      "title": "RBA Press Conference",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ]
+    },
+    {
+      "date": "2026-08-12T08:30:00-04:00",
       "currency": "USD",
       "impact": "High",
-      "title": "Average Hourly Earnings m/m",
-      "forecast": "0.3%",
-      "previous": "0.3%",
+      "title": "Core CPI m/m",
+      "forecast": "0.2%",
+      "previous": "0.0%",
       "affectedPairs": [
         "GBPUSD",
         "EURUSD",
@@ -56,12 +90,12 @@
       ]
     },
     {
-      "date": "2026-08-07T08:30:00-04:00",
+      "date": "2026-08-12T08:30:00-04:00",
       "currency": "USD",
       "impact": "High",
-      "title": "Non-Farm Employment Change",
-      "forecast": "85K",
-      "previous": "57K",
+      "title": "Core CPI y/y",
+      "forecast": "2.5%",
+      "previous": "2.6%",
       "affectedPairs": [
         "GBPUSD",
         "EURUSD",
@@ -73,12 +107,12 @@
       ]
     },
     {
-      "date": "2026-08-07T08:30:00-04:00",
+      "date": "2026-08-12T08:30:00-04:00",
       "currency": "USD",
       "impact": "High",
-      "title": "Unemployment Rate",
-      "forecast": "4.2%",
-      "previous": "4.2%",
+      "title": "CPI m/m",
+      "forecast": "0.1%",
+      "previous": "-0.4%",
       "affectedPairs": [
         "GBPUSD",
         "EURUSD",
@@ -90,20 +124,20 @@
       ]
     },
     {
-      "date": "2026-08-07T10:00:00-04:00",
-      "currency": "CAD",
-      "impact": "Medium",
-      "title": "Ivey PMI",
-      "forecast": "55.4",
-      "previous": "56.2",
+      "date": "2026-08-12T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "CPI y/y",
+      "forecast": "3.4%",
+      "previous": "3.5%",
       "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
         "USDCAD",
-        "GBPCAD",
-        "EURCAD",
-        "AUDCAD",
-        "NZDCAD",
-        "CADCHF",
-        "CADJPY"
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
       ]
     }
   ]
