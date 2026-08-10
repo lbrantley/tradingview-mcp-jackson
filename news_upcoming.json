@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-09T19:10:21.858Z",
+  "generatedAt": "2026-08-10T11:09:56.680Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-09T19:10:21.802Z",
-  "count": 8,
+  "sourceCacheAt": "2026-08-10T07:32:35.655Z",
+  "count": 11,
   "events": [
     {
       "date": "2026-08-11T00:30:00-04:00",
@@ -138,6 +138,57 @@
         "USDCHF",
         "AUDUSD",
         "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-12T23:00:00-04:00",
+      "currency": "NZD",
+      "impact": "Medium",
+      "title": "Inflation Expectations q/q",
+      "forecast": "—",
+      "previous": "2.53%",
+      "affectedPairs": [
+        "NZDUSD",
+        "NZDJPY",
+        "NZDCAD",
+        "NZDCHF",
+        "AUDNZD",
+        "EURNZD",
+        "GBPNZD"
+      ]
+    },
+    {
+      "date": "2026-08-13T02:00:00-04:00",
+      "currency": "GBP",
+      "impact": "High",
+      "title": "GDP m/m",
+      "forecast": "-0.1%",
+      "previous": "0.1%",
+      "affectedPairs": [
+        "GBPUSD",
+        "GBPJPY",
+        "GBPCHF",
+        "GBPNZD",
+        "GBPCAD",
+        "GBPAUD",
+        "EURGBP"
+      ]
+    },
+    {
+      "date": "2026-08-13T02:00:00-04:00",
+      "currency": "GBP",
+      "impact": "Medium",
+      "title": "Prelim GDP q/q",
+      "forecast": "0.4%",
+      "previous": "0.6%",
+      "affectedPairs": [
+        "GBPUSD",
+        "GBPJPY",
+        "GBPCHF",
+        "GBPNZD",
+        "GBPCAD",
+        "GBPAUD",
+        "EURGBP"
       ]
     }
   ]
