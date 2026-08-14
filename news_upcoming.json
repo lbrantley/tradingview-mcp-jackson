@@ -1,77 +1,9 @@
 {
-  "generatedAt": "2026-08-13T11:10:30.149Z",
+  "generatedAt": "2026-08-14T11:08:59.127Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-13T11:10:30.073Z",
-  "count": 8,
+  "sourceCacheAt": "2026-08-14T05:45:51.517Z",
+  "count": 4,
   "events": [
-    {
-      "date": "2026-08-13T08:30:00-04:00",
-      "currency": "USD",
-      "impact": "High",
-      "title": "Core PPI m/m",
-      "forecast": "0.3%",
-      "previous": "0.2%",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-08-13T08:30:00-04:00",
-      "currency": "USD",
-      "impact": "High",
-      "title": "PPI m/m",
-      "forecast": "0.2%",
-      "previous": "-0.3%",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-08-13T08:30:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "Unemployment Claims",
-      "forecast": "202K",
-      "previous": "199K",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-08-13T19:30:00-04:00",
-      "currency": "AUD",
-      "impact": "Medium",
-      "title": "RBA Gov Bullock Speaks",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
     {
       "date": "2026-08-14T08:30:00-04:00",
       "currency": "USD",
