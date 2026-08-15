@@ -2863,7 +2863,16 @@ async function checkHistoricalHit(setup) {
     const effSL = setup.ltfConfirmed && setup.continuationLevels?.sl != null ? setup.continuationLevels.sl : setup.sl;
     const effTP1 = setup.ltfConfirmed && setup.continuationLevels?.tp1 != null ? setup.continuationLevels.tp1 : setup.tp1;
     const effTP2 = setup.ltfConfirmed && setup.continuationLevels?.tp2 != null ? setup.continuationLevels.tp2 : setup.tp2;
-    const effTP3 = setup.tp3;
+    // continuationLevels carries no tp3, so a confirmed continuation would
+    // inherit the ORIGINAL reversal's tp3 — which sits on the wrong side of
+    // entry once the direction flips. TP3 is tested first, so it fired on the
+    // very first bar and returned outcome:'win' with a losing exitPrice
+    // (109 such rows in the audit as of 2026-08-14, mean -0.291R). Same guard
+    // the live path already applies at the tp3Hit check.
+    const rawTP3 = setup.tp3;
+    const tp3OnCorrectSide = rawTP3 != null && setup.entryPrice != null &&
+      (isLong ? rawTP3 > setup.entryPrice : rawTP3 < setup.entryPrice);
+    const effTP3 = tp3OnCorrectSide ? rawTP3 : null;
 
     const setupTime = new Date(setup.timestamp).getTime() / 1000; // unix seconds
 
@@ -3634,31 +3643,62 @@ TP1 ${effectiveTP1.toFixed(priceDigits)} = +${tp1DistFromNow}p (${rRemaining.toF
 function printHealthReport(log) {
   // ──────────────────────────────────────────────────────────
   // Quality tiers:
-  // TRADEABLE = HTF-aligned 4★+ OR Macro Reversal high/mod conf
-  // LOW-TIER  = HTF-aligned <4★ OR Macro Reversal low conf
+  // TRADEABLE = Macro Reversal (any confidence) OR LTF-confirmed
+  // LOW-TIER  = HTF-aligned without LTF confirmation
   // INFO      = Pullback alerts (never traded in original direction)
   // ──────────────────────────────────────────────────────────
+  // Measured on 439 clean closed setups (2026-08-14):
+  //   ltfConfirmed=true  → +0.365R   ltfConfirmed=false → -0.123R
+  // One boolean is worth a 0.49R swing — it is the strongest single
+  // discriminator in the system, so it gates everything except macro
+  // reversals.
+  //
+  // Macro reversals are +EV at every confidence level (high +1.249R,
+  // moderate +1.546R, low +0.339R — note the scoring in checkMacroReversal()
+  // does NOT rank monotonically), so confidence is not used to gate them.
+  //
+  // The old `strength >= 4` HTF-aligned branch was dropped: it measured
+  // -0.146R (n=14 all-time, -0.565R on n=7 post-June) and was the only
+  // route into the tradeable bucket that bypassed LTF confirmation.
   const isStrong = (s) => {
-    if (s.pullbackAlert && s.ltfConfirmed) return true;  // Phase 3: confirmed continuations are tradeable
-    if (s.pullbackAlert) return false;
-    if (s.macroReversal) {
-      // Trust LTF confirmation as much as upfront confidence. Phase 3b bumps
-      // strength to ≥3 when 1HR CHoCH/BOS confirms the reversal direction —
-      // that structural evidence is worth as much as the upfront confluence
-      // score. Previously the classifier only trusted the initial confidence
-      // (high|moderate), which filtered out structurally-confirmed winners
-      // (measured 16W/3L=84% WR on 2026-07-08). Adding ltfConfirmed promotes
-      // those to the tradeable bucket where they belong.
-      return s.ltfConfirmed
-        || s.macroConfidence === 'high'
-        || s.macroConfidence === 'moderate';
-    }
-    return s.strength >= 4;  // HTF-aligned
+    if (s.macroReversal) return true;
+    return s.ltfConfirmed === true;
   };
 
   const tradeable = log.setups.filter(s => isStrong(s));
   const lowTier = log.setups.filter(s => !s.pullbackAlert && !isStrong(s));
   const pullback = log.setups.filter(s => s.pullbackAlert && !s.ltfConfirmed);
+
+  // R-multiple realised by a closed setup. Returns null when the record can't
+  // be trusted, so a bad row is excluded rather than poisoning the average:
+  //   - zero risk distance (entry == sl) would divide by zero
+  //   - |R| > 20 means exitPrice came from the wrong symbol. The CDP quote
+  //     race writes e.g. a JPY price onto a EURAUD trade; 4 such rows exist
+  //     in the audit as of 2026-08-14. See purge_corrupt_setups.mjs.
+  const rMultiple = (s) => {
+    if (s.outcome !== 'win' && s.outcome !== 'loss') return null;
+    if (s.entryPrice == null || s.exitPrice == null) return null;
+
+    // Must mirror reviewSetups(): when a pullback is LTF-confirmed the trade
+    // is taken in suggestedDirection, which is the OPPOSITE of the stored
+    // `type`, against continuationLevels.sl. All 184 confirmed continuations
+    // in the audit flip this way — reading s.type/s.sl directly inverts the
+    // sign of R on every one of them.
+    const effType = s.ltfConfirmed && s.suggestedDirection ? s.suggestedDirection : s.type;
+    const effSL = s.ltfConfirmed && s.continuationLevels?.sl != null
+      ? s.continuationLevels.sl
+      : s.sl;
+    if (effSL == null) return null;
+
+    const risk = Math.abs(s.entryPrice - effSL);
+    if (!risk) return null;
+    const move = /SHORT/.test(effType)
+      ? s.entryPrice - s.exitPrice
+      : s.exitPrice - s.entryPrice;
+    const r = move / risk;
+    if (!isFinite(r) || Math.abs(r) > 20) return null;
+    return r;
+  };
 
   const stats = (setups) => {
     const wins = setups.filter(s => s.outcome === 'win').length;
@@ -3667,18 +3707,39 @@ function printHealthReport(log) {
     const expired = setups.filter(s => s.outcome === 'expired').length;
     const decided = wins + losses;
     const winRate = decided > 0 ? (wins / decided * 100).toFixed(1) : '—';
-    const grade = decided < 5 ? 'Too early'
-      : wins / decided >= 0.70 ? 'A+ — Outstanding'
-      : wins / decided >= 0.65 ? 'A — Excellent'
-      : wins / decided >= 0.55 ? 'B — Good'
-      : wins / decided >= 0.45 ? 'C — Fair'
-      : wins / decided >= 0.35 ? 'D — Needs tuning'
-      : 'F — Broken';
-    return { wins, losses, pending, expired, decided, winRate, grade, total: setups.length };
+
+    // Expectancy in R is the number that decides whether a bucket is worth
+    // trading. Win rate can't see payoff asymmetry: 4★ shows 45.5% (reads
+    // "fair") at +0.158R while 3★ shows 59.3% at +0.424R. Grade on R.
+    const quarantined = setups.filter(s => s.quarantined).length;
+    const rs = setups.map(rMultiple).filter(r => r !== null);
+    const totalR = rs.reduce((a, b) => a + b, 0);
+    const expectancy = rs.length ? totalR / rs.length : null;
+    const rWins = rs.filter(r => r > 0);
+    const rLosses = rs.filter(r => r <= 0);
+    const avgWin = rWins.length ? rWins.reduce((a, b) => a + b, 0) / rWins.length : null;
+    const avgLoss = rLosses.length ? rLosses.reduce((a, b) => a + b, 0) / rLosses.length : null;
+    const dropped = decided - rs.length;
+
+    const grade = rs.length < 5 ? 'Too early'
+      : expectancy >= 0.50 ? 'A+ — Outstanding'
+      : expectancy >= 0.30 ? 'A — Excellent'
+      : expectancy >= 0.15 ? 'B — Good'
+      : expectancy >= 0.05 ? 'C — Fair'
+      : expectancy >= 0    ? 'D — Marginal'
+      : 'F — Negative edge';
+
+    return {
+      wins, losses, pending, expired, decided, winRate, grade,
+      total: setups.length,
+      rCount: rs.length, totalR, expectancy, avgWin, avgLoss, dropped, quarantined,
+    };
   };
 
+  // "+0.500R" / "-0.028R" / "—" when there is nothing to average.
+  const fmtR = (v) => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(3)}R`;
+
   const main = stats(tradeable);
-  const low = stats(lowTier);
   const pull = stats(pullback);
 
   // Tradeable breakdown by source category
@@ -3699,27 +3760,65 @@ function printHealthReport(log) {
   console.log(`  SCANNER HEALTH REPORT`);
   console.log(`${'═'.repeat(60)}`);
 
+  // One row per bucket: "  Label   12W / 8L  (60.0%)   +0.984R  [tot +45.2R]"
+  const row = (label, st) => {
+    const wl = `${st.wins}W / ${st.losses}L`.padEnd(11);
+    const wr = `(${st.winRate}%)`.padEnd(9);
+    const exp = fmtR(st.expectancy).padStart(8);
+    const tot = st.rCount ? `  [tot ${fmtR(st.totalR).replace('R', '')}R over ${st.rCount}]` : '';
+    console.log(`    ${label.padEnd(24)}${wl} ${wr} ${exp}${tot}`);
+    // A bucket with quarantined rows cannot be read at face value. The
+    // wrong-side-TP3 bug closed a setup at bar 1 unless SL was hit on that
+    // same bar first (SL is checked before the TPs), so what survives is
+    // skewed toward stop-outs and the printed expectancy is biased LOW.
+    // Say so, rather than let the number be quoted as a measurement.
+    // Only worth saying when the quarantine is big enough to move the number;
+    // a stray row or two is noise and crying wolf on it trains you to ignore
+    // the warning when it matters.
+    const share = st.quarantined / (st.quarantined + st.rCount);
+    if (st.quarantined > 0 && share >= 0.10) {
+      console.log(`    ${''.padEnd(24)}⚠️  ${st.quarantined} row(s) quarantined (${(share * 100).toFixed(0)}% of bucket)` +
+                  ` — expectancy biased low, treat as UNMEASURED`);
+    }
+  };
+
   // ── PRIMARY: TRADEABLE PERFORMANCE ──
   console.log(`\n  📊 TRADEABLE PERFORMANCE (what you'd actually trade)`);
   console.log(`  ${'─'.repeat(56)}`);
   console.log(`  Total: ${main.total}  |  W: ${main.wins}  L: ${main.losses}  P: ${main.pending}  E: ${main.expired}`);
-  console.log(`  Win Rate: ${main.winRate}%  |  Grade: ${main.grade}`);
-  console.log(`    HTF-Aligned 4★+:        ${htfStats.wins}W / ${htfStats.losses}L  (${htfStats.winRate}%)`);
-  console.log(`    Macro Reversal strong:  ${macroStats.wins}W / ${macroStats.losses}L  (${macroStats.winRate}%)`);
-  console.log(`    Confirmed Continuation: ${contStats.wins}W / ${contStats.losses}L  (${contStats.winRate}%)`);
+  console.log(`  Win Rate: ${main.winRate}%  |  Expectancy: ${fmtR(main.expectancy)}  |  Grade: ${main.grade}`);
+  if (main.avgWin != null && main.avgLoss != null) {
+    console.log(`  Avg win: ${fmtR(main.avgWin)}  |  Avg loss: ${fmtR(main.avgLoss)}  |  Total: ${fmtR(main.totalR)}`);
+  }
+  if (main.dropped > 0) {
+    console.log(`  ⚠️  ${main.dropped} closed setup(s) excluded from R — bad exit price (quote race)`);
+  }
+  row('Macro Reversal:', macroStats);
+  row('Confirmed Continuation:', contStats);
+  if (htfStats.total > 0) row('HTF-Aligned (legacy):', htfStats);
 
   // ── FILTER VALIDATION: LOW-TIER + PULLBACKS ──
   console.log(`\n  🔍 FILTER VALIDATION (signals the scanner says to skip)`);
   console.log(`  ${'─'.repeat(56)}`);
-  console.log(`    HTF-Aligned <4★:        ${lowHtfStats.wins}W / ${lowHtfStats.losses}L  (${lowHtfStats.winRate}%)`);
-  console.log(`    Macro Reversal low:     ${lowMacroStats.wins}W / ${lowMacroStats.losses}L  (${lowMacroStats.winRate}%)`);
-  console.log(`    Pullback Alerts:        ${pull.wins}W / ${pull.losses}L  (${pull.winRate}%)`);
-  const lowAllDecided = low.decided + pull.decided;
-  const lowAllWins = low.wins + pull.wins;
-  if (lowAllDecided >= 10) {
-    const lowAllRate = (lowAllWins / lowAllDecided * 100).toFixed(1);
-    const filterWorking = lowAllWins / lowAllDecided < 0.55;
-    console.log(`    Combined filtered:      ${lowAllWins}W / ${lowAllDecided - lowAllWins}L  (${lowAllRate}%) ${filterWorking ? '✓ filter working' : ''}`);
+  row('HTF unconfirmed:', lowHtfStats);
+  if (lowMacroStats.total > 0) row('Macro Reversal low:', lowMacroStats);
+  row('Pullback Alerts:', pull);
+
+  const lowAll = stats([...lowTier, ...pullback]);
+  if (lowAll.decided >= 10) {
+    row('Combined filtered:', lowAll);
+    // The filter earns its keep only if TRADEABLE beats FILTERED on
+    // expectancy. The old check compared the filtered bucket against a
+    // hardcoded 55% win rate, which said "✓ filter working" at 53.7% vs a
+    // tradeable 55.2% — a 1.5pp gap that is not evidence of anything.
+    if (main.expectancy != null && lowAll.expectancy != null) {
+      const edge = main.expectancy - lowAll.expectancy;
+      const verdict = edge >= 0.15 ? '✓ filter working'
+        : edge >= 0.05 ? '~ filter marginal'
+        : '✗ filter not discriminating';
+      console.log(`\n    Tradeable ${fmtR(main.expectancy)} vs filtered ${fmtR(lowAll.expectancy)}` +
+                  `  →  edge ${fmtR(edge)}  ${verdict}`);
+    }
   }
 
   console.log(`${'─'.repeat(60)}\n`);
