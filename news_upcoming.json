@@ -1,67 +1,169 @@
 {
-  "generatedAt": "2026-08-14T11:08:59.127Z",
+  "generatedAt": "2026-08-16T19:09:13.359Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-14T05:45:51.517Z",
-  "count": 4,
+  "sourceCacheAt": "2026-08-16T19:09:13.297Z",
+  "count": 10,
   "events": [
     {
-      "date": "2026-08-14T08:30:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "Core Retail Sales m/m",
-      "forecast": "0.2%",
-      "previous": "-0.2%",
+      "date": "2026-08-17T08:30:00-04:00",
+      "currency": "CAD",
+      "impact": "High",
+      "title": "CPI m/m",
+      "forecast": "0.4%",
+      "previous": "-0.4%",
       "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
         "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
       ]
     },
     {
-      "date": "2026-08-14T08:30:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "Retail Sales m/m",
-      "forecast": "0.1%",
-      "previous": "0.2%",
+      "date": "2026-08-17T08:30:00-04:00",
+      "currency": "CAD",
+      "impact": "High",
+      "title": "Median CPI y/y",
+      "forecast": "2.0%",
+      "previous": "1.9%",
       "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
         "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
       ]
     },
     {
-      "date": "2026-08-14T10:00:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "Prelim UoM Consumer Sentiment",
-      "forecast": "54.7",
-      "previous": "54.4",
+      "date": "2026-08-17T08:30:00-04:00",
+      "currency": "CAD",
+      "impact": "High",
+      "title": "Trimmed CPI y/y",
+      "forecast": "1.8%",
+      "previous": "1.8%",
       "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
         "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
       ]
     },
     {
-      "date": "2026-08-14T10:00:00-04:00",
-      "currency": "USD",
+      "date": "2026-08-17T08:30:00-04:00",
+      "currency": "CAD",
       "impact": "Medium",
-      "title": "Prelim UoM Inflation Expectations",
+      "title": "Common CPI y/y",
+      "forecast": "2.5%",
+      "previous": "2.6%",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
+      ]
+    },
+    {
+      "date": "2026-08-18T02:00:00-04:00",
+      "currency": "GBP",
+      "impact": "High",
+      "title": "Claimant Count Change",
+      "forecast": "11.2K",
+      "previous": "6.7K",
+      "affectedPairs": [
+        "GBPUSD",
+        "GBPJPY",
+        "GBPCHF",
+        "GBPNZD",
+        "GBPCAD",
+        "GBPAUD",
+        "EURGBP"
+      ]
+    },
+    {
+      "date": "2026-08-18T02:00:00-04:00",
+      "currency": "GBP",
+      "impact": "Medium",
+      "title": "Average Earnings Index 3m/y",
+      "forecast": "4.0%",
+      "previous": "4.3%",
+      "affectedPairs": [
+        "GBPUSD",
+        "GBPJPY",
+        "GBPCHF",
+        "GBPNZD",
+        "GBPCAD",
+        "GBPAUD",
+        "EURGBP"
+      ]
+    },
+    {
+      "date": "2026-08-18T21:30:00-04:00",
+      "currency": "AUD",
+      "impact": "Medium",
+      "title": "Wage Price Index q/q",
+      "forecast": "0.8%",
+      "previous": "0.8%",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ]
+    },
+    {
+      "date": "2026-08-19T02:00:00-04:00",
+      "currency": "GBP",
+      "impact": "High",
+      "title": "CPI y/y",
+      "forecast": "2.9%",
+      "previous": "2.6%",
+      "affectedPairs": [
+        "GBPUSD",
+        "GBPJPY",
+        "GBPCHF",
+        "GBPNZD",
+        "GBPCAD",
+        "GBPAUD",
+        "EURGBP"
+      ]
+    },
+    {
+      "date": "2026-08-19T03:10:00-04:00",
+      "currency": "EUR",
+      "impact": "Medium",
+      "title": "ECB President Lagarde Speaks",
       "forecast": "—",
-      "previous": "4.2%",
+      "previous": "—",
+      "affectedPairs": [
+        "EURUSD",
+        "EURJPY",
+        "EURCHF",
+        "EURNZD",
+        "EURCAD",
+        "EURAUD",
+        "EURGBP"
+      ]
+    },
+    {
+      "date": "2026-08-19T14:00:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "FOMC Meeting Minutes",
+      "forecast": "—",
+      "previous": "—",
       "affectedPairs": [
         "GBPUSD",
         "EURUSD",
