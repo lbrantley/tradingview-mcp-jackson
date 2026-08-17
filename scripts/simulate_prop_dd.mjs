@@ -124,9 +124,18 @@ function beAdjustedR(setup, rawR) {
 }
 
 // ─── Sort by exit time and replay ─────────────────────────────
-const trades = closed
+// Sanity filter: R > 20 or R < -20 indicates a corrupted entry (pre-fix
+// bad-entry bug where entryPrice belonged to a different pair). These
+// contaminate the sim badly; drop them and warn.
+const rawTrades = closed
   .map(s => ({ setup: s, R: beAdjustedR(s, rachievedFor(s)) }))
-  .filter(t => t.R != null)
+  .filter(t => t.R != null);
+const contaminated = rawTrades.filter(t => Math.abs(t.R) > 20);
+if (contaminated.length > 0) {
+  console.log(`⚠️  Filtered ${contaminated.length} corrupted trades (|R| > 20 — legacy bad-entry bug). Simulating on ${rawTrades.length - contaminated.length} clean trades.\n`);
+}
+const trades = rawTrades
+  .filter(t => Math.abs(t.R) <= 20)
   .sort((a, b) => new Date(a.setup.exitTime) - new Date(b.setup.exitTime));
 
 let equity = ACCOUNT;
