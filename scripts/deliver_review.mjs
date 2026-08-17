@@ -22,7 +22,7 @@
  */
 import 'dotenv/config';
 import { execSync, spawnSync } from 'child_process';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import https from 'https';
@@ -39,8 +39,26 @@ const NEWS_CACHE = join(REPO, 'news_cache.json');
 const NEWS_UPCOMING = join(REPO, 'news_upcoming.json');
 const NEWS_UPCOMING_REL = 'news_upcoming.json';
 
+// Log to a file as well as stdout. run_brief.sh created logs/ and captured
+// stdout, but that wrapper is macOS-only (hardcoded path, bash, nvm) — on the
+// Windows VM nothing captured output, so two days of git failures left no
+// trace beyond a Pushover ping. Own the logging here so it works everywhere.
+const LOG_DIR = join(REPO, 'logs');
+const LOG_FILE = join(LOG_DIR, `review_${KIND}_${TODAY}.log`);
+let logReady = false;
+
 function log(msg) {
-  console.log(`[${new Date().toISOString()}] ${msg}`);
+  const line = `[${new Date().toISOString()}] ${msg}`;
+  console.log(line);
+  try {
+    if (!logReady) {
+      if (!existsSync(LOG_DIR)) mkdirSync(LOG_DIR, { recursive: true });
+      logReady = true;
+    }
+    appendFileSync(LOG_FILE, line + '\n');
+  } catch {
+    // Never let logging break the run.
+  }
 }
 
 function run(cmd, opts = {}) {
@@ -130,6 +148,26 @@ async function sendPushover({ title, message, url, url_title }) {
   });
 }
 
+// The scanner must stay paused through the git block, not just the review.
+// On the Windows VM pauseScanner KILLS the scanner and resumeScanner spawns a
+// fresh one, so resuming right after the review put a live scanner back in the
+// same worktree while this script was mid stash/rebase/push. With
+// AUTO_PUSH_ENABLED=1 that scanner runs its own git add/commit/push, which
+// races two ways:
+//   - it re-dirties the tree between our stash and our rebase, so the rebase
+//     refuses with "cannot pull with rebase: You have unstaged changes"
+//   - it lands a commit on origin/main between our pull and our push, so the
+//     push is rejected non-fast-forward
+// Both surfaced to the user as "push failed" while a manual push minutes later
+// worked fine. Hold the pause until git is done.
+let pauseCtx = null;
+let resumed = false;
+function resumeOnce() {
+  if (resumed || !pauseCtx) return;
+  resumed = true;
+  resumeScanner(pauseCtx, { log });
+}
+
 async function main() {
   log(`Delivering ${KIND} review for ${TODAY}`);
 
@@ -209,7 +247,7 @@ async function main() {
   const scannerPid = findScannerPid();
   if (scannerPid) log(`Found running scanner: PID ${scannerPid}`);
   else log('No running scanner detected — proceeding without pause');
-  const pauseCtx = pauseScanner(scannerPid, { log, cwd: REPO });
+  pauseCtx = pauseScanner(scannerPid, { log, cwd: REPO });
 
   // Step 3: run review, capture output
   let reviewText = '';
@@ -223,13 +261,14 @@ async function main() {
     });
     reviewText = (result.stdout || '') + (result.stderr ? '\n\nSTDERR:\n' + result.stderr : '');
     log(`Review captured: ${reviewText.length} bytes`);
-  } finally {
-    // Step 4: always resume scanner even if review failed
-    resumeScanner(pauseCtx, { log });
+  } catch (e) {
+    resumeOnce();  // review threw — bring the scanner back before bailing
+    throw e;
   }
 
   if (reviewText.length < 100) {
     log('Review output looks empty — aborting');
+    resumeOnce();  // process.exit skips finally blocks
     process.exit(1);
   }
 
@@ -320,19 +359,27 @@ async function main() {
           const stashR = runVerbose(`git stash push --include-untracked --quiet -m "deliver_review auto-stash ${new Date().toISOString()}"`);
           stashed = stashR.ok;
         }
-        // Rebase-pull so remote's newer commits don't reject our push.
-        const pullR = runVerbose('git pull --rebase origin main');
-        if (!pullR.ok) {
-          gitError = `git pull --rebase failed (exit ${pullR.exitCode}): ${pullR.stderr.trim().split('\n').slice(-2).join(' | ')}`;
-          log(`  ❌ ${gitError}`);
-        } else {
-          const pushR = runVerbose('git push origin main');
-          if (!pushR.ok) {
-            gitError = `git push failed (exit ${pushR.exitCode}): ${pushR.stderr.trim().split('\n').slice(-2).join(' | ')}`;
-            log(`  ❌ ${gitError}`);
-          } else {
-            log('  ✅ pushed');
+        // Rebase-pull then push, retried as a pair. The Mac and the VM both
+        // push main, so a commit can land in the window between our pull and
+        // our push and reject it non-fast-forward. Re-pulling picks that
+        // commit up and the next push goes through, instead of failing the
+        // whole run over a few seconds of contention.
+        const MAX_ATTEMPTS = 3;
+        for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+          gitError = null;
+          const pullR = runVerbose('git pull --rebase origin main');
+          if (!pullR.ok) {
+            gitError = `git pull --rebase failed (exit ${pullR.exitCode}): ${pullR.stderr.trim().split('\n').slice(-2).join(' | ')}`;
+            log(`  ❌ attempt ${attempt}/${MAX_ATTEMPTS}: ${gitError}`);
+            break;  // a refused/conflicted rebase won't resolve by retrying
           }
+          const pushR = runVerbose('git push origin main');
+          if (pushR.ok) {
+            log(`  ✅ pushed${attempt > 1 ? ` (attempt ${attempt})` : ''}`);
+            break;
+          }
+          gitError = `git push failed (exit ${pushR.exitCode}): ${pushR.stderr.trim().split('\n').slice(-2).join(' | ')}`;
+          log(`  ❌ attempt ${attempt}/${MAX_ATTEMPTS}: ${gitError}`);
         }
         // Restore any stashed changes so the scanner sees consistent state.
         if (stashed) {
@@ -349,11 +396,20 @@ async function main() {
     log('BRIEF_GIT_PUSH=0 — skipping commit + push');
   }
 
+  // Step 6b: git is done — safe to bring the scanner back now, before the
+  // Pushover network call. This is the step that used to happen right after
+  // the review, which is what created the race above.
+  resumeOnce();
+
   // Step 7: send Pushover with URL
   const { summary, gradeLine } = extractSummary(reviewText);
   const url = `https://github.com/lbrantley/tradingview-mcp-jackson/blob/main/${OUT_REL_PATH}`;
+  // Name the step that actually failed. This read "GIT PUSH FAILED" for any
+  // git error, so a refused rebase was reported to the phone as a push
+  // failure — which sent the 2026-08-13/14 diagnosis down the wrong path.
+  const gitStep = gitError ? (gitError.split(' failed')[0] || 'git').toUpperCase() : null;
   const title = gitError
-    ? `⚠️ ${KIND === 'weekly' ? 'Weekly' : 'Daily'} review — GIT PUSH FAILED (${TODAY})`
+    ? `⚠️ ${KIND === 'weekly' ? 'Weekly' : 'Daily'} review — ${gitStep} FAILED (${TODAY})`
     : (KIND === 'weekly' ? `📊 Weekly review — ${TODAY}` : `🔍 Daily review — ${TODAY}`);
   const messageParts = [summary, gradeLine];
   // Macro refresh outcome — makes silent failures loud on the phone.
@@ -387,7 +443,12 @@ async function main() {
   log('Done.');
 }
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+main()
+  .catch(err => {
+    console.error(err);
+    process.exitCode = 1;
+  })
+  // Backstop: never leave the VM without a scanner. On Windows pauseScanner
+  // killed it, so a throw anywhere between pause and Step 6b would otherwise
+  // mean no scanner until the next manual start. No-op if already resumed.
+  .finally(resumeOnce);
