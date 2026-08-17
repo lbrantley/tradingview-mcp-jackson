@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-16T19:09:13.359Z",
+  "generatedAt": "2026-08-17T11:10:18.778Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-16T19:09:13.297Z",
-  "count": 10,
+  "sourceCacheAt": "2026-08-17T07:15:16.340Z",
+  "count": 12,
   "events": [
     {
       "date": "2026-08-17T08:30:00-04:00",
@@ -172,6 +172,40 @@
         "USDCHF",
         "AUDUSD",
         "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-19T21:30:00-04:00",
+      "currency": "AUD",
+      "impact": "High",
+      "title": "Employment Change",
+      "forecast": "11.4K",
+      "previous": "76.3K",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ]
+    },
+    {
+      "date": "2026-08-19T21:30:00-04:00",
+      "currency": "AUD",
+      "impact": "High",
+      "title": "Unemployment Rate",
+      "forecast": "4.4%",
+      "previous": "4.4%",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
       ]
     }
   ]
