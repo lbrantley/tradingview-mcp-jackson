@@ -3643,26 +3643,40 @@ TP1 ${effectiveTP1.toFixed(priceDigits)} = +${tp1DistFromNow}p (${rRemaining.toF
 function printHealthReport(log) {
   // ──────────────────────────────────────────────────────────
   // Quality tiers:
-  // TRADEABLE = Macro Reversal (any confidence) OR LTF-confirmed
-  // LOW-TIER  = HTF-aligned without LTF confirmation
+  // TRADEABLE = HTF-aligned 4★+ OR Macro Reversal high/mod conf
+  // LOW-TIER  = HTF-aligned <4★ OR Macro Reversal low conf
   // INFO      = Pullback alerts (never traded in original direction)
   // ──────────────────────────────────────────────────────────
-  // Measured on 439 clean closed setups (2026-08-14):
-  //   ltfConfirmed=true  → +0.365R   ltfConfirmed=false → -0.123R
-  // One boolean is worth a 0.49R swing — it is the strongest single
-  // discriminator in the system, so it gates everything except macro
-  // reversals.
+  // NO GATE HERE IS VALIDATED. Read the filter-verdict line at the bottom of
+  // the report before trusting this split.
   //
-  // Macro reversals are +EV at every confidence level (high +1.249R,
-  // moderate +1.546R, low +0.339R — note the scoring in checkMacroReversal()
-  // does NOT rank monotonically), so confidence is not used to gate them.
+  // On 2026-08-14 this was rewritten to `macroReversal || ltfConfirmed`, on
+  // the strength of ltfConfirmed measuring +0.365R vs -0.123R. That number
+  // came from the Mac's audit, which had stopped updating on 2026-07-10 and
+  // still contained the 110 wrong-side-TP3 rows. Both corrections killed it:
   //
-  // The old `strength >= 4` HTF-aligned branch was dropped: it measured
-  // -0.146R (n=14 all-time, -0.565R on n=7 post-June) and was the only
-  // route into the tradeable bucket that bypassed LTF confirmation.
+  //   ltfConfirmed=true / false
+  //     Mac, pre-quarantine   +0.365R / -0.123R   (the basis for the change)
+  //     Mac, post-quarantine  -0.427R / -0.027R
+  //     VM production, n=229  -0.069R / +0.290R
+  //
+  // Production says the gate selects the wrong side: TRADEABLE +0.062R vs
+  // FILTERED +0.191R. Reverted to the prior definition on 2026-08-17 — not
+  // because that one is right (its `strength >= 4` branch measures -0.618R on
+  // the same data) but because an unvalidated change should not stand on a
+  // stale dataset. Every quality signal here — strength, ltfConfirmed,
+  // macroConfidence, macroReversal — currently fails to rank outcomes, some
+  // inversely. Do not build a new gate until the sample is larger than five
+  // weeks; see scripts/analyze_audit.mjs.
   const isStrong = (s) => {
-    if (s.macroReversal) return true;
-    return s.ltfConfirmed === true;
+    if (s.pullbackAlert && s.ltfConfirmed) return true;
+    if (s.pullbackAlert) return false;
+    if (s.macroReversal) {
+      return s.ltfConfirmed
+        || s.macroConfidence === 'high'
+        || s.macroConfidence === 'moderate';
+    }
+    return s.strength >= 4;  // HTF-aligned
   };
 
   const tradeable = log.setups.filter(s => isStrong(s));
