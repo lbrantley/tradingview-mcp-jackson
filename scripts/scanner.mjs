@@ -3691,7 +3691,7 @@ function printHealthReport(log) {
   //     in the audit as of 2026-08-14. See purge_corrupt_setups.mjs.
   const rMultiple = (s) => {
     if (s.outcome !== 'win' && s.outcome !== 'loss') return null;
-    if (s.entryPrice == null || s.exitPrice == null) return null;
+    if (s.exitPrice == null) return null;
 
     // Must mirror reviewSetups(): when a pullback is LTF-confirmed the trade
     // is taken in suggestedDirection, which is the OPPOSITE of the stored
@@ -3704,11 +3704,23 @@ function printHealthReport(log) {
       : s.sl;
     if (effSL == null) return null;
 
-    const risk = Math.abs(s.entryPrice - effSL);
+    // Entry must be where the setup actually armed, not the level that was
+    // signalled. Records carry triggerPrice (and continuationLevels.entry for
+    // confirmed continuations) distinct from entryPrice; older ones have
+    // neither, hence the fallback chain. This mattered: measuring from
+    // entryPrice instead put the whole system at -0.078R where triggerPrice
+    // gives +0.119R (VM audit, n=229). Kept identical to analyze_audit.mjs so
+    // the brief and the analyzer cannot disagree.
+    const effEntry = (s.ltfConfirmed && s.continuationLevels?.entry != null)
+      ? s.continuationLevels.entry
+      : (s.triggerPrice ?? s.entryPrice);
+    if (effEntry == null) return null;
+
+    const risk = Math.abs(effEntry - effSL);
     if (!risk) return null;
     const move = /SHORT/.test(effType)
-      ? s.entryPrice - s.exitPrice
-      : s.exitPrice - s.entryPrice;
+      ? effEntry - s.exitPrice
+      : s.exitPrice - effEntry;
     const r = move / risk;
     if (!isFinite(r) || Math.abs(r) > 20) return null;
     return r;
