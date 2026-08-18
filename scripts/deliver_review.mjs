@@ -148,6 +148,20 @@ async function sendPushover({ title, message, url, url_title }) {
   });
 }
 
+// Credential failures are terminal: every retry hits the same wall, and on a
+// headless VM there is no terminal for git to prompt on. Git Credential
+// Manager reports this as "failed to execute prompt script" followed by
+// "could not read Username". Detect it so the run bails immediately with a
+// message that names the fix instead of the symptom.
+function isAuthFailure(stderr) {
+  return /could not read (Username|Password)|Authentication failed|terminal prompts disabled|failed to execute prompt script|Permission denied \(publickey\)|could not read from remote repository/i
+    .test(stderr || '');
+}
+
+const AUTH_HINT = 'GitHub credentials unavailable to the scheduled task. '
+  + 'Fix on the VM: git config --global credential.helper store, then run one '
+  + 'manual `git push` and enter a PAT as the password.';
+
 // The scanner must stay paused through the git block, not just the review.
 // On the Windows VM pauseScanner KILLS the scanner and resumeScanner spawns a
 // fresh one, so resuming right after the review put a live scanner back in the
@@ -191,6 +205,7 @@ async function main() {
   const prePullR = runVerbose('git pull --rebase origin main');
   if (!prePullR.ok) {
     log(`  ⚠  pre-pull failed (exit ${prePullR.exitCode}): ${prePullR.stderr.trim().split('\n').slice(-2).join(' | ')}`);
+    if (isAuthFailure(prePullR.stderr)) log(`  ⚠  ${AUTH_HINT}`);
     log(`  Continuing with existing local state — macro context may be stale.`);
   } else {
     log(`  ✅ pulled — market_context.json + any other dev updates are current`);
@@ -326,6 +341,7 @@ async function main() {
   // any git failure fires a Pushover so we hear about it immediately.
   const doPush = process.env.BRIEF_GIT_PUSH !== '0';
   let gitError = null;
+  let authFailed = false;
   if (doPush) {
     log('Committing + pushing to GitHub...');
     run(`git add ${OUT_REL_PATH}`);
@@ -371,6 +387,7 @@ async function main() {
           if (!pullR.ok) {
             gitError = `git pull --rebase failed (exit ${pullR.exitCode}): ${pullR.stderr.trim().split('\n').slice(-2).join(' | ')}`;
             log(`  ❌ attempt ${attempt}/${MAX_ATTEMPTS}: ${gitError}`);
+            if (isAuthFailure(pullR.stderr)) { authFailed = true; log(`  ⚠  ${AUTH_HINT}`); }
             break;  // a refused/conflicted rebase won't resolve by retrying
           }
           const pushR = runVerbose('git push origin main');
@@ -380,6 +397,8 @@ async function main() {
           }
           gitError = `git push failed (exit ${pushR.exitCode}): ${pushR.stderr.trim().split('\n').slice(-2).join(' | ')}`;
           log(`  ❌ attempt ${attempt}/${MAX_ATTEMPTS}: ${gitError}`);
+          // No credentials means all three attempts fail identically. Stop.
+          if (isAuthFailure(pushR.stderr)) { authFailed = true; log(`  ⚠  ${AUTH_HINT}`); break; }
         }
         // Restore any stashed changes so the scanner sees consistent state.
         if (stashed) {
@@ -407,7 +426,12 @@ async function main() {
   // Name the step that actually failed. This read "GIT PUSH FAILED" for any
   // git error, so a refused rebase was reported to the phone as a push
   // failure — which sent the 2026-08-13/14 diagnosis down the wrong path.
-  const gitStep = gitError ? (gitError.split(' failed')[0] || 'git').toUpperCase() : null;
+  // An auth failure is a different problem from a failed push and needs a
+  // different response from the user, so it gets its own headline rather than
+  // being reported as whichever git verb happened to hit the wall.
+  const gitStep = authFailed
+    ? 'GITHUB AUTH'
+    : (gitError ? (gitError.split(' failed')[0] || 'git').toUpperCase() : null);
   const title = gitError
     ? `⚠️ ${KIND === 'weekly' ? 'Weekly' : 'Daily'} review — ${gitStep} FAILED (${TODAY})`
     : (KIND === 'weekly' ? `📊 Weekly review — ${TODAY}` : `🔍 Daily review — ${TODAY}`);
@@ -426,6 +450,7 @@ async function main() {
   if (macroBadge) messageParts.push(macroBadge);
   if (gitError) {
     messageParts.push(`❌ ${gitError}`);
+    if (authFailed) messageParts.push(`🔑 ${AUTH_HINT}`);
     messageParts.push(`File written locally on VM at briefs/${TODAY}-${KIND}-review.md — SSH in and push manually.`);
   } else {
     messageParts.push('Tap to open full review.');
