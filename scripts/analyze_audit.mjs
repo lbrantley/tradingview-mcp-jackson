@@ -139,6 +139,27 @@ for (const m of Object.keys(byMonth).sort()) {
   stat(closed.filter(s => s.timestamp?.startsWith(m)), m);
 }
 
+// Setups that never reached a verdict. A review pass that cannot settle the
+// chart skips the setup entirely (scanner.mjs ~2998), so it sits pending until
+// the 72-market-hour expiry and lands here. A rising expiry share therefore
+// measures how blind the review has gone — and those setups are missing from
+// every expectancy number above, not counted as losses.
+console.log(`\n── EXPIRY RATE (review blindness) ──`);
+const months = Object.keys(byMonth).sort();
+for (const m of months) {
+  const inM = setups.filter(s => s.timestamp?.startsWith(m));
+  const exp = inM.filter(s => s.outcome === 'expired').length;
+  const cl = inM.filter(s => s.outcome === 'win' || s.outcome === 'loss').length;
+  const pend = inM.filter(s => s.status === 'pending').length;
+  const decided = exp + cl;
+  const pct = decided ? (exp / decided * 100).toFixed(0) : '—';
+  console.log(`  ${m}   setups=${String(inM.length).padStart(4)}` +
+    `  closed=${String(cl).padStart(4)}  expired=${String(exp).padStart(4)}` +
+    `  pending=${String(pend).padStart(3)}   expired-share=${String(pct).padStart(4)}%`);
+}
+console.log(`  (chart-switch settle failures began 2026-07-30 and have run near 100% since;`);
+console.log(`   a jump in expired-share at or after that date is the review going blind.)`);
+
 console.log(`\n── BY TYPE ──`);
 for (const t of ['REVERSAL LONG', 'REVERSAL SHORT', 'CONTINUATION LONG', 'CONTINUATION SHORT']) {
   stat(closed.filter(s => effType(s) === t), t);
