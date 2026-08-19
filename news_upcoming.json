@@ -1,65 +1,31 @@
 {
-  "generatedAt": "2026-08-18T11:16:40.531Z",
+  "generatedAt": "2026-08-19T11:18:48.453Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-18T07:35:50.866Z",
-  "count": 15,
+  "sourceCacheAt": "2026-08-19T08:16:50.577Z",
+  "count": 13,
   "events": [
-    {
-      "date": "2026-08-18T21:30:00-04:00",
-      "currency": "AUD",
-      "impact": "Medium",
-      "title": "Wage Price Index q/q",
-      "forecast": "0.8%",
-      "previous": "0.8%",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
-    {
-      "date": "2026-08-19T02:00:00-04:00",
-      "currency": "GBP",
-      "impact": "High",
-      "title": "CPI y/y",
-      "forecast": "2.9%",
-      "previous": "2.6%",
-      "affectedPairs": [
-        "GBPUSD",
-        "GBPJPY",
-        "GBPCHF",
-        "GBPNZD",
-        "GBPCAD",
-        "GBPAUD",
-        "EURGBP"
-      ]
-    },
-    {
-      "date": "2026-08-19T03:10:00-04:00",
-      "currency": "EUR",
-      "impact": "Medium",
-      "title": "ECB President Lagarde Speaks",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "EURUSD",
-        "EURJPY",
-        "EURCHF",
-        "EURNZD",
-        "EURCAD",
-        "EURAUD",
-        "EURGBP"
-      ]
-    },
     {
       "date": "2026-08-19T14:00:00-04:00",
       "currency": "USD",
       "impact": "High",
       "title": "FOMC Meeting Minutes",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-19T14:30:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "President Trump Speaks",
       "forecast": "—",
       "previous": "—",
       "affectedPairs": [
