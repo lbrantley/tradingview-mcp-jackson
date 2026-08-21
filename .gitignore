@@ -30,3 +30,4 @@ logs/
 trades.jsonl
 alerts.jsonl
 .track_state.json
+.scan_state.json

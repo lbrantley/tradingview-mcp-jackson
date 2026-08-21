@@ -21,7 +21,9 @@ import { getCandles, getPricing, getSummary, ACCOUNT_ID, LIVE_ACCOUNT_ID } from 
 import { atr, rsi } from '../src/indicators.js';
 import { buildLevels } from '../src/structure.js';
 import https from 'https';
-import { appendFileSync } from 'fs';
+import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import 'dotenv/config';
 
 const args = process.argv.slice(2);
@@ -32,6 +34,7 @@ const RISK_PCT = parseFloat(argOf('--risk') || '1.0');
 const NOTIFY = args.includes('--notify');
 const SHOW_ALL = args.includes('--all');
 
+const REPO_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const pipOf = s => /JPY$/.test(s) ? 0.01 : 0.0001;
 const fmt = (s, v) => v.toFixed(/JPY$/.test(s) ? 3 : 5);
 
@@ -50,6 +53,19 @@ function pushover(title, message) {
 // guard is unchanged.
 const nav = await getSummary(LIVE_ACCOUNT_ID || ACCOUNT_ID)
   .then(a => parseFloat(a.NAV)).catch(() => null);
+
+// Live prices, so proximity to a level is current rather than as of the last
+// daily close. The ENTRY still requires a daily rejection candle — that only
+// exists once a day — but "price is at the level now" is intraday information
+// and is the part the user wants to hear about while it is happening.
+const live = await getPricing(PAIRS).catch(() => ({}));
+
+// Alert state, so running every 4 hours does not re-send the same thing. Only
+// transitions are announced; a level that was already CODE RED stays quiet
+// until it changes.
+const SEEN = join(REPO_DIR, '.scan_state.json');
+const seen = existsSync(SEEN) ? JSON.parse(readFileSync(SEEN, 'utf8')) : {};
+const nowSeen = {};
 const usdjpy = await getPricing('USDJPY').then(p => p.USDJPY.mid).catch(() => 150);
 const entries = [], codeRed = [], watching = [];
 
@@ -67,7 +83,9 @@ for (const sym of PAIRS) {
 
     for (const z of levels) {
       const isSup = z.kind === 'support';
-      if (Math.abs(last.close - z.price) > av) continue;          // not being watched
+      const spot = live[sym]?.mid ?? last.close;
+      // Proximity judged on LIVE price, not the last daily close.
+      if (Math.abs(spot - z.price) > av) continue;                // not being watched
 
       // How many recent days have held here without closing beyond?
       let hold = 0;
@@ -92,8 +110,15 @@ for (const sym of PAIRS) {
         ? Math.floor((nav * RISK_PCT / 100) / (risk * (/JPY$/.test(sym) ? 1 / usdjpy : 1)))
         : null;
 
+      const state = (rejected && rsiOK && tgt) ? 'ENTRY' : hold >= 2 ? 'CODE_RED' : 'WATCHING';
+      const key = `${sym}:${dir}:${z.price.toFixed(5)}`;
+      nowSeen[key] = state;
+      const isNew = seen[key] !== state;          // only transitions are news
+      const distPips = Math.abs(spot - z.price) / pip;
+
       const rec = { sym, dir, level: z.price, hold, dr, rsiOK, rejected, px, stop,
-                    target: tgt?.price, rr, risk: risk / pip, units, touches: z.touches };
+                    target: tgt?.price, rr, risk: risk / pip, units, touches: z.touches,
+                    spot, distPips, isNew, key };
       if (rejected && rsiOK && tgt) entries.push(rec);
       else if (hold >= 2) codeRed.push(rec);
       else watching.push(rec);
@@ -126,7 +151,7 @@ console.log('='.repeat(72));
 if (finalEntries.length) {
   console.log('\n🎯 ENTRY — level rejected AND daily RSI at an extreme\n');
   for (const e of finalEntries) {
-    console.log(`  ${e.sym}  ${e.dir}   level ${fmt(e.sym, e.level)} (${e.touches} touches, held ${e.hold}d)`);
+    console.log(`  ${e.sym}  ${e.dir}${e.isNew ? '   ** NEW **' : ''}   level ${fmt(e.sym, e.level)} (${e.touches} touches, held ${e.hold}d)`);
     console.log(`    entry ${fmt(e.sym, e.px)}   stop ${fmt(e.sym, e.stop)} (${e.risk.toFixed(0)}p)   target ${fmt(e.sym, e.target)} (${e.rr.toFixed(1)}R)`);
     if (e.units) console.log(`    size ${e.units.toLocaleString()} units = $${(nav * RISK_PCT / 100).toFixed(2)} risk    daily RSI ${e.dr.toFixed(1)}`);
     console.log(`    PUT THE STOP IN AS A REAL ORDER.`);
@@ -138,7 +163,7 @@ if (codeRed.length) {
   console.log(`\n🔴 CODE RED — holding at a level, waiting for it to resolve\n`);
   for (const c of codeRed.sort((a, b) => b.hold - a.hold)) {
     const gate = c.rsiOK ? 'RSI ready' : `RSI ${c.dr.toFixed(0)} — needs ${c.dir === 'LONG' ? '<40' : '>60'}`;
-    console.log(`  ${c.sym.padEnd(7)} ${c.dir.padEnd(6)} level ${fmt(c.sym, c.level)}  held ${c.hold}d  ${c.touches} touches   ${gate}`);
+    console.log(`  ${c.sym.padEnd(7)} ${c.dir.padEnd(6)} level ${fmt(c.sym, c.level)}  ${c.distPips.toFixed(0)}p away  held ${c.hold}d  ${c.touches} touches   ${gate}${c.isNew ? '   ** NEW **' : ''}`);
   }
 }
 
@@ -156,30 +181,37 @@ console.log('');
 // user actually did. Without this the comparison is impossible after the fact:
 // which alerts were taken, which skipped, where the stop went versus where it
 // was suggested. That difference is the thing worth learning from.
-for (const e of finalEntries) {
-  appendFileSync('alerts.jsonl', JSON.stringify({
+for (const e of finalEntries.filter(x => x.isNew)) {
+  appendFileSync(join(REPO_DIR, 'alerts.jsonl'), JSON.stringify({
     ts: new Date().toISOString(), sym: e.sym, dir: e.dir, level: e.level,
     entry: e.px, stop: e.stop, target: e.target, rr: e.rr,
     riskPips: e.risk, units: e.units, dailyRsi: e.dr, heldDays: e.hold,
     touches: e.touches, state: 'ENTRY',
   }) + '\n');
 }
-for (const c of codeRed) {
-  appendFileSync('alerts.jsonl', JSON.stringify({
+for (const c of codeRed.filter(x => x.isNew)) {
+  appendFileSync(join(REPO_DIR, 'alerts.jsonl'), JSON.stringify({
     ts: new Date().toISOString(), sym: c.sym, dir: c.dir, level: c.level,
     dailyRsi: c.dr, heldDays: c.hold, touches: c.touches,
     state: 'CODE_RED', gate: c.rsiOK ? 'rsi_ready' : 'rsi_pending',
   }) + '\n');
 }
-if (finalEntries.length || codeRed.length) {
-  console.log(`logged ${finalEntries.length} entr${finalEntries.length === 1 ? 'y' : 'ies'} + ${codeRed.length} code-red to alerts.jsonl`);
-}
+// Only transitions are logged. Logging current state on every run would write
+// the same rows hourly and make the journal useless for reconciling against
+// actual trades later.
+const nE = finalEntries.filter(x => x.isNew).length, nC = codeRed.filter(x => x.isNew).length;
+if (nE || nC) console.log(`logged ${nE} new entr${nE === 1 ? 'y' : 'ies'} + ${nC} new code-red to alerts.jsonl`);
 
-if (NOTIFY && finalEntries.length) {
-  const e = finalEntries[0];
+writeFileSync(SEEN, JSON.stringify(nowSeen));
+
+const fresh = finalEntries.filter(e => e.isNew);
+if (NOTIFY && fresh.length) {
+  const e = fresh[0];
   pushover(`${e.sym} ${e.dir} — level rejection`,
     `${fmt(e.sym, e.px)}  stop ${fmt(e.sym, e.stop)}  target ${fmt(e.sym, e.target)} (${e.rr.toFixed(1)}R)\n` +
     `${e.units ? e.units.toLocaleString() + ' units' : ''}   daily RSI ${e.dr.toFixed(0)}   level held ${e.hold}d\n` +
     `PUT THE STOP IN AS A REAL ORDER.`);
-  console.log(`sent Pushover for ${e.sym}\n`);
+  console.log(`sent Pushover for ${e.sym}${fresh.length > 1 ? ` (+${fresh.length - 1} more new)` : ''}\n`);
+} else if (NOTIFY) {
+  console.log('nothing new since last run — no Pushover sent\n');
 }
