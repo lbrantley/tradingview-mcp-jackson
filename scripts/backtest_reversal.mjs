@@ -18,7 +18,9 @@ const ALL = 'GBPCHF AUDNZD EURNZD GBPNZD EURCHF CADCHF EURAUD GBPJPY AUDCHF GBPU
 const PAIRS = (argOf('--pairs') || ALL.join(',')).split(',').map(s => s.trim()).filter(Boolean);
 const YEARS = parseFloat(argOf('--years') || '2');
 const OPTS = JSON.parse(argOf('--opts') || '{}');
-const MAX_HOLD = 480;   // H1 bars ~ 20 trading days
+// The one variable under test: where the CHoCH confirmation is read.
+const ENTRY_TF = argOf('--entry') || 'H1';
+let MAX_HOLD = 480;     // entry bars; rescaled below so hold time is constant
 
 const pipOf = s => /JPY$/.test(s) ? 0.01 : 0.0001;
 
@@ -49,16 +51,17 @@ function stats(rs) {
 
 async function main() {
   const to = new Date(), from = new Date(Date.now() - YEARS * 365 * 24 * 3600e3);
-  console.log(`Backtest: ${strat.meta.name}   entries ${strat.meta.entryTF}, levels ${strat.meta.levelTFs.join('/')}`);
+  console.log(`Backtest: ${strat.meta.name}   entries ${ENTRY_TF}, levels ${strat.meta.levelTFs.join('/')}`);
   console.log(`${PAIRS.length} pairs, ${from.toISOString().slice(0, 10)} → ${to.toISOString().slice(0, 10)}`);
   if (Object.keys(OPTS).length) console.log(`opts ${JSON.stringify(OPTS)}`);
   console.log('');
 
+  MAX_HOLD = 480 * ({ M15: 4, M30: 2, H1: 1 }[ENTRY_TF] || 1);
   const perPair = [], all = [], rrs = [];
   for (const sym of PAIRS) {
     try {
       const [h1, h4, d, w, bid, ask] = await Promise.all([
-        getCandlesRange(sym, { granularity: 'H1', from: from.toISOString(), to: to.toISOString() }),
+        getCandlesRange(sym, { granularity: ENTRY_TF, from: from.toISOString(), to: to.toISOString() }),
         getCandlesRange(sym, { granularity: 'H4', from: from.toISOString(), to: to.toISOString() }),
         getCandles(sym, { granularity: 'D', count: 800 }),
         getCandles(sym, { granularity: 'W', count: 250 }),
@@ -69,7 +72,12 @@ async function main() {
       const sp = bid.map((b, i) => ask[i] ? ask[i].close - b.close : null).filter(v => v && v > 0).sort((a, b) => a - b);
       const spread = sp[Math.floor(sp.length / 2)] || 0;
 
-      const sigs = strat.generate(h1, { H4: h4, D: d, W: w }, OPTS, { spread });
+      const perH1 = { M15: 4, M30: 2, H1: 1 }[ENTRY_TF] || 1;
+      // chochWithin and maxHold are counted in ENTRY bars. Without scaling, a
+      // 12-bar window means 12h on H1 but only 3h on M15 — the comparison
+      // would silently change two things at once.
+      const scaled = { chochWithin: 12 * perH1, ...OPTS };
+      const sigs = strat.generate(h1, { H4: h4, D: d, W: w }, scaled, { spread });
       if (!sigs.length) { console.log(`  ${sym.padEnd(7)} no signals`); continue; }
       rrs.push(...sigs.map(s => s.rr));
       const rs = sigs.map(s => simulate(h1, s, spread));

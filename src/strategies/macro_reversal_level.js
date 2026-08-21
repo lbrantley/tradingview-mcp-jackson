@@ -22,7 +22,7 @@ import { buildZones, structureEvents } from '../structure.js';
 
 export const meta = {
   name: 'macro_reversal_level',
-  entryTF: 'H1',
+  entryTF: 'H1',              // overridable; the runner sweeps M15/M30/H1
   levelTFs: ['H4', 'D', 'W'],
   warmup: 200,
 };
@@ -62,10 +62,13 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
                             // stop. NZDCAD showed avgL -2.53R, i.e. a spread
                             // 1.5x the risk: not a losing trade, an impossible
                             // one. No real trader would take it.
-    stopTF = 'H1',          // which timeframe's swing the stop hangs off. H1
-                            // swings run ~10 pips, so spread alone costs 0.17R
-                            // per trade — the stop has to clear the noise it
-                            // is meant to survive
+    stopTF = 'entry',       // 'entry' | 'H4'. Which timeframe's swing the stop
+                            // hangs off. Dropping the ENTRY timeframe is cheap;
+                            // dropping the STOP with it is not — spread does not
+                            // shrink, so cost per trade goes from ~7% of R at H4
+                            // to ~35% at M15. Entering low while stopping off
+                            // higher structure is how to get precision without
+                            // paying for it.
   } = opts;
 
   // Zones from every level timeframe, pooled — they are just prices.
@@ -143,7 +146,7 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
 
     // Stop beyond the swing that formed at the level, per the user's rule.
     let swingPx = pivotPx;
-    if (stopTF !== 'H1') {
+    if (stopTF !== 'entry') {
       const sIdx = lastConfirmedSwing(isLong ? swHi.lows : swHi.highs, k4, swingLookback);
       if (sIdx == null) continue;
       swingPx = isLong ? h4[sIdx].low : h4[sIdx].high;
