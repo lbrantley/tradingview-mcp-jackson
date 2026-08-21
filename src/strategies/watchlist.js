@@ -22,7 +22,7 @@
  *
  * Levels and state on Daily; resolution, retest and entry on H4.
  */
-import { atr, sma } from '../indicators.js';
+import { atr, sma, rsi, macd, stochastic, rvi, bollinger } from '../indicators.js';
 import { buildLevels } from '../structure.js';
 import { momentum } from '../candles.js';
 
@@ -72,7 +72,20 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
   if (D.length < 60 || entry.length < 200) return [];
   const aD = atr(D, 14);
   const aH = atr(entry, 14);
-  const s50 = sma(entry.map(b => b.close), 50);
+  const closes = entry.map(b => b.close);
+  const s50 = sma(closes, 50);
+  const s200 = sma(closes, 200);
+  // Indicators recorded at entry — NOT used to filter here. They are attached
+  // so a later pass can measure which of them actually separate winners from
+  // losers, rather than being assumed to help.
+  const iRsi = rsi(closes, 14);
+  const iMacd = macd(closes);
+  const iStoch = stochastic(entry);
+  const iRvi = rvi(entry);
+  const iBb = bollinger(closes);
+  const dCloses = D.map(b => b.close);
+  const dS50 = sma(dCloses, 50);
+  const dRsi = rsi(dCloses, 14);
   // Histogram levels, not strict swings — buildZones could not see the very
   // clusters the user draws by hand.
   const zones = buildLevels(D, { binATR: 0.35, minBars: 3 });
@@ -166,8 +179,22 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
         signals.push({
           index: idx + 1, time: entry[idx + 1].time, dir: isSup ? 'long' : 'short',
           entry: px, stop, target, risk, rr,
-          meta: { level: z.price, holdDays: holdCount, armedAt, mode: 'level_rejection',
-                  rejectBar: c.time },
+          meta: {
+            level: z.price, holdDays: holdCount, armedAt, mode: 'level_rejection',
+            rejectBar: c.time, touches: z.touches,
+            riskPips: risk, rr,
+            // conditions at the entry bar on H4
+            rsi: iRsi[idx], stoch: iStoch.k[idx], macdHist: iMacd.hist[idx],
+            rviAbove: (iRvi.rvi[idx] != null && iRvi.signal[idx] != null)
+              ? (iRvi.rvi[idx] > iRvi.signal[idx] ? 1 : 0) : null,
+            bbPct: iBb.pctB[idx],
+            vsSma50: s50[idx] != null ? (px - s50[idx]) / aH[idx] : null,
+            vsSma200: s200[idx] != null ? (px - s200[idx]) / aH[idx] : null,
+            // daily context
+            dRsi: dRsi[k], dTrend: dS50[k] != null ? (c.close > dS50[k] ? 1 : 0) : null,
+            atrPips: aSrc[k],
+            hour: new Date(entry[idx + 1].time).getUTCHours(),
+          },
         });
         break;
       }

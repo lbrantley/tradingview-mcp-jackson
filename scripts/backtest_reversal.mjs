@@ -10,6 +10,7 @@
  * Usage: node scripts/backtest_reversal.mjs [--pairs A,B] [--years 2] [--opts '{"minTouches":3}']
  */
 import { getCandles, getCandlesRange } from '../src/oanda.js';
+import { writeFileSync } from 'fs';
 const STRAT = (process.argv.includes('--strategy') ? process.argv[process.argv.indexOf('--strategy')+1] : 'macro_reversal_level');
 const strat = await import(`../src/strategies/${STRAT}.js`);
 
@@ -23,6 +24,7 @@ const OPTS = JSON.parse(argOf('--opts') || '{}');
 const ENTRY_TF = argOf('--entry') || 'H1';
 // Shift the window back to test a period the parameters were never seen on.
 const END_YEARS_AGO = parseFloat(argOf('--endYearsAgo') || '0');
+const DUMP = argOf('--dump');   // write per-trade features+outcome as JSON
 let MAX_HOLD = 480;     // entry bars; rescaled below so hold time is constant
 
 const pipOf = s => /JPY$/.test(s) ? 0.01 : 0.0001;
@@ -61,7 +63,7 @@ async function main() {
   console.log('');
 
   MAX_HOLD = 480 * ({ M15: 4, M30: 2, H1: 1 }[ENTRY_TF] || 1);
-  const perPair = [], all = [], rrs = [], resolved = [], exits = {};
+  const perPair = [], all = [], rrs = [], resolved = [], exits = {}, dump = [];
   for (const sym of PAIRS) {
     try {
       const [h1, h4, d, w, bid, ask] = await Promise.all([
@@ -98,6 +100,7 @@ async function main() {
       if (!sigs.length) { console.log(`  ${sym.padEnd(7)} no signals`); continue; }
       rrs.push(...sigs.map(s => s.rr));
       const res = sigs.map((s, k) => ({ ...simulate(h1, s, spread), rr: sigs[k].rr }));
+      if (DUMP) res.forEach((r, k) => dump.push({ sym, r: r.r, exit: r.exit, dir: sigs[k].dir, ...sigs[k].meta }));
       resolved.push(...res.filter(x => x.exit !== 'timeout'));
       exits.timeout = (exits.timeout || 0) + res.filter(x => x.exit === 'timeout').length;
       const rs = res.map(x => x.r);
@@ -127,5 +130,6 @@ async function main() {
   const actualWins = resolved.filter(x => x.exit === 'target').length;
   console.log(`  resolved ${resolved.length} of ${all.length} (timeouts ${exits.timeout || 0} excluded from the null)`);
   console.log(`  vs random walk: ${actualWins} wins vs ${expWins.toFixed(0)} expected  = ${((actualWins - expWins) / sd).toFixed(2)} sd`);
+  if (DUMP) { writeFileSync(DUMP, JSON.stringify(dump)); console.log(`  wrote ${dump.length} trades to ${DUMP}`); }
 }
 main().catch(e => { console.error(e); process.exit(1); });
