@@ -16,8 +16,9 @@
  *
  * Env:
  *   OANDA_API_TOKEN            required
- *   OANDA_ACCOUNT_ID           account holding real money — read only
- *   OANDA_SANDBOX_ACCOUNT_ID   zero-balance account — the only legal write target
+ *   OANDA_ACCOUNT_ID           default account for every call — the empty one
+ *   OANDA_SANDBOX_ACCOUNT_ID   the only legal write target (same, by design)
+ *   OANDA_LIVE_ACCOUNT_ID      real money; read-only, and only when named
  *   OANDA_ENV                  'live' (default) | 'practice'
  *   OANDA_ALLOW_TRADING        '1' to permit writes at all. Defaults off.
  */
@@ -33,6 +34,8 @@ export const HOST = HOSTS[ENV];
 const TOKEN = process.env.OANDA_API_TOKEN;
 export const ACCOUNT_ID = process.env.OANDA_ACCOUNT_ID || null;
 export const SANDBOX_ACCOUNT_ID = process.env.OANDA_SANDBOX_ACCOUNT_ID || null;
+// Real money. Never the default for anything — a caller has to name it.
+export const LIVE_ACCOUNT_ID = process.env.OANDA_LIVE_ACCOUNT_ID || null;
 
 if (!TOKEN) throw new Error('OANDA_API_TOKEN missing from .env');
 
