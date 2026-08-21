@@ -114,3 +114,81 @@ export function lastConfirmedSwing(swingIdx, i, lookback) {
   }
   return null;
 }
+
+/** MACD. Returns aligned {macd, signal, hist} arrays. */
+export function macd(closes, fast = 12, slow = 26, sig = 9) {
+  const f = ema(closes, fast), s = ema(closes, slow);
+  const line = closes.map((_, i) => (f[i] == null || s[i] == null) ? null : f[i] - s[i]);
+  // The signal line is an EMA of the MACD line, so it can only start once the
+  // MACD line does. Feed it the defined section and pad back to full length.
+  const start = line.findIndex(v => v != null);
+  const sigRaw = start < 0 ? [] : ema(line.slice(start), sig);
+  const signal = new Array(closes.length).fill(null);
+  for (let i = 0; i < sigRaw.length; i++) signal[start + i] = sigRaw[i];
+  return { macd: line, signal, hist: line.map((v, i) => (v == null || signal[i] == null) ? null : v - signal[i]) };
+}
+
+/** Bollinger Bands. `pctB` is where price sits in the band: 0 = lower, 1 = upper. */
+export function bollinger(closes, period = 20, mult = 2) {
+  const mid = sma(closes, period);
+  const upper = new Array(closes.length).fill(null);
+  const lower = new Array(closes.length).fill(null);
+  const pctB = new Array(closes.length).fill(null);
+  for (let i = period - 1; i < closes.length; i++) {
+    let v = 0;
+    for (let j = i - period + 1; j <= i; j++) v += (closes[j] - mid[i]) ** 2;
+    const sd = Math.sqrt(v / period);
+    upper[i] = mid[i] + mult * sd;
+    lower[i] = mid[i] - mult * sd;
+    pctB[i] = upper[i] === lower[i] ? 0.5 : (closes[i] - lower[i]) / (upper[i] - lower[i]);
+  }
+  return { mid, upper, lower, pctB };
+}
+
+/** Slow stochastic: %K smoothed, %D = SMA of %K. */
+export function stochastic(bars, period = 14, kSmooth = 3, dSmooth = 3) {
+  const raw = new Array(bars.length).fill(null);
+  for (let i = period - 1; i < bars.length; i++) {
+    let hi = -Infinity, lo = Infinity;
+    for (let j = i - period + 1; j <= i; j++) { hi = Math.max(hi, bars[j].high); lo = Math.min(lo, bars[j].low); }
+    raw[i] = hi === lo ? 50 : 100 * (bars[i].close - lo) / (hi - lo);
+  }
+  const defined = raw.filter(v => v != null);
+  const kS = sma(defined, kSmooth);
+  const k = new Array(bars.length).fill(null);
+  const off = raw.findIndex(v => v != null);
+  for (let i = 0; i < kS.length; i++) k[off + i] = kS[i];
+  const kDef = k.filter(v => v != null);
+  const dS = sma(kDef, dSmooth);
+  const d = new Array(bars.length).fill(null);
+  const off2 = k.findIndex(v => v != null);
+  for (let i = 0; i < dS.length; i++) d[off2 + i] = dS[i];
+  return { k, d };
+}
+
+/**
+ * Relative Vigor Index. Compares where a bar closes within its range, on the
+ * idea that in an uptrend closes sit near highs. Uses the standard 1-2-2-1
+ * weighting before averaging, and the same weighting again for the signal.
+ */
+export function rvi(bars, period = 10) {
+  const n = bars.length;
+  const num = new Array(n).fill(null), den = new Array(n).fill(null);
+  for (let i = 3; i < n; i++) {
+    const w = (f) => (f(bars[i]) + 2 * f(bars[i - 1]) + 2 * f(bars[i - 2]) + f(bars[i - 3])) / 6;
+    num[i] = w(b => b.close - b.open);
+    den[i] = w(b => b.high - b.low);
+  }
+  const out = new Array(n).fill(null);
+  for (let i = 3 + period - 1; i < n; i++) {
+    let sn = 0, sd = 0;
+    for (let j = i - period + 1; j <= i; j++) { sn += num[j]; sd += den[j]; }
+    out[i] = sd === 0 ? 0 : sn / sd;
+  }
+  const signal = new Array(n).fill(null);
+  for (let i = 3; i < n; i++) {
+    if (out[i] == null || out[i - 3] == null) continue;
+    signal[i] = (out[i] + 2 * out[i - 1] + 2 * out[i - 2] + out[i - 3]) / 6;
+  }
+  return { rvi: out, signal };
+}
