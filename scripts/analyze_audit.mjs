@@ -144,6 +144,34 @@ for (const m of Object.keys(byMonth).sort()) {
 // the 72-market-hour expiry and lands here. A rising expiry share therefore
 // measures how blind the review has gone — and those setups are missing from
 // every expectancy number above, not counted as losses.
+// The LuxAlgo studies are the only reason the system needs TradingView at all:
+// they cannot be computed from candles, so they force the whole CDP scrape.
+// ltfEvent (BOS / CHoCH+) comes from Price Action Concepts; csVerdict comes
+// from the currency-strength read. If these do not rank outcomes, the
+// architecture they require is not being paid for.
+console.log(`\n── LUXALGO-DERIVED SIGNALS (do they justify the TV dependency?) ──`);
+const evs = [...new Set(setups.map(s => s.ltfEvent).filter(Boolean))];
+if (evs.length) {
+  for (const e of evs) stat(closed.filter(s => s.ltfEvent === e), `ltfEvent = ${e}`);
+  stat(closed.filter(s => !s.ltfEvent), 'ltfEvent = none');
+} else {
+  console.log('  (no ltfEvent field in this audit)');
+}
+const verds = [...new Set(setups.map(s => s.csVerdict).filter(Boolean))];
+if (verds.length) {
+  for (const v of verds) stat(closed.filter(s => s.csVerdict === v), `csVerdict = ${v}`);
+} else {
+  console.log('  (no csVerdict field in this audit)');
+}
+// csScore is ordinal (-1 .. +1); if currency strength carries information,
+// expectancy should climb with it. Bucket rather than assume linearity.
+const scored = closed.filter(s => typeof s.csScore === 'number');
+if (scored.length >= 15) {
+  stat(scored.filter(s => s.csScore <= -0.5), 'csScore <= -0.5');
+  stat(scored.filter(s => s.csScore > -0.5 && s.csScore < 0.5), 'csScore ~ 0');
+  stat(scored.filter(s => s.csScore >= 0.5), 'csScore >= +0.5');
+}
+
 console.log(`\n── EXPIRY RATE (review blindness) ──`);
 const months = Object.keys(byMonth).sort();
 for (const m of months) {
