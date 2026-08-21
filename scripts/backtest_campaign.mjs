@@ -23,7 +23,8 @@
  * Usage: node scripts/backtest_campaign.mjs [--pairs A,B] [--years 2] [--opts '{...}']
  */
 import { getCandles, getCandlesRange } from '../src/oanda.js';
-import * as strat from '../src/strategies/macro_reversal_level.js';
+const STRAT = (process.argv.includes('--strategy') ? process.argv[process.argv.indexOf('--strategy')+1] : 'macro_reversal_level');
+const strat = await import(`../src/strategies/${STRAT}.js`);
 import { structureEvents } from '../src/structure.js';
 import { swings, atr } from '../src/indicators.js';
 
@@ -34,6 +35,8 @@ const PAIRS = (argOf('--pairs') || ALL.join(',')).split(',').map(s => s.trim());
 const YEARS = parseFloat(argOf('--years') || '2');
 const SOPTS = JSON.parse(argOf('--opts') || '{}');
 const COPTS = JSON.parse(argOf('--campaign') || '{}');
+const ENTRY_TF = argOf('--entry') || 'H1';
+const END_AGO = parseFloat(argOf('--endYearsAgo') || '0');
 
 const CFG = {
   addSize: 1.0,        // each add, as a multiple of the starter
@@ -115,16 +118,21 @@ function stats(rs) {
 }
 
 async function main() {
-  const to = new Date(), from = new Date(Date.now() - YEARS * 365 * 24 * 3600e3);
+  const to = new Date(Date.now() - END_AGO * 365 * 24 * 3600e3);
+  const from = new Date(to.getTime() - YEARS * 365 * 24 * 3600e3);
   console.log(`Campaign backtest — ${strat.meta.name}`);
-  console.log(`${PAIRS.length} pairs, ${YEARS}y | starter=1R, add=${CFG.addSize}R x${CFG.maxAdds}, retries=${CFG.retries}`);
+  console.log(`${PAIRS.length} pairs, ${YEARS}y ending ${END_AGO}y ago, entries ${ENTRY_TF}`);
+  console.log(`starter=1R, add=${CFG.addSize}R x${CFG.maxAdds}, retries=${CFG.retries}, trail behind pullbacks`);
   console.log(`R = risk on the STARTER at its initial stop\n`);
 
   const all = [], perPair = [], exits = {}, peaks = [];
   for (const sym of PAIRS) {
     try {
       const [h1, h4, d, w, bid, ask] = await Promise.all([
-        getCandlesRange(sym, { granularity: 'H1', from: from.toISOString(), to: to.toISOString() }),
+        (['D', 'W'].includes(ENTRY_TF)
+          ? getCandles(sym, { granularity: ENTRY_TF, count: 5000 })
+            .then(bs => bs.filter(b => b.time >= from.toISOString() && b.time <= to.toISOString()))
+          : getCandlesRange(sym, { granularity: ENTRY_TF, from: from.toISOString(), to: to.toISOString() })),
         getCandlesRange(sym, { granularity: 'H4', from: from.toISOString(), to: to.toISOString() }),
         getCandles(sym, { granularity: 'D', count: 800 }),
         getCandles(sym, { granularity: 'W', count: 250 }),
