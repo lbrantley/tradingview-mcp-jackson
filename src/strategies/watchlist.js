@@ -23,7 +23,7 @@
  * Levels and state on Daily; resolution, retest and entry on H4.
  */
 import { atr, sma } from '../indicators.js';
-import { buildZones } from '../structure.js';
+import { buildLevels } from '../structure.js';
 import { momentum } from '../candles.js';
 
 export const meta = {
@@ -42,8 +42,16 @@ const alignedIdx = (series, t) => {
 export function generate(entry, levelBars, opts = {}, ctx = {}) {
   const {
     watchATR = 1.0,        // "within 1 daily ATR" — step 3
+    leaveATR = 1.5,        // price must go AWAY this far before a return counts
     minHoldDays = 2,       // days of touching-without-closing-beyond before armed
     retestATR = 0.5,       // how close price must come back to count as a retest
+    extendATR = 1.0,       // the move must TRAVEL this far before a pullback
+                           // counts as a retest. Without it the very next bar
+                           // qualifies — on NZDJPY the bar after the 6/30
+                           // resolution had a low within half an ATR of the
+                           // resolution close, so a still-rising move was read
+                           // as a pullback and the real 7/2 retest was never
+                           // reached.
     retestMaxBars = 30,    // H4 bars allowed for the retest to happen
     stopBufferATR = 0.3,   // beyond the ORIGINAL level
     minRR = 1.0,
@@ -57,40 +65,56 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
   const aD = atr(D, 14);
   const aH = atr(entry, 14);
   const s50 = sma(entry.map(b => b.close), 50);
-  const zones = buildZones(D, { lookback: 5, tolATR: 0.5, minTouches: 2 });
+  // Histogram levels, not strict swings — buildZones could not see the very
+  // clusters the user draws by hand.
+  const zones = buildLevels(D, { binATR: 0.35, minBars: 3 });
   if (!zones.length) return [];
 
   const signals = [];
 
   for (const z of zones) {
-    // ── Daily state machine over this level ────────────────────────────────
-    let holdDays = 0, armedAt = null, dir = null;
+    const isSup = z.kind === 'support';
+    // Walk the level's whole life and record EVERY resolution, not just the
+    // first. A level is revisited repeatedly over months — breaking after one
+    // event meant the NZDJPY June setup was invisible because an earlier
+    // resolution on the same level had already consumed it.
+    //
+    // The zone is NOT a narrow band. Per the user: price must LEAVE, then come
+    // back within 1 daily ATR; the reversal may happen anywhere inside that
+    // ATR, or below the level entirely. Requiring re-entry into a narrow band
+    // is what hid the June setup, whose lows sat 33p above a level with a 71p
+    // ATR.
+    const events = [];
+    let left = false, holdDays = 0;
     for (let k = z.confirmedAt + 1; k < D.length; k++) {
       const d = D[k];
       if (aD[k] == null) continue;
-      const near = Math.abs(d.close - z.price) <= aD[k] * watchATR;
-      const touched = d.low <= z.high && d.high >= z.low;
-      const closedBelow = d.close < z.low, closedAbove = d.close > z.high;
+      const dist = Math.abs(d.close - z.price);
 
-      if (touched && !closedBelow && !closedAbove) { holdDays++; continue; }   // CODE RED persists
-      if (!near && !touched) { holdDays = 0; continue; }                        // drifted away, reset
-
-      // RESOLVED — it finally closed beyond, or pulled decisively away.
-      if (holdDays >= minHoldDays) {
-        if (closedBelow) { dir = 'short'; armedAt = d.time; }        // broke down
-        else if (closedAbove) { dir = 'long'; armedAt = d.time; }    // broke up
-        else if (near) {
-          // Pulled away without closing beyond = the reversal case. Direction
-          // is away from the level.
-          const away = d.close > z.price ? 'long' : 'short';
-          if (Math.abs(d.close - z.price) > aD[k] * 0.8) { dir = away; armedAt = d.time; }
+      if (!left) { if (dist > aD[k] * leaveATR) left = true; continue; }
+      if (dist > aD[k] * watchATR) {
+        // Left the watch band. If it had been holding, that is the REVERSAL.
+        if (holdDays >= minHoldDays) {
+          const away = isSup ? d.close > z.price : d.close < z.price;
+          if (away) events.push({ at: d.time, dir: isSup ? 'long' : 'short', holdDays });
         }
+        holdDays = 0; left = true;
+        continue;
       }
-      if (armedAt) break;
-      holdDays = 0;
+      // Inside the watch band.
+      const beyond = isSup ? d.close < z.low : d.close > z.high;
+      if (beyond) {
+        // Closed through it — the BREAKOUT.
+        if (holdDays >= minHoldDays) events.push({ at: d.time, dir: isSup ? 'short' : 'long', holdDays });
+        holdDays = 0; left = false;
+        continue;
+      }
+      holdDays++;   // CODE RED persists
     }
-    if (!armedAt || !dir) continue;
+    if (!events.length) continue;
 
+    for (const evt of events) {
+      const armedAt = evt.at, dir = evt.dir, holdCount = evt.holdDays;
     // ── H4: require momentum on the resolution, then wait for the retest ───
     const i0 = alignedIdx(entry, armedAt);
     if (i0 < 60 || i0 >= entry.length - 2) continue;
@@ -107,13 +131,18 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
     if (resolvedAt == null) continue;
 
     // Extreme reached before the pullback — the "range high" that was broken.
-    let ext = entry[resolvedAt].close;
+    const base = entry[resolvedAt].close;
+    let ext = base, extended = false;
     let entered = false;
     for (let i = resolvedAt + 1; i < Math.min(entry.length - 1, resolvedAt + retestMaxBars); i++) {
       ext = L ? Math.max(ext, entry[i].high) : Math.min(ext, entry[i].low);
+      if (!extended) {
+        if (Math.abs(ext - base) >= aH[i] * extendATR) extended = true;
+        continue;                       // no pullback counts until it has run
+      }
       const back = L ? entry[i].low : entry[i].high;
       const nearSma = s50[i] != null && Math.abs(back - s50[i]) <= aH[i] * retestATR;
-      const nearBreak = Math.abs(back - entry[resolvedAt].close) <= aH[i] * retestATR;
+      const nearBreak = Math.abs(back - base) <= aH[i] * retestATR;
       if (!(nearSma || nearBreak)) continue;
 
       // ENTRY on the retest. Stop below the ORIGINAL level, per the user.
@@ -139,12 +168,13 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
       signals.push({
         index: i + 1, time: entry[i + 1].time, dir,
         entry: px, stop, target, risk, rr,
-        meta: { level: z.price, holdDays, armedAt, resolvedAt: entry[resolvedAt].time },
+        meta: { level: z.price, holdDays: holdCount, armedAt, resolvedAt: entry[resolvedAt].time },
       });
       entered = true;
       break;
     }
     void entered;
+    }
   }
   return signals.sort((a, b) => a.index - b.index);
 }
