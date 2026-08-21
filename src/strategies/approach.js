@@ -16,6 +16,7 @@
  * is labelled support or resistance.
  */
 import { atr, sma } from '../indicators.js';
+import { detect } from '../candles.js';
 import { buildZones } from '../structure.js';
 
 export const meta = {
@@ -27,7 +28,13 @@ export const meta = {
 
 export function generate(entry, levelBars, opts = {}, ctx = {}) {
   const {
-    mode = 'break',        // 'break' | 'reverse'
+    // 'reverse_pattern' replaces the close-back-out test with a candlestick
+    // rejection. Measured: a bullish pattern on a fall into a level reverses
+    // 65.8% / 63.3% of the time vs a 49.9% base, on two windows. It also fires
+    // on the NZDJPY 2026-06-26 turn (439 pips), which the close-back-out
+    // version missed — a hammer printed inside the zone on 06-25, a day before
+    // the low, and a bull engulf on 06-29.
+    mode = 'break',        // 'break' | 'reverse' | 'reverse_pattern'
     levelTF = 'self',      // 'self' uses the entry timeframe's own zones
     tolATR = 0.5,
     minTouches = 2,
@@ -115,6 +122,13 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
         // Fresh level, arrived hard, bar did NOT close back out.
         if (testNo > maxTestBreak || speed < fastATR || closedOut) continue;
         go = fromAbove ? 'short' : 'long';        // continue through
+      } else if (mode === 'reverse_pattern') {
+        // Rejection candle in the direction of the turn, printed at the level.
+        const pat = detect(entry, dec, a[dec]);
+        const bullish = pat.hammer || pat.bullEngulf || pat.morningStar;
+        const bearish = pat.shootingStar || pat.bearEngulf || pat.eveningStar;
+        if (fromAbove ? !bullish : !bearish) continue;
+        go = fromAbove ? 'long' : 'short';
       } else {
         // Well-tested level, drifted in, bar closed back out.
         if (testNo < minTestReverse || speed >= slowATR) continue;
