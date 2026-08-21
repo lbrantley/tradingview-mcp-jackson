@@ -118,17 +118,25 @@ export async function getPricing(symbols, accountId = ACCOUNT_ID) {
  * partial bar's high/low/close will change and would silently corrupt a
  * backtest.
  */
+// `count` defaults to 500, so "was it asked for?" cannot be inferred from the
+// value alone. Callers paging a range pass it deliberately.
+const countExplicit = c => c !== undefined && c !== null;
+
 export async function getCandles(symbol, {
   granularity = 'H4',
-  count = 500,
+  count,
   from,
   to,
   price = 'M',              // M=mid, B=bid, A=ask
   includeIncomplete = false,
 } = {}) {
+  // OANDA rejects a from+to span whose implied bar count exceeds 5000, so
+  // from+count is the only combination that can page a long range. Send count
+  // whenever it is given, and drop `to` in that case to avoid the conflict.
   const params = { granularity, price };
-  if (from || to) { if (from) params.from = from; if (to) params.to = to; }
-  else params.count = Math.min(count, 5000);
+  if (from && countExplicit(count)) { params.from = from; params.count = Math.min(count, 5000); }
+  else if (from || to) { if (from) params.from = from; if (to) params.to = to; }
+  else params.count = Math.min(count ?? 500, 5000);
 
   const data = await get(`/v3/instruments/${toInstrument(symbol)}/candles`, params);
   const key = price === 'B' ? 'bid' : price === 'A' ? 'ask' : 'mid';
@@ -143,6 +151,37 @@ export async function getCandles(symbol, {
       volume: c.volume,
       complete: c.complete,
     }));
+}
+
+/**
+ * Candles over an arbitrary range, paging around OANDA's 5000-per-request cap.
+ *
+ * Needed because the entry timeframe is finer than the level timeframe: H1
+ * over two years is ~12,500 bars, so a single call silently truncates to the
+ * most recent 5000 and a backtest would quietly test one year while reporting
+ * two. Pages forward from `from` until the API stops returning new bars.
+ */
+export async function getCandlesRange(symbol, { granularity = 'H1', from, to, price = 'M' } = {}) {
+  const end = new Date(to).getTime();
+  let cursor = new Date(from).toISOString();
+  const out = [];
+  let guard = 0;
+  while (guard++ < 40) {
+    const batch = await getCandles(symbol, { granularity, from: cursor, price, count: 5000 });
+    // from+count ignores `to`, so trim anything past the requested end.
+    for (let n = batch.length - 1; n >= 0; n--) {
+      if (new Date(batch[n].time).getTime() > end) batch.splice(n, 1);
+    }
+    if (!batch.length) break;
+    // Overlap on the boundary bar is expected; drop anything already held.
+    const fresh = out.length ? batch.filter(c => c.time > out[out.length - 1].time) : batch;
+    if (!fresh.length) break;
+    out.push(...fresh);
+    const lastMs = new Date(out[out.length - 1].time).getTime();
+    if (lastMs >= end || batch.length < 5000) break;
+    cursor = new Date(lastMs + 1000).toISOString();
+  }
+  return out;
 }
 
 /**
