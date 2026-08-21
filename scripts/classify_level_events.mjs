@@ -22,6 +22,7 @@
 import { getCandles } from '../src/oanda.js';
 import { atr, sma } from '../src/indicators.js';
 import { buildZones } from '../src/structure.js';
+import { detect } from '../src/candles.js';
 
 const args = process.argv.slice(2);
 const argOf = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
@@ -125,6 +126,7 @@ for (const sym of PAIRS) {
           age: i - z.firstAt,
           firstTest: seen === 1 ? 1 : 0,
           speed, run, wickFrac, closedOut: closedOut ? 1 : 0,
+          pat: detect(use, i, av), fromAbove,
           vol: av / atrAvg[i],
           room, compression, near,
         });
@@ -167,6 +169,34 @@ report('RUN INTO IT (ATR over 20 bars)', band(e => e.run, [0, 1, 2, 4, 99]));
 report('TOUCH BAR: closed back out?', [['closed back out', ev.filter(e => e.closedOut)], ['closed inside/through', ev.filter(e => !e.closedOut)]]);
 report('TOUCH BAR WICK FRACTION', band(e => e.wickFrac, [0, 0.4, 0.6, 0.8, 1.01]));
 report('VOLATILITY REGIME', band(e => e.vol, [0, 0.8, 1.0, 1.3, 99]));
+// Do candlestick patterns at a level predict what happens next? Judged in the
+// direction the pattern is supposed to mean: a hammer is a bullish rejection,
+// so at a level price fell into, it should predict REVERSE.
+console.log('CANDLESTICK PATTERNS AT THE LEVEL');
+{
+  const names = Object.keys(ev[0]?.pat || {});
+  for (const n of names) {
+    const rs = ev.filter(e => e.pat[n]);
+    if (rs.length < 150) { console.log(`  ${n.padEnd(14)} n=${String(rs.length).padStart(5)}  (too few)`); continue; }
+    const [x, y, z] = share(rs);
+    console.log(`  ${n.padEnd(14)} n=${String(rs.length).padStart(5)}` +
+      `  break ${x.toFixed(1)}%${((x - bB) >= 0 ? '+' : '') + (x - bB).toFixed(1)}` +
+      `  rev ${y.toFixed(1)}%${((y - bR) >= 0 ? '+' : '') + (y - bR).toFixed(1)}` +
+      `  stall ${z.toFixed(1)}%`);
+  }
+  // The directional read: does a bullish pattern on a fall into the level
+  // predict the turn, and a bearish one on a rise into it?
+  const bullish = ev.filter(e => e.fromAbove && (e.pat.hammer || e.pat.bullEngulf || e.pat.morningStar));
+  const bearish = ev.filter(e => !e.fromAbove && (e.pat.shootingStar || e.pat.bearEngulf || e.pat.eveningStar));
+  console.log('');
+  for (const [lbl, rs] of [['bullish pattern on a fall in', bullish], ['bearish pattern on a rise in', bearish]]) {
+    if (rs.length < 100) { console.log(`  ${lbl}: n=${rs.length} (too few)`); continue; }
+    const [x, y, z] = share(rs);
+    console.log(`  ${lbl.padEnd(30)} n=${String(rs.length).padStart(5)}  REVERSE ${y.toFixed(1)}%${((y - bR) >= 0 ? '+' : '') + (y - bR).toFixed(1)}   break ${x.toFixed(1)}%   stall ${z.toFixed(1)}%`);
+  }
+}
+console.log('');
+
 report('LEVEL AGE (bars)', band(e => e.age, [0, 30, 80, 200, 1e9]));
 report('ROOM TO RUN (ATR to next level beyond)', band(e => e.room, [0, 1, 2, 4, 8, 1e9]));
 report('COMPRESSION (10-bar range / ATR)', band(e => e.compression, [0, 2, 3, 4.5, 99]));
