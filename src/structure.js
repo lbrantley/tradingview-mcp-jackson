@@ -18,7 +18,7 @@ import { swings, atr } from './indicators.js';
  * Each zone carries `confirmedAt` — the bar by which every one of its touches
  * was knowable. Reading a zone before that index is lookahead.
  */
-export function buildZones(bars, { lookback = 5, tolATR = 0.5, minTouches = 2 } = {}) {
+export function buildZones(bars, { lookback = 5, tolATR = 0.5, minTouches = 2, minWidthATR = 0.25 } = {}) {
   const a = atr(bars, 14);
   const { highs, lows } = swings(bars, lookback);
 
@@ -41,11 +41,21 @@ export function buildZones(bars, { lookback = 5, tolATR = 0.5, minTouches = 2 } 
     }
     return clusters
       .filter(c => c.points.length >= minTouches)
-      .map(c => ({
+      .map(c => {
+        // A zone needs WIDTH. Taking min-max of the clustered swing points
+        // produced 2-pip bands on NZDJPY H4 — a line, not a zone — so a touch
+        // 13 pips away never registered while a trader would obviously count
+        // it. Floor the half-width at minWidthATR so the band reflects where
+        // price is reacting rather than the exact pips two swings printed.
+        const lo = Math.min(...c.points.map(p => p.price));
+        const hi = Math.max(...c.points.map(p => p.price));
+        const at = a[c.points[c.points.length - 1].i] || a.find(Boolean) || 0;
+        const half = Math.max((hi - lo) / 2, at * minWidthATR);
+        return {
         kind,
         price: c.mean,
-        low: Math.min(...c.points.map(p => p.price)),
-        high: Math.max(...c.points.map(p => p.price)),
+        low: c.mean - half,
+        high: c.mean + half,
         touches: c.points.length,
         // Usable only once the LAST touch is confirmed.
         confirmedAt: Math.max(...c.points.map(p => p.confirmedAt)),
@@ -54,7 +64,8 @@ export function buildZones(bars, { lookback = 5, tolATR = 0.5, minTouches = 2 } 
         // timeframe can ask "was this knowable yet?" without index maths.
         confirmedTime: bars[Math.min(bars.length - 1, Math.max(...c.points.map(p => p.confirmedAt)))].time,
         firstAt: Math.min(...c.points.map(p => p.i)),
-      }));
+        };
+      });
   };
 
   return [...mk(highs, 'resistance'), ...mk(lows, 'support')];
