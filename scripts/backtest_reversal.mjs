@@ -65,7 +65,14 @@ async function main() {
   for (const sym of PAIRS) {
     try {
       const [h1, h4, d, w, bid, ask] = await Promise.all([
-        getCandlesRange(sym, { granularity: ENTRY_TF, from: from.toISOString(), to: to.toISOString() }),
+        // D/W fit inside one 5000-bar request, but a count-based fetch ignores
+        // from/to entirely — which silently returned the SAME most-recent bars
+        // for every --endYearsAgo, making in-sample and out-of-sample identical.
+        // Fetch by count, then window by date explicitly.
+        (['D', 'W'].includes(ENTRY_TF)
+          ? getCandles(sym, { granularity: ENTRY_TF, count: 5000 })
+            .then(bs => bs.filter(b => b.time >= from.toISOString() && b.time <= to.toISOString()))
+          : getCandlesRange(sym, { granularity: ENTRY_TF, from: from.toISOString(), to: to.toISOString() })),
         getCandlesRange(sym, { granularity: 'H4', from: from.toISOString(), to: to.toISOString() }),
         getCandles(sym, { granularity: 'D', count: 800 }),
         getCandles(sym, { granularity: 'W', count: 250 }),
