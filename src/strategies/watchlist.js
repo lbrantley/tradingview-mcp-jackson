@@ -53,6 +53,7 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
                            // as a pullback and the real 7/2 retest was never
                            // reached.
     retestMaxBars = 30,    // H4 bars allowed for the retest to happen
+    rangeBars = 24,        // bars of consolidation defining the broken range
     stopBufferATR = 0.3,   // beyond the ORIGINAL level
     minRR = 1.0,
     maxRR = 6,
@@ -131,6 +132,16 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
     if (resolvedAt == null) continue;
 
     // Extreme reached before the pullback — the "range high" that was broken.
+    // THE RANGE that was broken — measured over the consolidation BEFORE the
+    // resolution bar, never including the breakout itself. Measuring through
+    // the breakout put the range top at 92.764 instead of ~91.6, so the retest
+    // could never be recognised.
+    let rHi = -Infinity, rLo = Infinity;
+    for (let k = Math.max(0, resolvedAt - rangeBars); k < resolvedAt; k++) {
+      rHi = Math.max(rHi, entry[k].high); rLo = Math.min(rLo, entry[k].low);
+    }
+    const edge = L ? rHi : rLo;          // the side price broke through
+
     const base = entry[resolvedAt].close;
     let ext = base, extended = false;
     let entered = false;
@@ -140,10 +151,18 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
         if (Math.abs(ext - base) >= aH[i] * extendATR) extended = true;
         continue;                       // no pullback counts until it has run
       }
+      // RETEST AND REJECTION. Price must trade back to the broken edge (or the
+      // 50 SMA) and CLOSE back on the breakout side — the user's "retesting and
+      // rejecting the range". Either confirmation alone is enough; both
+      // together is the stronger entry, so count them and report it.
       const back = L ? entry[i].low : entry[i].high;
-      const nearSma = s50[i] != null && Math.abs(back - s50[i]) <= aH[i] * retestATR;
-      const nearBreak = Math.abs(back - base) <= aH[i] * retestATR;
-      if (!(nearSma || nearBreak)) continue;
+      const hitEdge = L ? back <= edge + aH[i] * retestATR : back >= edge - aH[i] * retestATR;
+      const hitSma = s50[i] != null &&
+        (L ? back <= s50[i] + aH[i] * retestATR : back >= s50[i] - aH[i] * retestATR);
+      const rejected = L ? entry[i].close > Math.max(edge, s50[i] ?? -Infinity)
+                         : entry[i].close < Math.min(edge, s50[i] ?? Infinity);
+      if (!((hitEdge || hitSma) && rejected)) continue;
+      const confirmations = (hitEdge ? 1 : 0) + (hitSma ? 1 : 0);
 
       // ENTRY on the retest. Stop below the ORIGINAL level, per the user.
       const px = entry[i + 1].open;
@@ -168,7 +187,8 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
       signals.push({
         index: i + 1, time: entry[i + 1].time, dir,
         entry: px, stop, target, risk, rr,
-        meta: { level: z.price, holdDays: holdCount, armedAt, resolvedAt: entry[resolvedAt].time },
+        meta: { level: z.price, holdDays: holdCount, armedAt,
+                resolvedAt: entry[resolvedAt].time, rangeEdge: edge, confirmations },
       });
       entered = true;
       break;
