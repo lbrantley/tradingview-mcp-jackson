@@ -47,6 +47,13 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
     geom = 'structure',    // 'structure' | 'atr'
     stopATR = 1.0,
     targetATR = 1.0,
+    // The reverse signal requires the touch bar to have closed BACK OUT of the
+    // zone, which means the turn is already underway before you can be filled —
+    // the same entry lag that killed the CHoCH version. These let the reverse
+    // side be tested without that handicap: enter at the level itself, as the
+    // user does by hand with a small starter, rather than after confirmation.
+    requireClosedOut = true,
+    entryMode = 'next_open',   // 'next_open' | 'zone_limit'
   } = opts;
 
   const src = levelTF === 'self' ? entry : (levelBars[levelTF] || entry);
@@ -72,11 +79,20 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
       const testNo = (testCount.get(key) ?? 0) + 1;
       testCount.set(key, testNo);
 
-      // Arrival direction, from where price was before it ran in.
-      const ref = closes[Math.max(0, i - 5)];
+      // A resting limit is placed BEFORE this bar opens, so it may only use
+      // information closed at i-1. Reading closes[i] to decide, then filling
+      // inside bar i, is lookahead — it produced a spurious +12.6 sd before
+      // this guard existed. next_open entries are decided at i's close and
+      // filled at i+1, so they may legitimately see bar i.
+      const lim = entryMode === 'zone_limit';
+      const dec = lim ? i - 1 : i;             // last bar the decision may see
+      if (dec < 6) continue;
+      const ref = closes[Math.max(0, dec - 5)];
       const fromAbove = ref > z.price;
-      const speed = Math.abs(closes[i] - ref) / a[i];
-      const closedOut = fromAbove ? b.close > z.high : b.close < z.low;
+      const speed = Math.abs(closes[dec] - ref) / a[dec];
+      const closedOut = lim
+        ? (fromAbove ? entry[dec].close > z.high : entry[dec].close < z.low)
+        : (fromAbove ? b.close > z.high : b.close < z.low);
 
       let go = null;
       if (mode === 'break') {
@@ -85,17 +101,28 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
         go = fromAbove ? 'short' : 'long';        // continue through
       } else {
         // Well-tested level, drifted in, bar closed back out.
-        if (testNo < minTestReverse || speed >= slowATR || !closedOut) continue;
+        if (testNo < minTestReverse || speed >= slowATR) continue;
+        if (requireClosedOut && !closedOut) continue;
         go = fromAbove ? 'long' : 'short';        // turn back
       }
 
       const L = go === 'long';
-      const px = entry[i + 1].open;
-      const buf = a[i] * stopBufferATR;
+      // zone_limit fills at the level itself. Only legitimate if the bar
+      // actually traded there, which the touch test already guarantees.
+      // Limit resting at the zone: filled only if THIS bar trades there, and
+      // only at a price the bar actually reached.
+      let px;
+      if (lim) {
+        if (L ? b.low > z.price : b.high < z.price) continue;   // never reached
+        px = z.price;
+      } else {
+        px = entry[i + 1].open;
+      }
+      const buf = a[dec] * stopBufferATR;
       // Break: invalidated by price returning to the far side of the zone.
       // Reverse: invalidated by the touch bar's extreme giving way.
       const stop = geom === 'atr'
-        ? (L ? px - a[i] * stopATR : px + a[i] * stopATR)
+        ? (L ? px - a[dec] * stopATR : px + a[dec] * stopATR)
         : mode === 'break'
           ? (L ? z.low - buf : z.high + buf)
           : (L ? Math.min(b.low, z.low) - buf : Math.max(b.high, z.high) + buf);
@@ -106,10 +133,11 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
       if (ctx.spread && ctx.spread / risk > maxSpreadFrac) continue;
 
       if (geom === 'atr') {
-        const tgt = L ? px + a[i] * targetATR : px - a[i] * targetATR;
+        const tgt = L ? px + a[dec] * targetATR : px - a[dec] * targetATR;
         const rrA = Math.abs(tgt - px) / risk;
         signals.push({
-          index: i + 1, time: entry[i + 1].time, dir: go,
+          index: lim ? i : i + 1,
+          time: entry[lim ? i : i + 1].time, dir: go,
           entry: px, stop, target: tgt, risk, rr: rrA,
           meta: { mode, zone: z.price, testNo, speed: +speed.toFixed(2), fromAbove, closedOut },
         });
@@ -128,7 +156,7 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
       if (rr > maxRR) { target = L ? px + maxRR * risk : px - maxRR * risk; rr = maxRR; }
 
       signals.push({
-        index: i + 1, time: entry[i + 1].time, dir: go,
+        index: lim ? i : i + 1, time: entry[lim ? i : i + 1].time, dir: go,
         entry: px, stop, target, risk, rr,
         meta: { mode, zone: z.price, testNo, speed: +speed.toFixed(2), fromAbove, closedOut },
       });
