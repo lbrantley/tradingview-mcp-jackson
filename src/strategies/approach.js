@@ -151,7 +151,15 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
       const buf = a[dec] * stopBufferATR;
       // Break: invalidated by price returning to the far side of the zone.
       // Reverse: invalidated by the touch bar's extreme giving way.
-      const stop = geom === 'atr'
+      // A pattern trade is invalidated when the rejection itself fails — i.e.
+      // price takes out the wick that defined it. A fixed 1 ATR stop sits at an
+      // arbitrary distance and gets picked off while the idea is still valid,
+      // which is why the pattern classified at 65% but traded at 48%.
+      const patStop = mode === 'reverse_pattern'
+        ? (go === 'long' ? entry[dec].low - a[dec] * stopBufferATR
+                         : entry[dec].high + a[dec] * stopBufferATR)
+        : null;
+      const stop = patStop != null ? patStop : geom === 'atr'
         ? (L ? px - a[dec] * stopATR : px + a[dec] * stopATR)
         : mode === 'break'
           ? (L ? z.low - buf : z.high + buf)
@@ -163,6 +171,7 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
       if (ctx.spread && ctx.spread / risk > maxSpreadFrac) continue;
 
       if (geom === 'atr') {
+        // Target still measured in ATR, but risk is now the structural distance.
         const tgt = L ? px + a[dec] * targetATR : px - a[dec] * targetATR;
         const rrA = Math.abs(tgt - px) / risk;
         signals.push({

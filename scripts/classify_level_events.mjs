@@ -186,10 +186,32 @@ console.log('CANDLESTICK PATTERNS AT THE LEVEL');
   }
   // The directional read: does a bullish pattern on a fall into the level
   // predict the turn, and a bearish one on a rise into it?
+  console.log('\n  INDIVIDUAL reversal patterns, direction-matched:');
+  for (const [nm, bk, bs] of [['hammer', 'hammer', 'shootingStar'], ['engulfing', 'bullEngulf', 'bearEngulf'],
+                              ['star', 'morningStar', 'eveningStar'], ['doji', 'doji', 'doji']]) {
+    const rs = ev.filter(e => e.fromAbove ? e.pat[bk] : e.pat[bs]);
+    if (rs.length < 150) { console.log(`    ${nm.padEnd(10)} n=${rs.length} (too few)`); continue; }
+    const [, y] = share(rs);
+    console.log(`    ${nm.padEnd(10)} n=${String(rs.length).padStart(5)}  reverse ${y.toFixed(1)}%  (base ${bR.toFixed(1)}%)`);
+  }
   const bullish = ev.filter(e => e.fromAbove && (e.pat.hammer || e.pat.bullEngulf || e.pat.morningStar));
   const bearish = ev.filter(e => !e.fromAbove && (e.pat.shootingStar || e.pat.bearEngulf || e.pat.eveningStar));
   console.log('');
-  for (const [lbl, rs] of [['bullish pattern on a fall in', bullish], ['bearish pattern on a rise in', bearish]]) {
+  // CONTROL. Conditioning on arrival direction may be doing the work on its
+  // own — a fall into a level then reversing is just a bounce, pattern or not.
+  // Without this comparison the pattern gets credit for the conditioning.
+  const fellIn = ev.filter(e => e.fromAbove);
+  const roseIn = ev.filter(e => !e.fromAbove);
+  const noPatFell = fellIn.filter(e => !(e.pat.hammer || e.pat.bullEngulf || e.pat.morningStar));
+  const noPatRose = roseIn.filter(e => !(e.pat.shootingStar || e.pat.bearEngulf || e.pat.eveningStar));
+  for (const [lbl, rs] of [
+    ['CONTROL: any fall in', fellIn],
+    ['  fall in, NO pattern', noPatFell],
+    ['  fall in, WITH pattern', bullish],
+    ['CONTROL: any rise in', roseIn],
+    ['  rise in, NO pattern', noPatRose],
+    ['  rise in, WITH pattern', bearish],
+  ]) {
     if (rs.length < 100) { console.log(`  ${lbl}: n=${rs.length} (too few)`); continue; }
     const [x, y, z] = share(rs);
     console.log(`  ${lbl.padEnd(30)} n=${String(rs.length).padStart(5)}  REVERSE ${y.toFixed(1)}%${((y - bR) >= 0 ? '+' : '') + (y - bR).toFixed(1)}   break ${x.toFixed(1)}%   stall ${z.toFixed(1)}%`);
