@@ -137,3 +137,56 @@ export function lastEventAt(events, i, { within = Infinity } = {}) {
   }
   return null;
 }
+
+
+/**
+ * Levels the way a trader draws them: price bands where many bars have turned,
+ * found by histogram rather than by strict swing structure.
+ *
+ * buildZones() requires a bar lower than the N bars either side, so in a
+ * cluster of similar lows only one qualifies and no zone forms. On NZDJPY the
+ * April 2026 lows (90.712-90.992 over five days) are obvious by eye and produce
+ * NO zone at all under swing detection. This finds them.
+ *
+ * Method: bucket every bar's high and low into ATR-scaled price bins, then keep
+ * bins where price turned on `minBars` separate occasions. Occasions are counted
+ * with a gap requirement so one long consolidation is not mistaken for repeated
+ * independent tests.
+ */
+export function buildLevels(bars, { binATR = 0.35, minBars = 3, gap = 3, lookback = 5 } = {}) {
+  const a = atr(bars, 14);
+  const ref = a.filter(Boolean).sort((x, y) => x - y)[Math.floor(a.filter(Boolean).length / 2)] || 0;
+  if (!ref) return [];
+  const bin = ref * binATR;
+
+  const mk = (pick, kind) => {
+    const buckets = new Map();
+    for (let i = lookback; i < bars.length - lookback; i++) {
+      const px = pick(bars[i]);
+      const key = Math.round(px / bin);
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push({ i, px });
+    }
+    const out = [];
+    for (const [key, pts] of buckets) {
+      // Separate touches only — consecutive bars in one dip are one event.
+      const events = [];
+      let last = -1e9;
+      for (const p of pts) { if (p.i - last >= gap) events.push(p); last = p.i; }
+      if (events.length < minBars) continue;
+      const prices = events.map(e => e.px);
+      const mean = prices.reduce((x, y) => x + y, 0) / prices.length;
+      out.push({
+        kind, price: mean,
+        low: mean - bin / 2, high: mean + bin / 2,
+        touches: events.length,
+        firstAt: events[0].i,
+        confirmedAt: events[Math.min(events.length - 1, minBars - 1)].i + lookback,
+        confirmedTime: bars[Math.min(bars.length - 1, events[Math.min(events.length - 1, minBars - 1)].i + lookback)].time,
+        _key: key,
+      });
+    }
+    return out;
+  };
+  return [...mk(b => b.low, 'support'), ...mk(b => b.high, 'resistance')];
+}

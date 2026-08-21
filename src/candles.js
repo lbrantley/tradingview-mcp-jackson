@@ -98,3 +98,40 @@ export function detect(bars, i, av) {
     eveningStar: star(bars, i, av, 'bear'),
   };
 }
+
+/**
+ * Fair value gap — a 3-bar imbalance where price moved so fast that bar i-2 and
+ * bar i never traded at the same prices. Bullish: bars[i].low > bars[i-2].high.
+ * Returns the gap size in price, or 0 if none.
+ *
+ * This is the concrete version of "moved with force": nobody transacted in that
+ * band, so the move outran two-sided interest.
+ */
+export function fvg(bars, i, dir) {
+  if (i < 2) return 0;
+  const a = bars[i - 2], c = bars[i];
+  return dir === 'bull'
+    ? Math.max(0, c.low - a.high)
+    : Math.max(0, a.low - c.high);
+}
+
+/**
+ * Did price move with momentum over the last `n` bars, in `dir`?
+ * Three independent readings, any of which the user has described as "force":
+ *   body    — a large decisive candle
+ *   fvg     — a gap nobody traded through
+ *   thrust  — sustained net travel relative to normal range
+ * Returns which fired, so a backtest can tell them apart rather than merging
+ * them into one untestable notion of "strong".
+ */
+export function momentum(bars, i, av, dir, { n = 3, bodyATR = 1.0, thrustATR = 1.5 } = {}) {
+  if (!av || i < n) return { any: false };
+  const b = bars[i];
+  const bull = dir === 'bull';
+  const bodySize = Math.abs(b.close - b.open);
+  const bigBody = bodySize >= av * bodyATR && (bull ? b.close > b.open : b.close < b.open);
+  const gap = fvg(bars, i, dir) > 0;
+  const net = bull ? b.close - bars[i - n].close : bars[i - n].close - b.close;
+  const thrust = net >= av * thrustATR;
+  return { any: bigBody || gap || thrust, bigBody, gap, thrust };
+}
