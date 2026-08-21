@@ -59,6 +59,13 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
     maxRR = 6,
     maxSpreadFrac = 0.25,
     momOpts = {},
+    // 'retest'          wait for breakout then re-entry to the broken range
+    // 'level_rejection' enter on the close of the candle that rejects the
+    //                   level itself. Simpler, and it is what the user does by
+    //                   hand: by the time the level has rejected, the question
+    //                   is only where to get in, not whether.
+    entryMode = 'retest',
+    rejectTF = 'D',        // which timeframe's candle must do the rejecting
   } = opts;
 
   const D = levelBars.D || [];
@@ -116,6 +123,57 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
 
     for (const evt of events) {
       const armedAt = evt.at, dir = evt.dir, holdCount = evt.holdDays;
+    // ── Level rejection: enter on the close of the candle that rejects ─────
+    if (entryMode === 'level_rejection') {
+      const src = rejectTF === 'D' ? D : entry;
+      const aSrc = rejectTF === 'D' ? aD : aH;
+      // Find the rejection inside the code-red window that produced this event.
+      const armedIdx = src.findIndex(b => b.time >= armedAt);
+      const from = Math.max(0, armedIdx - 10);
+      for (let k = from; k < armedIdx && k < src.length; k++) {
+        const c = src[k];
+        if (aSrc[k] == null) continue;
+        // Traded into the level, closed back away from it.
+        const into = isSup ? c.low <= z.high : c.high >= z.low;
+        const away = isSup ? c.close > z.high : c.close < z.low;
+        if (!(into && away)) continue;
+
+        const px = c.close;                       // enter on the rejection close
+        const buf = aSrc[k] * stopBufferATR;
+        const stop = isSup ? z.low - buf : z.high + buf;
+        const risk = Math.abs(px - stop);
+        if (!risk) continue;
+        if (isSup ? px <= stop : px >= stop) continue;
+        if (ctx.spread && ctx.spread / risk > maxSpreadFrac) continue;
+
+        // Take the first level FAR ENOUGH to be worth trading, not simply the
+        // nearest. Histogram levels sit every ~30 pips, so the nearest is often
+        // a few pips away — on the NZDJPY June setup it was 3 pips, giving
+        // rr 0.08 and killing every signal. The user's TP1 is a specific prior
+        // structure, not whatever happens to be closest.
+        const ahead = zones
+          .filter(w => isSup ? w.price > px : w.price < px)
+          .sort((x, y) => Math.abs(x.price - px) - Math.abs(y.price - px))
+          .find(w => Math.abs(w.price - px) / risk >= minRR);
+        if (!ahead) continue;
+        let target = ahead.price;
+        let rr = Math.abs(target - px) / risk;
+        if (rr > maxRR) { target = isSup ? px + maxRR * risk : px - maxRR * risk; rr = maxRR; }
+
+        // Map the rejection bar back onto the entry timeframe for simulation.
+        const idx = alignedIdx(entry, c.time);
+        if (idx < 0 || idx >= entry.length - 1) continue;
+        signals.push({
+          index: idx + 1, time: entry[idx + 1].time, dir: isSup ? 'long' : 'short',
+          entry: px, stop, target, risk, rr,
+          meta: { level: z.price, holdDays: holdCount, armedAt, mode: 'level_rejection',
+                  rejectBar: c.time },
+        });
+        break;
+      }
+      continue;
+    }
+
     // ── H4: require momentum on the resolution, then wait for the retest ───
     const i0 = alignedIdx(entry, armedAt);
     if (i0 < 60 || i0 >= entry.length - 2) continue;
@@ -196,5 +254,22 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
     void entered;
     }
   }
-  return signals.sort((a, b) => a.index - b.index);
+  // Levels sit every ~30 pips, so one rejection bar can satisfy several of them
+  // and produce duplicates — and worse, a long and a short on the SAME bar from
+  // levels either side. A bar that argues both ways is a bar with no view, so
+  // drop it entirely rather than trade a coin flip. Otherwise keep the best
+  // reward-to-risk per bar per direction.
+  const byBar = new Map();
+  for (const sig of signals) {
+    const k = sig.index;
+    if (!byBar.has(k)) byBar.set(k, []);
+    byBar.get(k).push(sig);
+  }
+  const out = [];
+  for (const group of byBar.values()) {
+    const dirs = new Set(group.map(g => g.dir));
+    if (dirs.size > 1) continue;                       // contradictory — skip
+    out.push(group.sort((a, b) => b.rr - a.rr)[0]);    // best geometry
+  }
+  return out.sort((a, b) => a.index - b.index);
 }

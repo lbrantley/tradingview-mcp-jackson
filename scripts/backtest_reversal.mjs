@@ -74,8 +74,14 @@ async function main() {
             .then(bs => bs.filter(b => b.time >= from.toISOString() && b.time <= to.toISOString()))
           : getCandlesRange(sym, { granularity: ENTRY_TF, from: from.toISOString(), to: to.toISOString() })),
         getCandlesRange(sym, { granularity: 'H4', from: from.toISOString(), to: to.toISOString() }),
-        getCandles(sym, { granularity: 'D', count: 800 }),
-        getCandles(sym, { granularity: 'W', count: 250 }),
+        // LOOKAHEAD BUG FIXED: these were fetched by count and never windowed,
+        // so for any --endYearsAgo the level timeframes carried data from AFTER
+        // the test period. Levels must only ever be built from bars the test
+        // window could actually have seen.
+        getCandles(sym, { granularity: 'D', count: 2000 })
+          .then(bs => bs.filter(b => b.time <= to.toISOString())),
+        getCandles(sym, { granularity: 'W', count: 500 })
+          .then(bs => bs.filter(b => b.time <= to.toISOString())),
         getCandles(sym, { granularity: 'D', count: 60, price: 'B' }),
         getCandles(sym, { granularity: 'D', count: 60, price: 'A' }),
       ]);
@@ -88,7 +94,7 @@ async function main() {
       // 12-bar window means 12h on H1 but only 3h on M15 — the comparison
       // would silently change two things at once.
       const scaled = { chochWithin: 12 * perH1, ...OPTS };
-      const sigs = strat.generate(h1, { H4: h4, D: d, W: w }, scaled, { spread });
+      const sigs = strat.generate(h1, { H4: h4, D: d, W: w }, { ...scaled, ...OPTS }, { spread });
       if (!sigs.length) { console.log(`  ${sym.padEnd(7)} no signals`); continue; }
       rrs.push(...sigs.map(s => s.rr));
       const res = sigs.map((s, k) => ({ ...simulate(h1, s, spread), rr: sigs[k].rr }));
