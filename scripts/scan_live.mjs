@@ -21,6 +21,7 @@ import { getCandles, getPricing, getSummary, ACCOUNT_ID, LIVE_ACCOUNT_ID } from 
 import { atr, rsi } from '../src/indicators.js';
 import { buildLevels } from '../src/structure.js';
 import https from 'https';
+import { appendFileSync } from 'fs';
 import 'dotenv/config';
 
 const args = process.argv.slice(2);
@@ -150,6 +151,29 @@ if (SHOW_ALL && watching.length) {
   console.log(`\n(${watching.length} more within 1 ATR of a level — use --all to list)`);
 }
 console.log('');
+
+// Persist what the scanner SAID, so it can later be reconciled against what the
+// user actually did. Without this the comparison is impossible after the fact:
+// which alerts were taken, which skipped, where the stop went versus where it
+// was suggested. That difference is the thing worth learning from.
+for (const e of finalEntries) {
+  appendFileSync('alerts.jsonl', JSON.stringify({
+    ts: new Date().toISOString(), sym: e.sym, dir: e.dir, level: e.level,
+    entry: e.px, stop: e.stop, target: e.target, rr: e.rr,
+    riskPips: e.risk, units: e.units, dailyRsi: e.dr, heldDays: e.hold,
+    touches: e.touches, state: 'ENTRY',
+  }) + '\n');
+}
+for (const c of codeRed) {
+  appendFileSync('alerts.jsonl', JSON.stringify({
+    ts: new Date().toISOString(), sym: c.sym, dir: c.dir, level: c.level,
+    dailyRsi: c.dr, heldDays: c.hold, touches: c.touches,
+    state: 'CODE_RED', gate: c.rsiOK ? 'rsi_ready' : 'rsi_pending',
+  }) + '\n');
+}
+if (finalEntries.length || codeRed.length) {
+  console.log(`logged ${finalEntries.length} entr${finalEntries.length === 1 ? 'y' : 'ies'} + ${codeRed.length} code-red to alerts.jsonl`);
+}
 
 if (NOTIFY && finalEntries.length) {
   const e = finalEntries[0];

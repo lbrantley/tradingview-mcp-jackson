@@ -194,6 +194,25 @@ export async function getTransactions(accountId = ACCOUNT_ID, { from, to, type }
 }
 
 /**
+ * Transactions since a given id — the incremental form, for polling.
+ *
+ * /transactions returns pages of ids rather than the transactions themselves,
+ * which is useless for a journal. sinceid returns the actual records.
+ * Returns { transactions, lastId } so a caller can resume from where it left
+ * off without re-reading history.
+ */
+export async function getTransactionsSince(id, accountId = ACCOUNT_ID) {
+  const data = await get(`/v3/accounts/${accountId}/transactions/sinceid`, { id });
+  return { transactions: data.transactions || [], lastId: data.lastTransactionID };
+}
+
+/** The account's most recent transaction id — the starting point for polling. */
+export async function getLastTransactionId(accountId = ACCOUNT_ID) {
+  const data = await get(`/v3/accounts/${accountId}/summary`);
+  return data.lastTransactionID;
+}
+
+/**
  * Gate every future write must pass. Trading is off unless explicitly enabled,
  * and even then may only target the zero-balance sandbox account — so a
  * decimal-point slip cannot reach real money. Deliberately throws rather than

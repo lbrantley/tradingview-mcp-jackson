@@ -25,3 +25,8 @@ currency_index_cache.json
 
 # Brief-generator runtime logs
 logs/
+
+# Trade journal + scanner alert log (runtime, machine-specific)
+trades.jsonl
+alerts.jsonl
+.track_state.json
