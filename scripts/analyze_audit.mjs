@@ -149,6 +149,37 @@ for (const m of Object.keys(byMonth).sort()) {
 // ltfEvent (BOS / CHoCH+) comes from Price Action Concepts; csVerdict comes
 // from the currency-strength read. If these do not rank outcomes, the
 // architecture they require is not being paid for.
+// A stop that is honoured produces exactly -1.00R. Anything beyond that is
+// the trade running past its stop before anything closed it — there is no
+// broker-side stop order, only a scanner polling every ~15 minutes, and since
+// 2026-07-30 that poll has been failing to settle the chart on nearly every
+// pass. This is measured separately from signal quality because it is not a
+// signal problem: it inflates every avgL in the report above and makes good
+// setups look bad in proportion to how far their stops get run.
+console.log(`\n── STOP INTEGRITY (how far do losses run past the stop?) ──`);
+const losses = closed.map(s => rMultiple(s)).filter(r => r !== null && r <= 0);
+if (losses.length >= 10) {
+  const n = losses.length;
+  const mean = losses.reduce((a, b) => a + b, 0) / n;
+  const sorted = [...losses].sort((a, b) => a - b);
+  const pct = p => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * p))];
+  const over = t => losses.filter(r => r < -t).length;
+  console.log(`  losses: n=${n}   mean=${mean.toFixed(2)}R   median=${pct(0.5).toFixed(2)}R   worst=${sorted[0].toFixed(2)}R`);
+  console.log(`  beyond -1.0R: ${over(1.0)} (${(over(1.0) / n * 100).toFixed(0)}%)` +
+    `   beyond -1.5R: ${over(1.5)} (${(over(1.5) / n * 100).toFixed(0)}%)` +
+    `   beyond -2.0R: ${over(2.0)} (${(over(2.0) / n * 100).toFixed(0)}%)`);
+  // What the same win rate and avgW would produce if stops actually held.
+  const rs = closed.map(s => rMultiple(s)).filter(r => r !== null);
+  const wins = rs.filter(r => r > 0);
+  const wr = wins.length / rs.length;
+  const avgW = wins.reduce((a, b) => a + b, 0) / wins.length;
+  const actual = rs.reduce((a, b) => a + b, 0) / rs.length;
+  const ideal = wr * avgW - (1 - wr) * 1.0;
+  console.log(`  actual expectancy      ${fmtR(actual)}`);
+  console.log(`  if every stop held -1R ${fmtR(ideal)}   ← the gap is execution, not signal`);
+  console.log(`  leak per trade         ${fmtR(actual - ideal)}`);
+}
+
 console.log(`\n── LUXALGO-DERIVED SIGNALS (do they justify the TV dependency?) ──`);
 const evs = [...new Set(setups.map(s => s.ltfEvent).filter(Boolean))];
 if (evs.length) {
