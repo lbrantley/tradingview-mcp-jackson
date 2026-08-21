@@ -54,6 +54,13 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
     // user does by hand with a small starter, rather than after confirmation.
     requireClosedOut = true,
     entryMode = 'next_open',   // 'next_open' | 'zone_limit'
+    // ROOM TO RUN — the gate on whether a BIG move is even possible. Price
+    // cannot travel 3 ATR if another level sits 1 ATR beyond it. Measured on
+    // 3 ATR persistent moves: 8+ ATR of room lifts big breaks from 28% to 37%,
+    // under 2 ATR lifts big reversals instead. Both replicated on a second
+    // window.
+    minRoom = 0,          // break wants space ahead
+    maxRoom = 1e9,        // reverse wants none
   } = opts;
 
   const src = levelTF === 'self' ? entry : (levelBars[levelTF] || entry);
@@ -93,6 +100,15 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
       const closedOut = lim
         ? (fromAbove ? entry[dec].close > z.high : entry[dec].close < z.low)
         : (fromAbove ? b.close > z.high : b.close < z.low);
+
+      // Distance to the next level BEYOND the one being touched, in the
+      // direction price is travelling.
+      const beyond = zones
+        .filter(w => w.confirmedTime <= b.time && Math.abs(w.price - z.price) > a[dec] * 0.5)
+        .filter(w => fromAbove ? w.price < z.price : w.price > z.price)
+        .sort((x, y) => Math.abs(x.price - z.price) - Math.abs(y.price - z.price))[0];
+      const room = beyond ? Math.abs(beyond.price - z.price) / a[dec] : 99;
+      if (room < minRoom || room > maxRoom) continue;
 
       let go = null;
       if (mode === 'break') {

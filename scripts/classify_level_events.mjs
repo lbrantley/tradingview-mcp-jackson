@@ -30,7 +30,14 @@ const PAIRS = (argOf('--pairs') || ALL.join(',')).split(',').map(s => s.trim());
 const TF = argOf('--tf') || 'D';
 const END_AGO = parseFloat(argOf('--endYearsAgo') || '0');
 const ONLY_TOUCHES = argOf('--touches') ? parseInt(argOf('--touches'), 10) : null;
-const WINDOW = 20, BREAK_ATR = 1.0, REV_ATR = 1.0;
+const WINDOW = parseInt(argOf('--window') || '20', 10);
+// How far counts as "significant", and whether it has to STICK.
+const BREAK_ATR = parseFloat(argOf('--thresh') || '1.0');
+const REV_ATR = BREAK_ATR;
+// Persistence: bars after the threshold is reached at which price must STILL
+// be beyond it. 0 = touch-and-go counts, which records a poke-and-snap-back as
+// a break. Anything above 0 requires follow-through.
+const PERSIST = parseInt(argOf('--persist') || '0', 10);
 
 const ev = [];
 
@@ -62,11 +69,46 @@ for (const sym of PAIRS) {
         const throughPx = fromAbove ? z.low - BREAK_ATR * av : z.high + BREAK_ATR * av;
         const backPx = fromAbove ? z.high + REV_ATR * av : z.low - REV_ATR * av;
 
+        // A level is only counted as broken/reversed if price is STILL past the
+        // threshold PERSIST bars later. Without that, a poke through and an
+        // immediate snap back scores as a break — which is a fakeout, not a
+        // break, and is the gap between this measurement and what a trader sees.
+        const holds = (j, px, below) => {
+          const k = Math.min(use.length - 1, j + PERSIST);
+          return below ? use[k].close <= px : use[k].close >= px;
+        };
         let outcome = 'stall', bars_to = WINDOW;
         for (let j = i; j < Math.min(use.length, i + WINDOW); j++) {
           const c = use[j];
-          if (fromAbove ? c.close <= throughPx : c.close >= throughPx) { outcome = 'break'; bars_to = j - i; break; }
-          if (fromAbove ? c.close >= backPx : c.close <= backPx) { outcome = 'reverse'; bars_to = j - i; break; }
+          if (fromAbove ? c.close <= throughPx : c.close >= throughPx) {
+            if (holds(j, throughPx, fromAbove)) { outcome = 'break'; bars_to = j - i; break; }
+            continue;
+          }
+          if (fromAbove ? c.close >= backPx : c.close <= backPx) {
+            if (holds(j, backPx, !fromAbove)) { outcome = 'reverse'; bars_to = j - i; break; }
+          }
+        }
+
+        // ROOM TO RUN. A 3 ATR move is impossible if another level sits 1 ATR
+        // beyond — price runs into it and stalls. This is the same obstacle
+        // effect discover_features found on generic entries, applied where it
+        // should matter most: whether a BIG move is even available.
+        const beyond = zones
+          .filter(w => w.confirmedAt <= i && Math.abs(w.price - z.price) > av * 0.5)
+          .filter(w => fromAbove ? w.price < z.price : w.price > z.price)
+          .sort((x, y) => Math.abs(x.price - z.price) - Math.abs(y.price - z.price))[0];
+        const room = beyond ? Math.abs(beyond.price - z.price) / av : 99;
+
+        // COMPRESSION. Coiling before a level is the classic precursor to an
+        // expansion move; measure it as recent range against typical range.
+        let hi = -Infinity, lo = Infinity;
+        for (let k = Math.max(0, i - 10); k <= i; k++) { hi = Math.max(hi, use[k].high); lo = Math.min(lo, use[k].low); }
+        const compression = (hi - lo) / av;
+
+        // How long price has been loitering at this level.
+        let near = 0;
+        for (let k = Math.max(0, i - 10); k <= i; k++) {
+          if (use[k].low <= z.high && use[k].high >= z.low) near++;
         }
 
         // How it arrived, measured only from bars at or before the touch.
@@ -84,6 +126,7 @@ for (const sym of PAIRS) {
           firstTest: seen === 1 ? 1 : 0,
           speed, run, wickFrac, closedOut: closedOut ? 1 : 0,
           vol: av / atrAvg[i],
+          room, compression, near,
         });
         lastIdx = i;
       }
@@ -97,7 +140,7 @@ const share = rs => ['break', 'reverse', 'stall'].map(o =>
 const [bB, bR, bS] = share(ev);
 
 console.log(`\nWHAT PRICE DOES AT A LEVEL — ${TF}, ${PAIRS.length} pairs${ONLY_TOUCHES ? `, ${ONLY_TOUCHES}-touch zones only` : ''}`);
-console.log(`window ${WINDOW} bars, break/reverse threshold ${BREAK_ATR} ATR, judged vs ARRIVAL direction`);
+console.log(`window ${WINDOW} bars, threshold ${BREAK_ATR} ATR, must still hold ${PERSIST} bars later`);
 console.log(`n=${N}\n`);
 console.log(`  BASE          break ${bB.toFixed(1)}%   reverse ${bR.toFixed(1)}%   stall ${bS.toFixed(1)}%\n`);
 
@@ -125,6 +168,9 @@ report('TOUCH BAR: closed back out?', [['closed back out', ev.filter(e => e.clos
 report('TOUCH BAR WICK FRACTION', band(e => e.wickFrac, [0, 0.4, 0.6, 0.8, 1.01]));
 report('VOLATILITY REGIME', band(e => e.vol, [0, 0.8, 1.0, 1.3, 99]));
 report('LEVEL AGE (bars)', band(e => e.age, [0, 30, 80, 200, 1e9]));
+report('ROOM TO RUN (ATR to next level beyond)', band(e => e.room, [0, 1, 2, 4, 8, 1e9]));
+report('COMPRESSION (10-bar range / ATR)', band(e => e.compression, [0, 2, 3, 4.5, 99]));
+report('BARS LOITERING AT LEVEL (of last 10)', band(e => e.near, [0, 2, 4, 11]));
 
 // The three features that survived out-of-sample, combined. They describe
 // different things — how many times the level has been tested, how hard price
@@ -133,6 +179,24 @@ const fast = e => e.speed >= 1.5;
 const slow = e => e.speed < 0.5;
 const early = e => e.touchNo <= 2;
 const late = e => e.touchNo >= 4;
+// What the user actually wants: predict the BIG move, early. Room to run is
+// the gating condition — price cannot travel 3 ATR if a level sits 1 ATR
+// beyond. Test number and approach speed then say whether it will try.
+report('BIG BREAK — stacking room, freshness, speed', [
+  ['all touches', ev],
+  ['room 8+ ATR', ev.filter(e => e.room >= 8)],
+  ['+ 1st/2nd test', ev.filter(e => e.room >= 8 && e.touchNo <= 2)],
+  ['+ fast approach', ev.filter(e => e.room >= 8 && e.touchNo <= 2 && e.speed >= 1.5)],
+  ['+ closed through', ev.filter(e => e.room >= 8 && e.touchNo <= 2 && e.speed >= 1.5 && !e.closedOut)],
+]);
+report('BIG REVERSE — no room to go anywhere', [
+  ['all touches', ev],
+  ['room < 2 ATR', ev.filter(e => e.room < 2)],
+  ['+ 4th+ test', ev.filter(e => e.room < 2 && e.touchNo >= 4)],
+  ['+ slow approach', ev.filter(e => e.room < 2 && e.touchNo >= 4 && e.speed < 0.5)],
+  ['+ closed back out', ev.filter(e => e.room < 2 && e.touchNo >= 4 && e.speed < 0.5 && e.closedOut)],
+]);
+
 report('COMBINED — leaning BREAK', [
   ['closed through', ev.filter(e => !e.closedOut)],
   ['+ fast approach', ev.filter(e => !e.closedOut && fast(e))],
