@@ -1,16 +1,135 @@
 {
-  "generatedAt": "2026-08-21T11:10:35.126Z",
+  "generatedAt": "2026-08-23T19:10:27.056Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-21T11:10:35.074Z",
-  "count": 1,
+  "sourceCacheAt": "2026-08-23T19:10:27.010Z",
+  "count": 8,
   "events": [
     {
-      "date": "2026-08-21T19:00:00-04:00",
+      "date": "2026-08-24T14:00:00-04:00",
       "currency": "USD",
       "impact": "Medium",
-      "title": "President Trump Speaks",
+      "title": "Treasury Sec Bessent Speaks",
       "forecast": "—",
       "previous": "—",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-25T10:00:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "CB Consumer Confidence",
+      "forecast": "90.3",
+      "previous": "90.8",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-25T21:30:00-04:00",
+      "currency": "AUD",
+      "impact": "High",
+      "title": "CPI m/m",
+      "forecast": "0.9%",
+      "previous": "-0.1%",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ]
+    },
+    {
+      "date": "2026-08-25T21:30:00-04:00",
+      "currency": "AUD",
+      "impact": "High",
+      "title": "CPI y/y",
+      "forecast": "3.3%",
+      "previous": "3.8%",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ]
+    },
+    {
+      "date": "2026-08-25T21:30:00-04:00",
+      "currency": "AUD",
+      "impact": "High",
+      "title": "Trimmed Mean CPI m/m",
+      "forecast": "0.3%",
+      "previous": "0.3%",
+      "affectedPairs": [
+        "AUDUSD",
+        "AUDJPY",
+        "AUDNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "EURAUD",
+        "GBPAUD"
+      ]
+    },
+    {
+      "date": "2026-08-26T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "Core PCE Price Index m/m",
+      "forecast": "0.2%",
+      "previous": "0.1%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-26T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "Prelim GDP q/q",
+      "forecast": "1.5%",
+      "previous": "1.5%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-26T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "Prelim GDP Price Index q/q",
+      "forecast": "6.2%",
+      "previous": "6.2%",
       "affectedPairs": [
         "GBPUSD",
         "EURUSD",

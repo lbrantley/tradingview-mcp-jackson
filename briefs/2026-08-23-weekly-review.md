@@ -1,0 +1,112 @@
+# Scanner Review — 2026-08-23 (weekly)
+
+Generated: 2026-08-23T19:10:27.048Z
+
+```
+
+Setup Scanner v2.0
+Mode: review past setups
+────────────────────────────────────────────────────────────
+
+[14:03:10] Reviewing 28 pending setup(s)...
+
+  Reviewing AUDUSD REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing GBPCHF REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing EURCHF REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing EURGBP CONTINUATION LONG... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing EURCAD REVERSAL LONG... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing GBPCAD REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing CADJPY REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing GBPUSD REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing EURUSD REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing AUDCHF REVERSAL LONG... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing USDCHF REVERSAL LONG... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing NZDCHF REVERSAL LONG... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing CADCHF REVERSAL LONG... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing AUDCAD REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing CHFJPY REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing NZDCAD REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing EURJPY REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing GBPNZD REVERSAL LONG... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing NZDUSD REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing USDCAD REVERSAL LONG... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing GBPJPY REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing EURGBP REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing NZDJPY REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing AUDNZD REVERSAL LONG... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing EURAUD REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing NZDCHF REVERSAL SHORT... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing USDJPY REVERSAL LONG... error: CDP connection failed after 5 attempts: fetch failed
+  Reviewing AUDCAD REVERSAL LONG... error: CDP connection failed after 5 attempts: fetch failed
+
+  🌐 MACRO CONTEXT (3 active themes)
+  ───────────────────────────────────────────────────────────────────────────────────────────────
+  Canada-US trade war LIVE — Section 338 50% tariffs landed Aug 22, Carney suspended talks and pledged dollar-for-dollar retaliation, retaliatory goods list still unpublished (since 2026-07-20)
+    As of August 23, the Section 338 binary has resolved in the worst-case direction. Talks collapsed late on the night of August 21: USTR Jamieson Greer stated in a press call shortly before midnight that 'Canada declined to finalize the trade deal under the terms agreed earlier this week,' citing 'new demands and walk-backs of other commitments by Canada.' Prime Minister Carney suspended negotiations, recalled Canada's negotiating team, and the 50% tariff took effect at 12:01am ET on Saturday, August 22, 2026. Canada has pledged to match US tariffs dollar-for-dollar; as of August 23, Canada has not published the specific list of US goods covered by retaliatory measures, making the retaliatory goods list the next live binary event. The tariff structure is now operative: 50% additional ad valorem duty on approximately $20 billion of Canadian-origin goods — motor vehicles, dairy, alcoholic beverages, cement, furniture, clothing, and others — stacking on all existing duties with no USMCA/CUSMA exemption. Energy, potash, fish, critical minerals, and Section 232-covered goods remain excluded. The three-day pause (Aug 19-21) which had been granted citing 'Canada's expressed commitment to remove the underlying discriminatory measures' failed to produce a signed agreement. USTR Greer's statement places blame squarely on Canada's negotiating conduct. Carney's suspension of talks and recall of the negotiating team signals this is not a short-gap negotiation pause but a genuine diplomatic rupture — the US has begun formal USMCA review talks with Mexico separately, while US-Canada talks have not formally commenced, casting doubt on whether they will in the near term. Section 338 carries no fixed statutory expiry and stays in force indefinitely unless the President modifies or terminates it. Canada's retaliatory list (dollar-for-dollar countermeasures), once published, will be the next CAD-specific catalytic event — it will identify which US export sectors face matching 50% duties, potentially hitting US agricultural, energy, and manufactured goods exports northward. The FX market reaction to the tariff landing is being observed across this week's CAD crosses; USDCAD likely gapping higher on the Monday open given the Saturday timing of the tariff effective date.
+      • CAD: MAXIMUM CAD negative shock: tariffs are live, retaliation pledged, negotiations suspended. USDCAD expected to gap higher on Aug 25 Monday open — the 1.4080-1.4100 resistance zone is likely to be tested or broken on the open. Structural CAD headwinds are now entrenched until a new negotiating framework is established. Canada's retaliatory goods list publication is the next live binary: broad list = deeper CAD weakness on pass-through inflation risk and growth hit; narrow/targeted list = modest CAD recovery from the tariff-landing shock. The automotive sector (a large bilateral trade corridor) faces the most severe disruption given 50% duty on Canadian motor vehicles. CAD receives no Section 232 carve-out under Section 338. Oil price dynamics (CAD-positive factor) are now a secondary offset at best.
+      • USD: USDCAD bullish but broad USD direction this week dominated by Jackson Hole/Warsh Aug 28 keynote and July PCE (released Aug 27, in-line at core 2.9%). Canada shock adds modest USD safe-haven bid vs commodity bloc but does not materially alter DXY from the ~98-99 range while Sep Fed hike odds remain ~30.6%.
+      • MXN: Secondary exposure — USMCA credibility damage from US-Canada rupture adds uncertainty to the US-Mexico USMCA review track. USDMXN may see modest risk premium added. Mexico-specific tariff tracks are advancing more smoothly and separately.
+      • EUR: Indirect — EURCAD likely spikes on CAD weakness. EU-Canada trade linkage minimal for direct contagion, but risk-off from a Smoot-Hawley legal framework escalation has broader protectionism signal value for EUR crosses.
+      • AUD: Commodity-bloc contagion risk — AUD trades defensively in a CAD-shock environment. AUDCAD may be volatile on cross implications. Broader risk-off from trade war escalation is AUD-negative.
+      • NZD: Same as AUD. NZDCAD vol elevated. NZD defensive in commodity-bloc risk-off episodes.
+      • GBP: GBPCAD directional trade on CAD weakness. GBP otherwise dominated by BoE path and Jackson Hole USD dynamics this week.
+      • JPY: Safe-haven JPY bid in any risk-off commodity-bloc shock. CADJPY lower on dual CAD weakness and JPY structural bid from BOJ hike pricing.
+    ⚠  Invalidation: USDCAD 1.4080-1.4100: reclaim and daily close above signals market pricing sustained tariff regime without near-term resolution — this is now the base case. USDCAD 1.4248 (Jun 24-30 high, the bull trigger per MNI) is the next major technical resistance if 1.4100 breaks cleanly. Downside: USDCAD below 1.3900 would require either a surprise tariff suspension or formal re-opening of talks — currently the tail risk. Canada's retaliatory goods list publication is the most immediate new binary — broad list covering US agriculture/energy = further CAD pressure from economic growth hit + pass-through inflation risk; narrow list = partial relief. Formal re-opening of US-Canada talks = theme shifts back toward negotiation premium. Section 338 has no statutory expiry — tariffs stay until the President modifies or terminates; timeline for resolution now open-ended. USMCA formal review with Canada (separate from Mexico track) has not commenced; US-Mexico USMCA negotiations advancing independently.
+    Affects: USDCAD, GBPCAD, AUDCAD, CADJPY, CADCHF, EURCAD, NZDCAD
+
+  Japan-US joint FX intervention regime + BOJ Sep hike ~80-85% priced — USDJPY stalls at 158.98, Sep 17-18 BOJ meeting is the live hard binary (since 2026-07-30)
+    As of August 23, USDJPY ended the prior week at 158.98, almost unchanged on the week — having spent the bulk of the week back around 159 despite a substantial rise in BOJ September hike expectations. The joint US-Japan intervention drove USDJPY as low as 155.27 at the end of July, but much of that yen recovery has since evaporated as carry traders rebuilt short-JPY positions over the 3-week absence of follow-up intervention. USDJPY rose approximately 0.89% during August overall and remains roughly 5 yen below July's peak near 163.85-164.00. Three sources familiar with BOJ thinking (Reuters, Kyodo News) report the BOJ could raise rates as early as September, with the September 17-18 meeting specifically cited. The central bank is also reportedly considering accelerating the pace of monetary tightening beyond its recent cadence of approximately two hikes per year. Natixis and MUFG now both call for a 25bp hike to 1.25% in September, though the key debate has shifted: it is no longer primarily about whether the BOJ hikes, but whether Tokyo can persuade markets that 1.25% is the beginning of a more meaningful tightening cycle rather than another incremental step while the rate gap with the US remains wide. The BOJ held rates at 1.0% at its July meeting by an 8-1 vote (Takata dissented for immediate hike to 1.25%) and warned underlying inflation could exceed 2%. Japan's July national CPI (released Aug 21) came in at approximately 2.0% YoY headline / 1.8% core ex-fresh food — the fastest since January, matching consensus — providing the inflation backdrop supporting the September hike case. July US CPI of 3.4% YoY vs BOJ rate of 1.0% and Fed rate of 3.50-3.75% means the rate differential remains wide but is expected to narrow from both sides simultaneously: BOJ hiking while Fed holds (or fails to hike). Jackson Hole Aug 28 (Warsh keynote) remains a co-driver: a dovish or framework-focused Warsh speech narrows the rate differential in JPY-positive direction; a hawkish Warsh widens it modestly. JGB 10-year at 30-year highs remains a structural constraint on BOJ's ability to simultaneously defend bonds and drive yen appreciation.
+      • JPY: MAXIMUM tailwind from three converging forces: (1) G2 intervention regime nominally active — no follow-up intervention in 3+ weeks creates risk of carry rebuild but also leaves dry powder; (2) BOJ Sep 17-18 hike ~80-85% priced, cemented by in-line CPI and Reuters/Kyodo sourcing; (3) Fed Sep hike odds collapsed to ~30.6% from 82% mid-July, rate differential narrowing from both sides. Counter-risk: USDJPY at 158.98 with no follow-up intervention for 3+ weeks means carry traders have largely recouped the intervention move — a 160 daily close without response would severely damage regime credibility. Near 159, the yen is still waiting to be convinced the BOJ cycle is more aggressive than incremental.
+      • USD: USDJPY topside capped by intervention threat and ~80-85% Sep BOJ hike pricing. Rate differential still supports USD nominally but the direction of travel (both sides narrowing) is clearly USD-negative vs JPY. Warsh keynote Aug 28 is the primary USD driver this week across all pairs.
+      • EUR: EURJPY under pressure from intervention mechanism and BOJ hike pricing. EURUSD near multi-month highs, supported by fading Fed hike odds. ECB at approximately 2.40% vs Fed at 3.50-3.75%.
+      • GBP: GBPJPY under dual intervention and carry-unwind pressure. GBPUSD near 3-month highs, with support from UK July CPI at 2.9% YoY. BoE cutting limits GBP outperformance vs EUR.
+      • CHF: CHFJPY lower on intervention pressure. USDCHF under pressure from broad USD softness. SNB in easing mode.
+      • CAD: CADJPY lower on dual pressure: CAD weakness from Section 338 tariff landing + structural JPY bid from BOJ hike cycle.
+      • AUD: AUDJPY under intervention pressure. Watch AUDJPY 93-95 range. AUDUSD on multi-week winning streak supported by USD softness.
+      • NZD: Same dynamic as AUD. NZDJPY under intervention pressure; NZDUSD benefits from broad USD softness and low Sep Fed hike odds.
+    ⚠  Invalidation: USDJPY 160.00 is the immediate critical level — a daily close above 160 without official verbal or actual intervention signals carry traders have overpowered the regime and constitutes a credibility break; 3+ weeks since last intervention action makes this risk non-trivial. USDJPY below 157.50 = intervention credibility reasserting. USDJPY below 155.27 (post-intervention low) = regime decisively winning. BOJ Sep 17-18 meeting is the live hard binary: hike to 1.25% = fundamental JPY support materialises, reduces intervention burden, likely USDJPY drop toward 155-152; no hike = JPY sells off sharply, 160+ re-test and intervention regime faces stress test. Jackson Hole Aug 28 (Warsh keynote): dovish or framework-only speech = USDJPY three-pillar bearish case reinforced; hawkish = rate differential modestly restored but intervention threat still caps 160. Any MoF/Bessent statement disclaiming further intervention = theme ends immediately. JGB 10-year approaching 3.0% = BOJ may be forced to choose between defending bonds and defending yen simultaneously.
+    Affects: USDJPY, EURJPY, GBPJPY, AUDJPY, NZDJPY, CADJPY, CHFJPY
+
+  Warsh/Jackson Hole — Aug 28 keynote 10am ET is dominant USD binary; July PCE landed in-line Aug 27 (core 2.9% YoY, headline 2.6%); Sep hike odds collapsed to ~30.6% from 82% in mid-July; Sep 16 FOMC is the hard event (since 2026-07-28)
+    As of August 23, the Jackson Hole Economic Policy Symposium opens in four days (August 27-29), with Fed Chair Kevin Warsh's keynote address at 10:00am ET on Friday, August 28 as the dominant USD macro event for the week. July PCE — the pre-keynote data risk — was released on August 27 (the opening morning of Jackson Hole): core PCE rose 2.9% YoY in July (matching analyst estimates, following June's 2.8%), while headline PCE held steady at 2.6% YoY. The in-line print had a muted USD impact with DXY trading near 98.05 following the release, effectively leaving Warsh's speech as the uncontested primary signal. September Fed hike odds have collapsed dramatically — from approximately 82% in mid-July to approximately 30.6% currently — driven by a trifecta of soft data: US retail sales declined in July for the first time in nine months, July CPI fell slightly to 3.4% YoY (from 3.5%), and employment data softened. The July 29 FOMC decision to hold rates at 3.50-3.75% passed by an unusual 9-3 vote, with Dallas Fed President Lorie Logan, Cleveland Fed President Beth Hammack, and Minneapolis Fed President Neel Kashkari all dissenting in favor of an immediate rate hike — the first such three-way dissent since 2016. FOMC minutes from that meeting (released August 19) were hawkish: 'many Federal Reserve policymakers believe further interest-rate increases could become necessary if inflation fails to moderate,' with hawkish sentiment extending beyond the three formal dissenters. Warsh delivers his first Jackson Hole keynote as Fed chair on August 28. Since taking office in May 2026, Warsh has curtailed forward guidance, shortened the post-meeting statement, and given deliberately evasive answers at both press conferences held so far, framing his approach explicitly around independence from market pricing. He told reporters after July 29 that the speech will aim to 'frame big picture questions' rather than offer near-term guidance. Some analysts argue the speech will be a blank piece of paper structurally — focused on financial innovation/payments per the symposium theme — rather than a policy-path signal, which itself would be interpreted as a dovish outcome by default given the one-in-three hike odds already priced. The September 16 FOMC meeting (with updated SEP/dot plot) remains the hard policy event. September 11 CPI (August data) is the next major data event post-JH.
+      • USD: DXY near 98.05 post-PCE — broad USD weakness driven by collapsed Sep hike odds (30.6% from 82%) and data miss trio. Jackson Hole Aug 28 is the tiebreaker: hawkish Warsh (signals Sep hike still on table) = USD carry bid restored 100-150 pips across EURUSD, GBPUSD, AUDUSD, NZDUSD, DXY recovers toward 99.50-100.50; framework/structural speech (no policy signal) = market reads as de facto dovish, USD weakness extends, DXY tests toward 97-98; explicitly dovish = EURUSD retests 1.17+, DXY toward 96-97. Warsh's track record of avoiding forward guidance means the framework speech scenario may be most likely.
+      • JPY: Rate differential headwind for USDJPY significantly reduced by collapsed Sep hike odds. Dovish or framework JH = USDJPY three-pillar bearish case (intervention + BOJ hike + Fed hold) fully reinforced, 155-157 test. Hawkish JH = rate differential modestly restored, USDJPY back toward 160 but intervention threat still caps.
+      • EUR: EURUSD near multi-month highs. ECB at approximately 2.40% vs Fed at 3.50-3.75%; narrowing rate differential from Fed side is EUR-positive. Hawkish Warsh = EURUSD pulls back toward 1.1280-1.1350; dovish/framework = EURUSD retests 1.17+. July PCE in-line removes upside EUR catalyst from data alone.
+      • GBP: GBPUSD near 3-month highs, supported by UK July CPI 2.9% YoY (above prior 2.6%) and broad USD weakness. BoE cutting cycle limits GBP outperformance vs EUR but maintains GBP bid vs USD. Two-way risk around JH keynote Aug 28.
+      • CAD: USD softness provides USDCAD compressing tailwind but Section 338 tariff landing (Aug 22) and pending Canadian retaliation list dominate USDCAD direction this week. Post-retaliation list clarity, Fed theme reasserts for USDCAD.
+      • AUD: RBA on hold with easing bias. AUDUSD on multi-week winning streak, supported by USD softness and collapsed Sep hike odds. Watch 0.6500-0.6650 range into JH. Sensitive to Canada trade war risk-off contagion.
+      • NZD: RBNZ same dynamic as RBA. NZDUSD benefits from broad USD softness and low Sep hike odds. Sensitive to Canada risk-off contagion.
+      • CHF: SNB in easing mode; USDCHF under pressure from broad USD weakness. CHF safe-haven bid provides additional support in risk-off episodes around JH volatility and Canada trade war escalation.
+    ⚠  Invalidation: July PCE RELEASED Aug 27: core PCE 2.9% YoY (in-line, matching estimates), headline 2.6% YoY — muted USD reaction, DXY ~98.05. Warsh keynote Aug 28 10am ET is the PRIMARY binary: hawkish (Sep hike on table) = DXY recovers 100-150 pips, EUR/USD below 1.1350, AUDUSD below 0.6400; framework/structural speech (no policy signal, effectively dovish by market interpretation) = USD weakness extends, DXY tests 97-98; explicitly dovish = EUR/USD retests 1.17+, DXY toward 96-97. Sep hike odds at ~30.6% — hawkish speech would need to push odds back above 50% to deliver meaningful sustained USD recovery. Sep 16 FOMC with updated SEP/dot plot is the hard policy event. Sep 11 CPI (August data) is next major data point post-JH. DXY closing and sustaining below 97.00 = hawkish narrative fully broken. DXY sustaining above 100.50 = hawkish repricing fully underway.
+    Affects: EURUSD, GBPUSD, AUDUSD, NZDUSD, USDCAD, USDCHF, USDJPY
+
+  ───────────────────────────────────────────────────────────────────────────────────────────────
+  Fetching Forex Factory calendar (this week + next week)...
+
+════════════════════════════════════════════════════════════
+  SCANNER HEALTH REPORT
+════════════════════════════════════════════════════════════
+
+  📊 TRADEABLE PERFORMANCE (what you'd actually trade)
+  ────────────────────────────────────────────────────────
+  Total: 246  |  W: 74  L: 73  P: 17  E: 72
+  Win Rate: 50.3%  |  Expectancy: -0.170R  |  Grade: F — Negative edge
+  Avg win: +1.641R  |  Avg loss: -1.882R  |  Total: -24.429R
+  ⚠️  3 closed setup(s) excluded from R — bad exit price (quote race)
+    Macro Reversal:         30W / 9L    (76.9%)    -0.115R  [tot -4.495R over 39]
+    Confirmed Continuation: 38W / 49L   (43.7%)    +0.164R  [tot +13.812R over 84]
+                            ⚠️  10 row(s) quarantined (11% of bucket) — expectancy biased low, treat as UNMEASURED
+    HTF-Aligned (legacy):   6W / 15L    (28.6%)    -1.607R  [tot -33.746R over 21]
+
+  🔍 FILTER VALIDATION (signals the scanner says to skip)
+  ────────────────────────────────────────────────────────
+    HTF unconfirmed:        10W / 5L    (66.7%)    +0.590R  [tot +8.856R over 15]
+    Macro Reversal low:     9W / 4L     (69.2%)    -0.030R  [tot -0.390R over 13]
+    Pullback Alerts:        41W / 37L   (52.6%)    +0.343R  [tot +26.776R over 78]
+    Combined filtered:      60W / 46L   (56.6%)    +0.332R  [tot +35.242R over 106]
+
+    Tradeable -0.170R vs filtered +0.332R  →  edge -0.502R  ✗ filter not discriminating
+────────────────────────────────────────────────────────────
+
+
+```
