@@ -258,33 +258,56 @@ async function main() {
     }
   }
 
-  // Step 2: find scanner, pause it
-  const scannerPid = findScannerPid();
-  if (scannerPid) log(`Found running scanner: PID ${scannerPid}`);
-  else log('No running scanner detected — proceeding without pause');
-  pauseCtx = pauseScanner(scannerPid, { log, cwd: REPO });
-
-  // Step 3: run review, capture output
+  // Step 2-3: the legacy setup review. This shells out to scanner.mjs --review,
+  // which drives TradingView over CDP. That scanner was retired on 2026-08-20
+  // in favour of scan_live.mjs (OANDA HTTP, no desktop app), so on a machine
+  // without TradingView running this only produces CDP errors.
+  //
+  // Skipped automatically when the audit has nothing left to review, so the
+  // job stops needing TradingView the moment the last legacy setup expires.
+  // BRIEF_SKIP_REVIEW=1 forces it off regardless.
   let reviewText = '';
+  const forcedOff = process.env.BRIEF_SKIP_REVIEW === '1';
+  let pendingCount = 0;
   try {
-    log('Running scanner --review...');
-    const result = spawnSync('node', ['scripts/scanner.mjs', '--review'], {
-      cwd: REPO,
-      encoding: 'utf8',
-      timeout: 15 * 60 * 1000, // 15 min max
-      env: process.env,
-    });
-    reviewText = (result.stdout || '') + (result.stderr ? '\n\nSTDERR:\n' + result.stderr : '');
-    log(`Review captured: ${reviewText.length} bytes`);
-  } catch (e) {
-    resumeOnce();  // review threw — bring the scanner back before bailing
-    throw e;
-  }
+    const auditPath = join(REPO, 'scanner_audit.json');
+    if (existsSync(auditPath)) {
+      const audit = JSON.parse(readFileSync(auditPath, 'utf8'));
+      pendingCount = (audit.setups || []).filter(x => x.status === 'pending').length;
+    }
+  } catch { pendingCount = 0; }
 
-  if (reviewText.length < 100) {
-    log('Review output looks empty — aborting');
-    resumeOnce();  // process.exit skips finally blocks
-    process.exit(1);
+  if (forcedOff || pendingCount === 0) {
+    log(forcedOff
+      ? 'BRIEF_SKIP_REVIEW=1 — skipping the legacy setup review (no TradingView needed)'
+      : `No pending legacy setups — skipping the review (retired scanner, no TradingView needed)`);
+    reviewText = `Legacy setup review skipped — the CDP scanner was retired 2026-08-20.\n` +
+      `Live setups now come from scripts/scan_live.mjs (OANDA, no TradingView).\n` +
+      (pendingCount ? `${pendingCount} legacy setup(s) still pending.\n` : '');
+  } else {
+    const scannerPid = findScannerPid();
+    if (scannerPid) log(`Found running scanner: PID ${scannerPid}`);
+    else log('No running scanner detected — proceeding without pause');
+    pauseCtx = pauseScanner(scannerPid, { log, cwd: REPO });
+
+    log(`Running scanner --review (${pendingCount} legacy setups still pending)...`);
+    try {
+      const result = spawnSync('node', ['scripts/scanner.mjs', '--review'], {
+        cwd: REPO, encoding: 'utf8', timeout: 15 * 60 * 1000, env: process.env,
+      });
+      reviewText = (result.stdout || '') + (result.stderr ? '\n\nSTDERR:\n' + result.stderr : '');
+      log(`Review captured: ${reviewText.length} bytes`);
+    } catch (e) {
+      resumeOnce();
+      throw e;
+    }
+    // A short or failed review is no longer fatal — the macro refresh is the
+    // part worth delivering, and aborting here threw away a good refresh
+    // because a retired scanner could not reach a chart.
+    if (reviewText.length < 100) {
+      log('Review output empty or failed — continuing with macro context only');
+      reviewText = 'Legacy setup review failed (CDP/TradingView unavailable). Macro context below is current.';
+    }
   }
 
   // Step 5: write to briefs/
