@@ -15,7 +15,7 @@
  * Usage: node scripts/test_confluence.mjs [--tf H4] [--endYearsAgo 0]
  */
 import { getCandles, getCandlesRange } from '../src/oanda.js';
-import { atr, sma, stochastic } from '../src/indicators.js';
+import { atr, sma, stochastic, rvi, rsi } from '../src/indicators.js';
 import { buildLevels } from '../src/structure.js';
 
 const args = process.argv.slice(2);
@@ -42,6 +42,8 @@ for (const sym of PAIRS) {
     const a = atr(bars, 14);
     const s = sma(closes, 50);
     const st = stochastic(bars, 14, 3, 3);
+    const rv = rvi(bars, 10);
+    const rs = rsi(closes, 14);
     const levels = buildLevels(bars, { binATR: 0.35, minBars: 3 });
 
     let lastTouch = -99;
@@ -88,7 +90,24 @@ for (const sym of PAIRS) {
       // The full version: turning AND doing so from the extreme zone.
       const turnFromZone = crossed && (fromAbove ? st.k[i] < 40 : st.k[i] > 60);
 
+      // RVI has the same line/signal structure as stochastic, so the same
+      // turn-vs-state split applies. RSI has no signal line — test it as a
+      // level (extreme) and as a slope (turning).
+      let rviCross = false;
+      for (let q = i; q > i - 4 && q > 0; q--) {
+        if (rv.rvi[q] == null || rv.signal[q] == null || rv.rvi[q - 1] == null || rv.signal[q - 1] == null) continue;
+        const up = rv.rvi[q - 1] <= rv.signal[q - 1] && rv.rvi[q] > rv.signal[q];
+        const dn = rv.rvi[q - 1] >= rv.signal[q - 1] && rv.rvi[q] < rv.signal[q];
+        if (fromAbove ? up : dn) { rviCross = true; break; }
+      }
+      const rsiExtreme = rs[i] != null && (fromAbove ? rs[i] < 40 : rs[i] > 60);
+      const rsiTurning = rs[i] != null && rs[i - 2] != null &&
+        (fromAbove ? rs[i] > rs[i - 1] && rs[i - 1] <= rs[i - 2] : rs[i] < rs[i - 1] && rs[i - 1] >= rs[i - 2]);
+
       add('A. 50 SMA touch alone', out);
+      add(rviCross ? 'E. RVI crossed (turn)' : 'E. RVI no cross', out);
+      add(rsiExtreme ? 'F. RSI extreme (state)' : 'F. RSI not extreme', out);
+      add(rsiTurning ? 'G. RSI turning (slope)' : 'G. RSI not turning', out);
       add(extreme ? 'B. stoch EXTREME (state)' : 'B. stoch not extreme', out);
       add(crossed ? 'C. stoch CROSSED (turn)' : 'C. no cross', out);
       add(turnFromZone ? 'D. crossed FROM the zone' : 'D. not that', out);
