@@ -1,77 +1,9 @@
 {
-  "generatedAt": "2026-08-25T11:10:40.566Z",
+  "generatedAt": "2026-08-26T11:10:40.100Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-25T11:10:40.522Z",
-  "count": 10,
+  "sourceCacheAt": "2026-08-26T11:10:39.626Z",
+  "count": 12,
   "events": [
-    {
-      "date": "2026-08-25T10:00:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "CB Consumer Confidence",
-      "forecast": "90.3",
-      "previous": "90.8",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-08-25T21:30:00-04:00",
-      "currency": "AUD",
-      "impact": "High",
-      "title": "CPI m/m",
-      "forecast": "0.9%",
-      "previous": "-0.1%",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
-    {
-      "date": "2026-08-25T21:30:00-04:00",
-      "currency": "AUD",
-      "impact": "High",
-      "title": "CPI y/y",
-      "forecast": "3.3%",
-      "previous": "3.8%",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
-    {
-      "date": "2026-08-25T21:30:00-04:00",
-      "currency": "AUD",
-      "impact": "High",
-      "title": "Trimmed Mean CPI m/m",
-      "forecast": "0.4%",
-      "previous": "0.3%",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
     {
       "date": "2026-08-26T08:30:00-04:00",
       "currency": "USD",
@@ -165,6 +97,100 @@
         "CADJPY",
         "CHFJPY"
       ]
+    },
+    {
+      "date": "2026-08-28T08:30:00-04:00",
+      "currency": "CAD",
+      "impact": "High",
+      "title": "GDP m/m",
+      "forecast": "0.2%",
+      "previous": "0.3%",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
+      ]
+    },
+    {
+      "date": "2026-08-28T10:00:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "Fed Chairman Warsh Speaks",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-28T10:00:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "Prelim Benchmark Payrolls Revision",
+      "forecast": "—",
+      "previous": "-911K",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-28T10:00:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "Revised UoM Consumer Sentiment",
+      "forecast": "51.0",
+      "previous": "51.0",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-28T10:00:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "Revised UoM Inflation Expectations",
+      "forecast": "—",
+      "previous": "4.3%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-08-28T12:15:00-04:00",
+      "currency": "All",
+      "impact": "High",
+      "title": "Jackson Hole Symposium",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": []
     }
   ]
 }
