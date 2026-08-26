@@ -17,7 +17,7 @@
  *
  * Usage: node scripts/scan_live.mjs [--pairs A,B] [--risk 1.0] [--notify] [--all]
  */
-import { getCandles, getPricing, getSummary, ACCOUNT_ID, LIVE_ACCOUNT_ID } from '../src/oanda.js';
+import { getCandles, getPricing, getSummary, getOpenTrades, ACCOUNT_ID, LIVE_ACCOUNT_ID } from '../src/oanda.js';
 import { atr, rsi } from '../src/indicators.js';
 import { buildLevels } from '../src/structure.js';
 import https from 'https';
@@ -59,6 +59,31 @@ const nav = await getSummary(LIVE_ACCOUNT_ID || ACCOUNT_ID)
 // exists once a day — but "price is at the level now" is intraday information
 // and is the part the user wants to hear about while it is happening.
 const live = await getPricing(PAIRS).catch(() => ({}));
+
+// Net currency exposure from open trades. With 8 currencies only 4 trades can
+// share no currency at all, so most alerts will double an exposure already
+// held rather than diversify it. Declining those is correct, not a missed
+// opportunity — but only if it is visible at the time.
+const openTrades = await getOpenTrades(LIVE_ACCOUNT_ID || ACCOUNT_ID).catch(() => []);
+const exposure = {};
+for (const t of openTrades) {
+  const [b, q] = t.instrument.split('_');
+  const u = parseFloat(t.currentUnits);
+  exposure[b] = (exposure[b] || 0) + u;      // long the base
+  exposure[q] = (exposure[q] || 0) - u;      // short the quote
+}
+function overlap(sym, dir) {
+  const b = sym.slice(0, 3), q = sym.slice(3);
+  const bd = dir === 'LONG' ? 1 : -1;
+  const notes = [];
+  for (const [c, d] of [[b, bd], [q, -bd]]) {
+    const cur = exposure[c] || 0;
+    if (!cur) continue;
+    if (Math.sign(cur) === Math.sign(d)) notes.push(`${c} doubles`);
+    else notes.push(`${c} offsets`);
+  }
+  return notes;
+}
 
 // Alert state, so running every 4 hours does not re-send the same thing. Only
 // transitions are announced; a level that was already CODE RED stays quiet
@@ -147,11 +172,19 @@ const finalEntries = dedupe(entries);
 console.log(`\nLIVE SCAN — ${new Date().toISOString().slice(0, 16)}Z   ${PAIRS.length} pairs`);
 if (nav) console.log(`sizing off ${LIVE_ACCOUNT_ID || ACCOUNT_ID}   NAV $${nav.toFixed(2)}   risking ${RISK_PCT}%/trade   (read-only)`);
 console.log('='.repeat(72));
+if (Object.keys(exposure).length) {
+  const line = Object.entries(exposure).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .map(([c, u]) => `${c} ${u > 0 ? '+' : '-'}${Math.abs(u).toLocaleString()}`).join('   ');
+  console.log(`open exposure: ${line}`);
+}
 
 if (finalEntries.length) {
   console.log('\n🎯 ENTRY — level rejected AND daily RSI at an extreme\n');
   for (const e of finalEntries) {
+    const ov = overlap(e.sym, e.dir);
     console.log(`  ${e.sym}  ${e.dir}${e.isNew ? '   ** NEW **' : ''}   level ${fmt(e.sym, e.level)} (${e.touches} touches, held ${e.hold}d)`);
+    if (ov.length) console.log(`    ⚠ overlaps open risk: ${ov.join(', ')}`);
+    else if (openTrades.length) console.log(`    ✓ diversifies — no currency shared with open positions`);
     console.log(`    entry ${fmt(e.sym, e.px)}   stop ${fmt(e.sym, e.stop)} (${e.risk.toFixed(0)}p)   target ${fmt(e.sym, e.target)} (${e.rr.toFixed(1)}R)`);
     if (e.units) console.log(`    size ${e.units.toLocaleString()} units = $${(nav * RISK_PCT / 100).toFixed(2)} risk    daily RSI ${e.dr.toFixed(1)}`);
     console.log(`    PUT THE STOP IN AS A REAL ORDER.`);
