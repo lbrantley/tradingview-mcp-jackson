@@ -65,6 +65,10 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
     //                   hand: by the time the level has rejected, the question
     //                   is only where to get in, not whether.
     entryMode = 'retest',
+    // 'level'  first level >= minRR      'level2' second level out
+    // 'atr'    fixed multiple            'sma50_entry' / 'sma50_daily'
+    targetMode = 'level',
+    targetATR = 2,
     rejectTF = 'D',        // which timeframe's candle must do the rejecting
   } = opts;
 
@@ -74,6 +78,7 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
   const aH = atr(entry, 14);
   const closes = entry.map(b => b.close);
   const s50 = sma(closes, 50);
+  const sma50Entry = s50;
   const s200 = sma(closes, 200);
   // Indicators recorded at entry — NOT used to filter here. They are attached
   // so a later pass can measure which of them actually separate winners from
@@ -159,18 +164,32 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
         if (isSup ? px <= stop : px >= stop) continue;
         if (ctx.spread && ctx.spread / risk > maxSpreadFrac) continue;
 
-        // Take the first level FAR ENOUGH to be worth trading, not simply the
-        // nearest. Histogram levels sit every ~30 pips, so the nearest is often
-        // a few pips away — on the NZDJPY June setup it was 3 pips, giving
-        // rr 0.08 and killing every signal. The user's TP1 is a specific prior
-        // structure, not whatever happens to be closest.
-        const ahead = zones
+        // TARGET SCHEME. Levels sit ~30 pips apart, so "nearest" is often a few
+        // pips away — on the NZDJPY June setup it was 3 pips, rr 0.08. Each
+        // mode below picks somewhere different; which is best is an empirical
+        // question, tested rather than assumed.
+        const forward = zones
           .filter(w => isSup ? w.price > px : w.price < px)
-          .sort((x, y) => Math.abs(x.price - px) - Math.abs(y.price - px))
-          .find(w => Math.abs(w.price - px) / risk >= minRR);
-        if (!ahead) continue;
-        let target = ahead.price;
+          .sort((x, y) => Math.abs(x.price - px) - Math.abs(y.price - px));
+        const idxE = alignedIdx(entry, c.time);
+        let target = null;
+        if (targetMode === 'atr') {
+          target = isSup ? px + aSrc[k] * targetATR : px - aSrc[k] * targetATR;
+        } else if (targetMode === 'level2') {
+          const ok = forward.filter(w => Math.abs(w.price - px) / risk >= minRR);
+          target = ok[1]?.price ?? ok[0]?.price ?? null;      // second one out
+        } else if (targetMode === 'sma50_entry') {
+          const v = idxE >= 0 ? sma50Entry[idxE] : null;
+          if (v != null && (isSup ? v > px : v < px)) target = v;
+        } else if (targetMode === 'sma50_daily') {
+          const v = dS50[k];
+          if (v != null && (isSup ? v > px : v < px)) target = v;
+        } else {
+          target = forward.find(w => Math.abs(w.price - px) / risk >= minRR)?.price ?? null;
+        }
+        if (target == null) continue;
         let rr = Math.abs(target - px) / risk;
+        if (rr < minRR) continue;
         if (rr > maxRR) { target = isSup ? px + maxRR * risk : px - maxRR * risk; rr = maxRR; }
 
         // Map the rejection bar back onto the entry timeframe for simulation.
