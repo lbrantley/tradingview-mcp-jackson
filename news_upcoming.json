@@ -1,60 +1,9 @@
 {
-  "generatedAt": "2026-08-26T11:10:40.100Z",
+  "generatedAt": "2026-08-27T11:10:35.747Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-26T11:10:39.626Z",
-  "count": 12,
+  "sourceCacheAt": "2026-08-27T11:10:35.683Z",
+  "count": 10,
   "events": [
-    {
-      "date": "2026-08-26T08:30:00-04:00",
-      "currency": "USD",
-      "impact": "High",
-      "title": "Core PCE Price Index m/m",
-      "forecast": "0.2%",
-      "previous": "0.1%",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-08-26T08:30:00-04:00",
-      "currency": "USD",
-      "impact": "High",
-      "title": "Prelim GDP q/q",
-      "forecast": "1.5%",
-      "previous": "1.5%",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-08-26T08:30:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "Prelim GDP Price Index q/q",
-      "forecast": "6.2%",
-      "previous": "6.2%",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
     {
       "date": "2026-08-27T08:30:00-04:00",
       "currency": "USD",
@@ -187,6 +136,15 @@
       "date": "2026-08-28T12:15:00-04:00",
       "currency": "All",
       "impact": "High",
+      "title": "Jackson Hole Symposium",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": []
+    },
+    {
+      "date": "2026-08-29T12:15:00-04:00",
+      "currency": "All",
+      "impact": "Medium",
       "title": "Jackson Hole Symposium",
       "forecast": "—",
       "previous": "—",
