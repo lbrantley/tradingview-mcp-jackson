@@ -23,8 +23,8 @@
  * Read-only. Prints alerts; places nothing.
  */
 import { getCandles, getPricing, getSummary, LIVE_ACCOUNT_ID, ACCOUNT_ID } from '../src/oanda.js';
-import { atr, sma, rsi, swings, lastConfirmedSwing } from '../src/indicators.js';
-import { buildZones } from '../src/structure.js';
+import { sma, rsi } from '../src/indicators.js';
+import { findSetups, DEFAULTS } from '../src/setups.js';
 import { getCalendar, eventsFor } from '../src/news.js';
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import https from 'https';
@@ -94,32 +94,12 @@ function pushover(title, message) {
  * extensions earn more per trade but fill 9-18% of the time, which is the same
  * fictional-target problem that killed the 20 ATR figure.
  */
-const FIB_EXT = 1.0;
+const FIB_EXT = DEFAULTS.fibExt;
 const SPEC = {
   WALL:  { stopATR: 0.5, label: 'WALL BREAK'      },
   FIELD: { stopATR: 1.5, label: 'OPEN FIELD BREAK'},
   REV:   { stopATR: 2.0, label: 'REVERSAL'        },
 };
-
-/** Last directional leg: a confirmed swing low then a LATER confirmed swing high
- *  for dir>0, mirrored for a short. Both must be confirmed as of bar i. */
-function lastLeg(bars, sw, i, lb, dir) {
-  const first = dir > 0 ? sw.lows : sw.highs;
-  const second = dir > 0 ? sw.highs : sw.lows;
-  for (let n = second.length - 1; n >= 0; n--) {
-    const b2 = second[n];
-    if (b2 + lb > i) continue;
-    for (let m = first.length - 1; m >= 0; m--) {
-      const a1 = first[m];
-      if (a1 >= b2 || a1 + lb > i) continue;
-      const lo = dir > 0 ? bars[a1].low : bars[a1].high;
-      const hi = dir > 0 ? bars[b2].high : bars[b2].low;
-      if (dir > 0 ? hi <= lo : hi >= lo) break;
-      return { from: lo, to: hi, size: Math.abs(hi - lo), fromAt: bars[a1].time, toAt: bars[b2].time };
-    }
-  }
-  return null;
-}
 
 const cst = t => new Date(t).toLocaleString('en-US', { timeZone: 'America/Chicago',
   weekday: 'short', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -134,95 +114,45 @@ const hits = [];
 
 for (const sym of PAIRS) {
   try {
-    const b = await getCandles(sym, { granularity: 'H4', count: 400 });
-    const d = await getCandles(sym, { granularity: 'D', count: 400 });
-    if (b.length < 300) continue;
-    const i = b.length - 1;                       // last CLOSED H4 bar
-    const a = atr(b, 14), cl = b.map(x => x.close);
-    if (!a[i]) continue;
-    const s50 = sma(cl, 50);
+    // HISTORY LENGTH IS PART OF THE SPEC. Zones are built from whatever bars
+    // are loaded, and "room to the next level ahead" is measured against that
+    // zone set — so a shorter history means a sparser map and a different
+    // classification for the same bar. The backtest uses two years of H4, so
+    // the scanner must too, or the two can never agree.
+    const b = await getCandles(sym, { granularity: 'H4', count: 3000 });
+    const d = await getCandles(sym, { granularity: 'D', count: 600 });
+    if (b.length < 1000 || d.length < 200) continue;
+    const last = b.length - 1;
     const dRsi = rsi(d.map(x => x.close), 14);
     const dS50 = sma(d.map(x => x.close), 50);
-    const zones = buildZones(b, { lookback: 5, tolATR: 0.5, minTouches: 2 })
-      .filter(z => z.confirmedTime <= b[i].time);
-    const sw = swings(b, 5);        // H4 swings — level provenance
-    const swD = swings(d, 5);       // daily swings — the measured-move leg
+    const s50 = sma(b.map(x => x.close), 50);
+    const pip = pipOf(sym);
+    const usdjpy = 147;                         // rough, for the JPY-quote conversion
 
-    for (const z of zones) {
-      if (!(b[i].low <= z.high && b[i].high >= z.low)) continue;   // not touching now
-      const fromAbove = cl[i - 5] > z.price;
-      const ahead = zones.filter(w => Math.abs(w.price - z.price) > a[i] * 0.5)
-        .filter(w => fromAbove ? w.price < z.price : w.price > z.price)
-        .sort((x, y) => Math.abs(x.price - z.price) - Math.abs(y.price - z.price));
-      const behind = zones.filter(w => Math.abs(w.price - z.price) > a[i] * 0.5)
-        .filter(w => fromAbove ? w.price > z.price : w.price < z.price)
-        .sort((x, y) => Math.abs(x.price - z.price) - Math.abs(y.price - z.price));
-      const room = ahead[0] ? Math.abs(ahead[0].price - z.price) / a[i] : 99;
-      const backup = ahead.filter(w => Math.abs(w.price - z.price) <= a[i] * 8).length;
-
-      const through = fromAbove ? b[i].close < z.low : b[i].close > z.high;
-      const rejected = fromAbove ? b[i].close > z.high : b[i].close < z.low;
-      let kind = null;
-      if (through && room < 2 && backup >= 2 && backup <= 6) kind = 'WALL';
-      else if (through && room > 8) kind = 'FIELD';
-      else if (rejected && room < 2) kind = 'REV';
-      if (!kind) continue;
-
-      const sp = SPEC[kind];
-      const dir = kind === 'REV' ? (fromAbove ? 1 : -1) : (fromAbove ? -1 : 1);
-      const px = b[i].close;
-      const stop = dir > 0 ? z.low - a[i] * sp.stopATR : z.high + a[i] * sp.stopATR;
-      if (dir > 0 ? px <= stop : px >= stop) continue;
-      // Measured move off the DAILY leg, projected beyond the swing extreme.
-      const leg = lastLeg(d, swD, d.length - 1, 5, dir);
-      if (!leg || leg.size < a[i] * 0.5) continue;
-      const target = dir > 0 ? leg.to + leg.size * FIB_EXT : leg.to - leg.size * FIB_EXT;
-      if (dir > 0 ? target <= px : target >= px) continue;
-      const risk = Math.abs(px - stop);
-      const pip = pipOf(sym);
-      const usdjpy = 147;                                   // rough, for the JPY quote conversion
-      const riskUsd = risk * UNITS * (/JPY$/.test(sym) ? 1 / usdjpy : 1);
-
-      // WHY THIS LEVEL — the provenance the user asked for, so it can be drawn
-      const formedBy = [...sw.highs, ...sw.lows]
-        .filter(k => Math.abs((z.kind === 'resistance' ? b[k].high : b[k].low) - z.price) <= (z.high - z.low) / 2)
-        .sort((x, y) => x - y);
-
-      const key = `${sym}:${kind}:${dir}:${z.price.toFixed(5)}`;
-      nowSeen[key] = b[i].time;
+    // ONE definition of a setup, shared with the backtest. A live scan is
+    // simply the setups sitting on the most recent closed bar.
+    for (const s of findSetups(b, d).filter(x => x.i === last)) {
+      const riskUsd = s.risk * UNITS * (/JPY$/.test(sym) ? 1 / usdjpy : 1);
+      const key = `${sym}:${s.kind}:${s.dir}:${s.level.toFixed(5)}`;
+      nowSeen[key] = s.time;
       hits.push({
-        sym, kind, dir, key, isNew: seen[key] !== b[i].time,
-        level: z.price, band: [z.low, z.high], touches: z.touches,
-        confirmedTime: z.confirmedTime, formedBy: formedBy.map(k => b[k].time),
-        room, backup, px, stop, target, riskPips: risk / pip, riskUsd,
-        legPips: leg.size / pip, legFrom: leg.fromAt, legTo: leg.toAt,
-        rr: Math.abs(target - px) / risk,
-        // `ahead` and `behind` are measured in the BREAK direction, which is
-        // right for classifying the setup but backwards for a reversal — that
-        // trades the other way. Swap them so both branches report the levels in
-        // the direction the TRADE is going.
-        aheadLevels: (kind === 'REV' ? behind : ahead).slice(0, 3).map(w => w.price),
-        behindLevels: (kind === 'REV' ? ahead : behind).slice(0, 2).map(w => w.price),
-        vs50: (px - s50[i]) / a[i],
-        dailyRsi: dRsi[d.length - 1], dailyTrend: d[d.length - 1].close > dS50[d.length - 1] ? 'up' : 'down',
-        news: eventsFor(cal, sym, new Date(), { hoursAhead: 48 }).map(e => `${e.date.slice(5, 16)} ${e.country} ${e.title}`),
-        time: b[i].time,
+        sym, kind: s.kind, dir: s.dir, key, isNew: seen[key] !== s.time,
+        level: s.level, band: s.band, touches: s.touches,
+        confirmedTime: s.confirmedTime, testNo: s.testNo, speed: s.speed,
+        room: s.room, backup: s.backup, px: s.px, stop: s.stop, target: s.target,
+        riskPips: s.risk / pip, riskUsd, rr: s.rr,
+        legPips: s.leg.size / pip, legFrom: s.leg.fromAt, legTo: s.leg.toAt,
+        aheadLevels: s.aheadForTrade, behindLevels: s.behindForTrade,
+        vs50: (s.px - s50[last]) / s.atr,
+        dailyRsi: dRsi[d.length - 1],
+        dailyTrend: d[d.length - 1].close > dS50[d.length - 1] ? 'up' : 'down',
+        news: eventsFor(cal, sym, new Date(), { hoursAhead: 48 })
+          .map(e => `${e.date.slice(5, 16)} ${e.country} ${e.title}`),
+        time: s.time,
       });
     }
   } catch (e) { if (SHOW_ALL) console.log(`  ${sym}: ${e.message}`); }
 }
-
-// DEDUPE. Two zones a few pips apart are one wall, not two trades — the week-44
-// review flagged this repeatedly (GBPCAD, AUDCAD, EURAUD all doubled). Keep the
-// one with the most swings behind it; that is the better-evidenced level.
-const merged = [];
-for (const h of hits.sort((x, y) => y.touches - x.touches)) {
-  const dup = merged.find(m => m.sym === h.sym && m.kind === h.kind && m.dir === h.dir &&
-    Math.abs(m.level - h.level) <= Math.abs(h.band[1] - h.band[0]) * 2);
-  if (dup) { dup.alsoAt = (dup.alsoAt || []).concat(h.level); continue; }
-  merged.push(h);
-}
-hits.length = 0; hits.push(...merged);
 
 writeFileSync(STATE, JSON.stringify(nowSeen, null, 1));
 
