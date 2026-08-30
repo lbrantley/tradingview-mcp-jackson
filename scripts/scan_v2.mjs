@@ -140,8 +140,12 @@ for (const sym of PAIRS) {
         level: z.price, band: [z.low, z.high], touches: z.touches,
         confirmedTime: z.confirmedTime, formedBy: formedBy.map(k => b[k].time),
         room, backup, px, stop, target, riskPips: risk / pip, riskUsd,
-        aheadLevels: ahead.slice(0, 3).map(w => w.price),
-        behindLevels: behind.slice(0, 2).map(w => w.price),
+        // `ahead` and `behind` are measured in the BREAK direction, which is
+        // right for classifying the setup but backwards for a reversal — that
+        // trades the other way. Swap them so both branches report the levels in
+        // the direction the TRADE is going.
+        aheadLevels: (kind === 'REV' ? behind : ahead).slice(0, 3).map(w => w.price),
+        behindLevels: (kind === 'REV' ? ahead : behind).slice(0, 2).map(w => w.price),
         vs50: (px - s50[i]) / a[i],
         dailyRsi: dRsi[d.length - 1], dailyTrend: d[d.length - 1].close > dS50[d.length - 1] ? 'up' : 'down',
         news: eventsFor(cal, sym, new Date(), { hoursAhead: 48 }).map(e => `${e.date.slice(5, 16)} ${e.country} ${e.title}`),
