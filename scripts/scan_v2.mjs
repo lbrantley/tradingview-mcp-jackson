@@ -79,12 +79,47 @@ function pushover(title, message) {
  * It scales with the move that actually formed the setup instead of with a
  * multiplier someone swept for.
  */
-const FIB_EXT = 2.618;
+/**
+ * The leg comes from the DAILY chart, not H4 — measured, and it roughly doubles
+ * expectancy over the H4 leg on the identical construction (+1.054/+0.834 vs
+ * +0.565/+0.439). It is also where the user draws it by hand.
+ *
+ * The leg is a real directional move: a confirmed swing low followed by a LATER
+ * confirmed swing high for a long, mirrored for a short. The first version took
+ * the most recent high and low independently and could measure between points
+ * fifteen days apart in the wrong order — a distance, not a leg.
+ *
+ * Target is the leg projected beyond the swing extreme. 1.0 is the classic
+ * measured move: reached 24-27% of the time for +0.77R average. Larger
+ * extensions earn more per trade but fill 9-18% of the time, which is the same
+ * fictional-target problem that killed the 20 ATR figure.
+ */
+const FIB_EXT = 1.0;
 const SPEC = {
   WALL:  { stopATR: 0.5, label: 'WALL BREAK'      },
   FIELD: { stopATR: 1.5, label: 'OPEN FIELD BREAK'},
   REV:   { stopATR: 2.0, label: 'REVERSAL'        },
 };
+
+/** Last directional leg: a confirmed swing low then a LATER confirmed swing high
+ *  for dir>0, mirrored for a short. Both must be confirmed as of bar i. */
+function lastLeg(bars, sw, i, lb, dir) {
+  const first = dir > 0 ? sw.lows : sw.highs;
+  const second = dir > 0 ? sw.highs : sw.lows;
+  for (let n = second.length - 1; n >= 0; n--) {
+    const b2 = second[n];
+    if (b2 + lb > i) continue;
+    for (let m = first.length - 1; m >= 0; m--) {
+      const a1 = first[m];
+      if (a1 >= b2 || a1 + lb > i) continue;
+      const lo = dir > 0 ? bars[a1].low : bars[a1].high;
+      const hi = dir > 0 ? bars[b2].high : bars[b2].low;
+      if (dir > 0 ? hi <= lo : hi >= lo) break;
+      return { from: lo, to: hi, size: Math.abs(hi - lo), fromAt: bars[a1].time, toAt: bars[b2].time };
+    }
+  }
+  return null;
+}
 
 const cst = t => new Date(t).toLocaleString('en-US', { timeZone: 'America/Chicago',
   weekday: 'short', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -100,7 +135,7 @@ const hits = [];
 for (const sym of PAIRS) {
   try {
     const b = await getCandles(sym, { granularity: 'H4', count: 400 });
-    const d = await getCandles(sym, { granularity: 'D', count: 200 });
+    const d = await getCandles(sym, { granularity: 'D', count: 400 });
     if (b.length < 300) continue;
     const i = b.length - 1;                       // last CLOSED H4 bar
     const a = atr(b, 14), cl = b.map(x => x.close);
@@ -110,7 +145,8 @@ for (const sym of PAIRS) {
     const dS50 = sma(d.map(x => x.close), 50);
     const zones = buildZones(b, { lookback: 5, tolATR: 0.5, minTouches: 2 })
       .filter(z => z.confirmedTime <= b[i].time);
-    const sw = swings(b, 5);      // used for provenance AND the measured move
+    const sw = swings(b, 5);        // H4 swings — level provenance
+    const swD = swings(d, 5);       // daily swings — the measured-move leg
 
     for (const z of zones) {
       if (!(b[i].low <= z.high && b[i].high >= z.low)) continue;   // not touching now
@@ -137,12 +173,10 @@ for (const sym of PAIRS) {
       const px = b[i].close;
       const stop = dir > 0 ? z.low - a[i] * sp.stopATR : z.high + a[i] * sp.stopATR;
       if (dir > 0 ? px <= stop : px >= stop) continue;
-      // Measured move: project the last confirmed swing leg from the level.
-      const shi = lastConfirmedSwing(sw.highs, i, 5), slo = lastConfirmedSwing(sw.lows, i, 5);
-      if (shi == null || slo == null) continue;
-      const leg = Math.abs(b[shi].high - b[slo].low);
-      if (!leg || leg < a[i] * 0.5) continue;
-      const target = dir > 0 ? z.price + leg * FIB_EXT : z.price - leg * FIB_EXT;
+      // Measured move off the DAILY leg, projected beyond the swing extreme.
+      const leg = lastLeg(d, swD, d.length - 1, 5, dir);
+      if (!leg || leg.size < a[i] * 0.5) continue;
+      const target = dir > 0 ? leg.to + leg.size * FIB_EXT : leg.to - leg.size * FIB_EXT;
       if (dir > 0 ? target <= px : target >= px) continue;
       const risk = Math.abs(px - stop);
       const pip = pipOf(sym);
@@ -161,7 +195,8 @@ for (const sym of PAIRS) {
         level: z.price, band: [z.low, z.high], touches: z.touches,
         confirmedTime: z.confirmedTime, formedBy: formedBy.map(k => b[k].time),
         room, backup, px, stop, target, riskPips: risk / pip, riskUsd,
-        legPips: leg / pip, rr: Math.abs(target - px) / risk,
+        legPips: leg.size / pip, legFrom: leg.fromAt, legTo: leg.toAt,
+        rr: Math.abs(target - px) / risk,
         // `ahead` and `behind` are measured in the BREAK direction, which is
         // right for classifying the setup but backwards for a reversal — that
         // trades the other way. Swap them so both branches report the levels in
@@ -208,7 +243,8 @@ for (const k of order) {
     console.log(`     level ${h.level.toFixed(D)}  band ${h.band[0].toFixed(D)}-${h.band[1].toFixed(D)}  ` +
       `${h.touches} swings  since ${h.confirmedTime.slice(0, 10)}`);
     console.log(`     room ahead ${h.room.toFixed(1)} ATR   ${h.backup} levels stacked ahead`);
-    console.log(`     entry ${h.px.toFixed(D)}   stop ${h.stop.toFixed(D)} (${h.riskPips.toFixed(0)}p, $${h.riskUsd.toFixed(2)})   target ${h.target.toFixed(D)} (${h.rr.toFixed(1)}R, leg ${h.legPips.toFixed(0)}p × ${FIB_EXT})`);
+    console.log(`     entry ${h.px.toFixed(D)}   stop ${h.stop.toFixed(D)} (${h.riskPips.toFixed(0)}p, $${h.riskUsd.toFixed(2)})   target ${h.target.toFixed(D)} (${h.rr.toFixed(1)}R)`);
+    console.log(`     leg ${h.legPips.toFixed(0)}p daily, ${h.legFrom.slice(0, 10)} → ${h.legTo.slice(0, 10)}, projected ${FIB_EXT}× beyond`);
     console.log(`     next ahead: ${h.aheadLevels.map(v => v.toFixed(D)).join('  ') || '—'}`);
     console.log(`     behind:     ${h.behindLevels.map(v => v.toFixed(D)).join('  ') || '—'}`);
     console.log(`     daily ${h.dailyTrend} trend, RSI ${h.dailyRsi?.toFixed(0)}   price ${h.vs50 >= 0 ? '+' : ''}${h.vs50.toFixed(1)} ATR vs H4 50SMA`);
