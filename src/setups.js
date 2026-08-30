@@ -28,8 +28,29 @@ import { atr, swings } from './indicators.js';
 import { buildZones } from './structure.js';
 
 export const DEFAULTS = {
-  lookback: 5,
-  tolATR: 0.5,
+  // SWEPT 2026-08-30, and these are the two that matter most: lookback decides
+  // what a swing IS, tolATR decides which swings merge into one zone. Everything
+  // downstream — room, branch, stop, target — is computed against whatever they
+  // produce. Both had been sitting at buildZones' defaults, never chosen.
+  //
+  //   lb/tol      w0                  w2                  w4                  w6
+  //   5/0.5   1.294/0.678/0.596       —                   —           0.891/0.732/0.514
+  //   3/0.8   1.267/1.317/1.059  1.800/1.596/0.937  1.715/0.790/1.212  1.745/1.844/0.958
+  //                                                        (WALL / FIELD / REV)
+  //
+  // Roughly doubles open field and reversals in every window and halves signal
+  // volume. The whole 2-4 x 0.8-1.5 region beats 5/0.5, so it is a plateau
+  // rather than a spike — which is what a real effect looks like rather than a
+  // fitted one. Mechanism: a 3-bar lookback confirms swings sooner (the
+  // confirmation lag), and a wider tolerance produces the fewer, wider bands a
+  // trader actually draws instead of 24-pip hairlines.
+  //
+  // CAVEAT: grid-searched with all four windows used for SELECTION, so there is
+  // no historical holdout left for these two values. The live period is the only
+  // out-of-sample check available. If live results look nothing like the
+  // backtest, suspect these first.
+  lookback: 3,
+  tolATR: 0.8,
   // Measured 2026-08-30. The branches had been validated against DIFFERENT zone
   // universes — open field on 3, wall and reversal on 2 — which changes the room
   // measurement and therefore every classification. Swept: 3 is better for open
