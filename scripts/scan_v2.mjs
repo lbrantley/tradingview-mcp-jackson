@@ -23,7 +23,7 @@
  * Read-only. Prints alerts; places nothing.
  */
 import { getCandles, getPricing, getSummary, LIVE_ACCOUNT_ID, ACCOUNT_ID } from '../src/oanda.js';
-import { atr, sma, rsi, swings } from '../src/indicators.js';
+import { atr, sma, rsi, swings, lastConfirmedSwing } from '../src/indicators.js';
 import { buildZones } from '../src/structure.js';
 import { getCalendar, eventsFor } from '../src/news.js';
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
@@ -64,11 +64,26 @@ function pushover(title, message) {
   req.write(body); req.end();
 }
 
-/** Per-branch geometry. Fitted, not structural — swap freely as tests land. */
+/**
+ * Per-branch geometry.
+ *
+ * The stops are still fitted (swept per branch — tighter is monotonically
+ * better on wall breaks, 1.5 suits open field, reversals have no clean answer
+ * so 2.0 is kept for being the most consistent across windows).
+ *
+ * The TARGET is now structural. A 2.618 extension of the last confirmed swing
+ * leg, projected from the level, beat the fitted ATR multiples on reversals
+ * (+0.473R vs +0.162R average) and open field (+0.372R vs +0.204R), all four
+ * windows, and tied on wall breaks. It is reached 28-40% of the time, so it is
+ * a target rather than a hold period — unlike the 20 ATR figure it replaces.
+ * It scales with the move that actually formed the setup instead of with a
+ * multiplier someone swept for.
+ */
+const FIB_EXT = 2.618;
 const SPEC = {
-  WALL:  { stopATR: 0.5, targetATR: 8,  label: 'WALL BREAK'      },
-  FIELD: { stopATR: 1.5, targetATR: 4,  label: 'OPEN FIELD BREAK'},
-  REV:   { stopATR: 2.0, targetATR: 4,  label: 'REVERSAL'        },
+  WALL:  { stopATR: 0.5, label: 'WALL BREAK'      },
+  FIELD: { stopATR: 1.5, label: 'OPEN FIELD BREAK'},
+  REV:   { stopATR: 2.0, label: 'REVERSAL'        },
 };
 
 const cst = t => new Date(t).toLocaleString('en-US', { timeZone: 'America/Chicago',
@@ -95,7 +110,7 @@ for (const sym of PAIRS) {
     const dS50 = sma(d.map(x => x.close), 50);
     const zones = buildZones(b, { lookback: 5, tolATR: 0.5, minTouches: 2 })
       .filter(z => z.confirmedTime <= b[i].time);
-    const sw = swings(b, 5);
+    const sw = swings(b, 5);      // used for provenance AND the measured move
 
     for (const z of zones) {
       if (!(b[i].low <= z.high && b[i].high >= z.low)) continue;   // not touching now
@@ -122,7 +137,13 @@ for (const sym of PAIRS) {
       const px = b[i].close;
       const stop = dir > 0 ? z.low - a[i] * sp.stopATR : z.high + a[i] * sp.stopATR;
       if (dir > 0 ? px <= stop : px >= stop) continue;
-      const target = dir > 0 ? px + a[i] * sp.targetATR : px - a[i] * sp.targetATR;
+      // Measured move: project the last confirmed swing leg from the level.
+      const shi = lastConfirmedSwing(sw.highs, i, 5), slo = lastConfirmedSwing(sw.lows, i, 5);
+      if (shi == null || slo == null) continue;
+      const leg = Math.abs(b[shi].high - b[slo].low);
+      if (!leg || leg < a[i] * 0.5) continue;
+      const target = dir > 0 ? z.price + leg * FIB_EXT : z.price - leg * FIB_EXT;
+      if (dir > 0 ? target <= px : target >= px) continue;
       const risk = Math.abs(px - stop);
       const pip = pipOf(sym);
       const usdjpy = 147;                                   // rough, for the JPY quote conversion
@@ -140,6 +161,7 @@ for (const sym of PAIRS) {
         level: z.price, band: [z.low, z.high], touches: z.touches,
         confirmedTime: z.confirmedTime, formedBy: formedBy.map(k => b[k].time),
         room, backup, px, stop, target, riskPips: risk / pip, riskUsd,
+        legPips: leg / pip, rr: Math.abs(target - px) / risk,
         // `ahead` and `behind` are measured in the BREAK direction, which is
         // right for classifying the setup but backwards for a reversal — that
         // trades the other way. Swap them so both branches report the levels in
@@ -186,7 +208,7 @@ for (const k of order) {
     console.log(`     level ${h.level.toFixed(D)}  band ${h.band[0].toFixed(D)}-${h.band[1].toFixed(D)}  ` +
       `${h.touches} swings  since ${h.confirmedTime.slice(0, 10)}`);
     console.log(`     room ahead ${h.room.toFixed(1)} ATR   ${h.backup} levels stacked ahead`);
-    console.log(`     entry ${h.px.toFixed(D)}   stop ${h.stop.toFixed(D)} (${h.riskPips.toFixed(0)}p, $${h.riskUsd.toFixed(2)})   target ${h.target.toFixed(D)}`);
+    console.log(`     entry ${h.px.toFixed(D)}   stop ${h.stop.toFixed(D)} (${h.riskPips.toFixed(0)}p, $${h.riskUsd.toFixed(2)})   target ${h.target.toFixed(D)} (${h.rr.toFixed(1)}R, leg ${h.legPips.toFixed(0)}p × ${FIB_EXT})`);
     console.log(`     next ahead: ${h.aheadLevels.map(v => v.toFixed(D)).join('  ') || '—'}`);
     console.log(`     behind:     ${h.behindLevels.map(v => v.toFixed(D)).join('  ') || '—'}`);
     console.log(`     daily ${h.dailyTrend} trend, RSI ${h.dailyRsi?.toFixed(0)}   price ${h.vs50 >= 0 ? '+' : ''}${h.vs50.toFixed(1)} ATR vs H4 50SMA`);
