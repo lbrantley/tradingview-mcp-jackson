@@ -152,7 +152,12 @@ export function findSetups(bars, daily, opts = {}) {
       out.push({
         i, time: bars[i].time, kind, dir, zone: z,
         level: z.price, band: [z.low, z.high], touches: z.touches,
-        confirmedTime: z.confirmedTime, testNo: test, speed,
+        confirmedTime: z.confirmedTime,
+        // When the level FORMED, not when its last swing confirmed. A band with
+        // 12 swings is not three days old, and confirmedTime reads like it is.
+        formedTime: bars[Math.max(0, z.firstAt)]?.time ?? null,
+        ageBars: z.firstAt != null ? i - z.firstAt : null,
+        testNo: test, speed,
         room, backup, px, stop, target, risk: Math.abs(px - stop),
         rr: Math.abs(target - px) / Math.abs(px - stop),
         leg,

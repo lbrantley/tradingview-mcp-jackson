@@ -138,7 +138,8 @@ for (const sym of PAIRS) {
       hits.push({
         sym, kind: s.kind, dir: s.dir, key, isNew: seen[key] !== s.time,
         level: s.level, band: s.band, touches: s.touches,
-        confirmedTime: s.confirmedTime, testNo: s.testNo, speed: s.speed,
+        confirmedTime: s.confirmedTime, formedTime: s.formedTime, ageBars: s.ageBars,
+        testNo: s.testNo, speed: s.speed,
         room: s.room, backup: s.backup, px: s.px, stop: s.stop, target: s.target,
         riskPips: s.risk / pip, riskUsd, rr: s.rr,
         legPips: s.leg.size / pip, legFrom: s.leg.fromAt, legTo: s.leg.toAt,
@@ -171,7 +172,9 @@ for (const k of order) {
     const D = dp(h.sym);
     console.log(`  ${h.sym}  ${h.dir > 0 ? 'LONG' : 'SHORT'}${h.isNew ? '   ** NEW **' : ''}`);
     console.log(`     level ${h.level.toFixed(D)}  band ${h.band[0].toFixed(D)}-${h.band[1].toFixed(D)}  ` +
-      `${h.touches} swings  since ${h.confirmedTime.slice(0, 10)}`);
+      `${h.touches} swings   formed ${h.formedTime ? h.formedTime.slice(0, 10) : '?'}` +
+      `${h.ageBars ? ` (${(h.ageBars * 4 / 24).toFixed(0)}d old)` : ''}` +
+      `   last confirmed ${h.confirmedTime.slice(0, 10)}`);
     console.log(`     room ahead ${h.room.toFixed(1)} ATR   ${h.backup} levels stacked ahead`);
     console.log(`     entry ${h.px.toFixed(D)}   stop ${h.stop.toFixed(D)} (${h.riskPips.toFixed(0)}p, $${h.riskUsd.toFixed(2)})   target ${h.target.toFixed(D)} (${h.rr.toFixed(1)}R)`);
     console.log(`     leg ${h.legPips.toFixed(0)}p daily, ${h.legFrom.slice(0, 10)} → ${h.legTo.slice(0, 10)}, projected ${FIB_EXT}× beyond`);
