@@ -22,8 +22,8 @@
  *
  * Levels and state on Daily; resolution, retest and entry on H4.
  */
-import { atr, sma, rsi, macd, stochastic, rvi, bollinger } from '../indicators.js';
-import { buildLevels } from '../structure.js';
+import { atr, sma, rsi, macd, stochastic, rvi, bollinger, swings } from '../indicators.js';
+import { buildLevels, buildSwingTouchLevels, levelRespectEvents } from '../structure.js';
 import { momentum } from '../candles.js';
 
 export const meta = {
@@ -69,7 +69,26 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
     // 'atr'    fixed multiple            'sma50_entry' / 'sma50_daily'
     targetMode = 'level',
     targetATR = 2,
+    rMult = 1.2,           // for targetMode 'fixedR'
     rejectTF = 'D',        // which timeframe's candle must do the rejecting
+    // WHERE ENTRY LEVELS COME FROM. 'bin' is buildLevels — any bar extreme
+    // landing in the band counts as a touch. 'swingtouch' is the user's count:
+    // a swing high/low, price leaves, makes the OPPOSING swing, and only the
+    // return is a touch. Targets are unaffected either way — they always come
+    // from bin levels, which is the combination that passed holdout.
+    levelSource = 'bin',
+    levelBin = 0.35,       // band width in ATR; the user's areas are wider than
+                           // 0.35, so this has to be swept, not assumed
+    minTouches = 1,        // qualifying round trips before the level is live
+    awayATR = 1.0,         // how far past the band the opposing swing must sit
+    // Only the FIRST rejection at each level. Later pokes wear the band down.
+    firstRejectionOnly = false,
+    // Grade the TARGET by its respect rate. Measured U-shaped: a level that
+    // always holds is where price stops, one that never holds is easy to reach,
+    // and the ambiguous middle is the bad one. null disables the filter.
+    targetRespect = null,  // 'ushape' | null
+    fill = 'market',       // 'market' = next bar's open | 'limit' = at the rejection close
+    limitBars = 12,        // entry bars a limit order stays live before it is abandoned
   } = opts;
 
   const D = levelBars.D || [];
@@ -93,13 +112,45 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
   const dRsi = rsi(dCloses, 14);
   // Histogram levels, not strict swings — buildZones could not see the very
   // clusters the user draws by hand.
-  const zones = buildLevels(D, { binATR: 0.35, minBars: 3 });
-  if (!zones.length) return [];
+  const targetZones = buildLevels(D, { binATR: 0.35, minBars: 3 });
+  const zones = levelSource === 'swingtouch'
+    ? buildSwingTouchLevels(D, { binATR: levelBin, minTouches, awayATR })
+    : targetZones;
+  if (!zones.length || !targetZones.length) return [];
 
   const signals = [];
+  // Respect history is expensive and reused across every signal on a level, so
+  // classify each target zone once and slice by bar index at use.
+  const respectCache = new Map();
+  // Daily swing points, for targetMode 'swing'. Level bands cover ~73% of the
+  // traded range, so "first level >= minRR away" barely constrains anything —
+  // a swing low is a specific place price actually turned, and is the user's
+  // reading of where support really sits.
+  const dSw = swings(D, 5);
+  const respectAt = (w, k) => {
+    if (!respectCache.has(w)) respectCache.set(w, levelRespectEvents(D, w));
+    const prior = respectCache.get(w).filter(e => e.end < k);
+    const resp = prior.filter(e => e.kind === 'respected').length;
+    const pass = prior.filter(e => e.kind === 'passed').length;
+    return resp + pass >= 2 ? resp / (resp + pass) : null;
+  };
 
   for (const z of zones) {
-    const isSup = z.kind === 'support';
+    let tookOne = false;
+    // ROLE REVERSAL. A level's role is not a label stamped at build time — it is
+    // where price is standing relative to it. Above the band it is support;
+    // below, resistance. It FLIPS when price closes through, which is what
+    // "broken support becomes resistance" means, and it is the basis of every
+    // break-and-retest setup.
+    //
+    // Reading z.kind instead left 48% of levels permanently on the wrong side of
+    // price and therefore untradeable in the direction price was approaching
+    // from — measured 603 of 1,249 daily levels across 12 pairs.
+    //
+    // While price sits INSIDE the band (code red) `side` holds its last value,
+    // which is the side price approached from — exactly the side the trade
+    // would be taken from.
+    let side = null;                       // +1 price above the band, -1 below
     // Walk the level's whole life and record EVERY resolution, not just the
     // first. A level is revisited repeatedly over months — breaking after one
     // event meant the NZDJPY June setup was invisible because an earlier
@@ -115,6 +166,15 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
     for (let k = z.confirmedAt + 1; k < D.length; k++) {
       const d = D[k];
       if (aD[k] == null) continue;
+
+      // Establish the role before anything reads it. A level whose first bars
+      // sit inside the band has no role yet and cannot be traded.
+      if (side === null) {
+        if (d.close > z.high) side = 1;
+        else if (d.close < z.low) side = -1;
+        else continue;
+      }
+      const isSup = side > 0;
       const dist = Math.abs(d.close - z.price);
 
       if (!left) { if (dist > aD[k] * leaveATR) left = true; continue; }
@@ -122,7 +182,7 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
         // Left the watch band. If it had been holding, that is the REVERSAL.
         if (holdDays >= minHoldDays) {
           const away = isSup ? d.close > z.price : d.close < z.price;
-          if (away) events.push({ at: d.time, dir: isSup ? 'long' : 'short', holdDays });
+          if (away) events.push({ at: d.time, dir: isSup ? 'long' : 'short', holdDays, type: 'reversal' });
         }
         holdDays = 0; left = true;
         continue;
@@ -130,33 +190,75 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
       // Inside the watch band.
       const beyond = isSup ? d.close < z.low : d.close > z.high;
       if (beyond) {
-        // Closed through it — the BREAKOUT.
-        if (holdDays >= minHoldDays) events.push({ at: d.time, dir: isSup ? 'short' : 'long', holdDays });
+        // Closed through it — the BREAKOUT. The level now does the opposite job.
+        if (holdDays >= minHoldDays) events.push({ at: d.time, dir: isSup ? 'short' : 'long', holdDays, type: 'breakout' });
+        side = -side;                      // <- the flip
         holdDays = 0; left = false;
         continue;
       }
       holdDays++;   // CODE RED persists
     }
-    if (!events.length) continue;
-
-    for (const evt of events) {
-      const armedAt = evt.at, dir = evt.dir, holdCount = evt.holdDays;
-    // ── Level rejection: enter on the close of the candle that rejects ─────
+    // ── Level rejection ───────────────────────────────────────────────────
+    //
+    // REWRITTEN 2026-08-27. The previous version took an EVENT (a reversal or
+    // breakout recorded during the level walk) and then searched the 10 bars
+    // BEFORE it for a rejection candle. That made the entry bar a function of
+    // something that had not happened yet: measured on EURUSD, 90% of signals
+    // filled before the event that made them visible, and with role reversal
+    // feeding it breakout events too it produced a 77.8% win rate and 28/28
+    // pairs positive — the signature of hindsight, not an edge.
+    //
+    // The rejection candle IS the signal. Nothing needs to point at it. Scan
+    // forward, fire when it happens, and never look back from a later bar.
+    //
+    // FILL MODEL. `fill` decides how the order is actually placed:
+    //   'market' — next entry-TF bar's OPEN. Always fills, at whatever is there.
+    //   'limit'  — a limit at the rejection close (sell at resistance, buy at
+    //              support). Better price, but only fills if price comes back to
+    //              it within limitBars; otherwise the trade never happens.
+    // The old code did neither — it booked the rejection close as the fill and
+    // started the walk on the next bar, which is a price you could not have got.
     if (entryMode === 'level_rejection') {
       const src = rejectTF === 'D' ? D : entry;
       const aSrc = rejectTF === 'D' ? aD : aH;
-      // Find the rejection inside the code-red window that produced this event.
-      const armedIdx = src.findIndex(b => b.time >= armedAt);
-      const from = Math.max(0, armedIdx - 10);
-      for (let k = from; k < armedIdx && k < src.length; k++) {
+
+      for (let k = z.confirmedAt + 1; k < src.length - 1; k++) {
         const c = src[k];
         if (aSrc[k] == null) continue;
-        // Traded into the level, closed back away from it.
+
+        // Role at THIS bar, from where price is standing — same rule as the walk.
+        const sideK = c.close > z.high ? 1 : c.close < z.low ? -1 : 0;
+        if (sideK === 0) continue;
+        const isSup = sideK > 0;
+
+        // Traded into the level and closed back away from it.
         const into = isSup ? c.low <= z.high : c.high >= z.low;
         const away = isSup ? c.close > z.high : c.close < z.low;
         if (!(into && away)) continue;
 
-        const px = c.close;                       // enter on the rejection close
+        // Must be within reach of the level to be this setup at all.
+        if (Math.abs(c.close - z.price) > aSrc[k] * watchATR) continue;
+
+        // The bar's close time is the next bar's timestamp — see the OANDA
+        // bar-stamping note. Anything earlier is lookahead.
+        const closeT = src[k + 1]?.time;
+        if (closeT == null) continue;
+        const i0 = alignedIdx(entry, closeT);
+        if (i0 < 0 || i0 >= entry.length - 2) continue;
+
+        let px = null, fillIdx = null;
+        if (fill === 'limit') {
+          const want = c.close;
+          for (let j = i0; j < Math.min(entry.length, i0 + limitBars); j++) {
+            const b = entry[j];
+            if (isSup ? b.low <= want : b.high >= want) { px = want; fillIdx = j; break; }
+          }
+          if (px == null) continue;                 // never came back — no trade
+        } else {
+          px = entry[i0].open;                      // the price actually available
+          fillIdx = i0;
+        }
+
         const buf = aSrc[k] * stopBufferATR;
         const stop = isSup ? z.low - buf : z.high + buf;
         const risk = Math.abs(px - stop);
@@ -164,26 +266,17 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
         if (isSup ? px <= stop : px >= stop) continue;
         if (ctx.spread && ctx.spread / risk > maxSpreadFrac) continue;
 
-        // TARGET SCHEME. Levels sit ~30 pips apart, so "nearest" is often a few
-        // pips away — on the NZDJPY June setup it was 3 pips, rr 0.08. Each
-        // mode below picks somewhere different; which is best is an empirical
-        // question, tested rather than assumed.
-        const forward = zones
+        const forward = targetZones
           .filter(w => isSup ? w.price > px : w.price < px)
           .sort((x, y) => Math.abs(x.price - px) - Math.abs(y.price - px));
-        const idxE = alignedIdx(entry, c.time);
         let target = null;
         if (targetMode === 'atr') {
           target = isSup ? px + aSrc[k] * targetATR : px - aSrc[k] * targetATR;
+        } else if (targetMode === 'fixedR') {
+          target = isSup ? px + risk * rMult : px - risk * rMult;
         } else if (targetMode === 'level2') {
           const ok = forward.filter(w => Math.abs(w.price - px) / risk >= minRR);
-          target = ok[1]?.price ?? ok[0]?.price ?? null;      // second one out
-        } else if (targetMode === 'sma50_entry') {
-          const v = idxE >= 0 ? sma50Entry[idxE] : null;
-          if (v != null && (isSup ? v > px : v < px)) target = v;
-        } else if (targetMode === 'sma50_daily') {
-          const v = dS50[k];
-          if (v != null && (isSup ? v > px : v < px)) target = v;
+          target = ok[1]?.price ?? ok[0]?.price ?? null;
         } else {
           target = forward.find(w => Math.abs(w.price - px) / risk >= minRR)?.price ?? null;
         }
@@ -191,34 +284,36 @@ export function generate(entry, levelBars, opts = {}, ctx = {}) {
         let rr = Math.abs(target - px) / risk;
         if (rr < minRR) continue;
         if (rr > maxRR) { target = isSup ? px + maxRR * risk : px - maxRR * risk; rr = maxRR; }
+        if (firstRejectionOnly && tookOne) continue;
 
-        // Map the rejection bar back onto the entry timeframe for simulation.
-        const idx = alignedIdx(entry, c.time);
-        if (idx < 0 || idx >= entry.length - 1) continue;
         signals.push({
-          index: idx + 1, time: entry[idx + 1].time, dir: isSup ? 'long' : 'short',
+          index: fillIdx, time: entry[fillIdx].time, dir: isSup ? 'long' : 'short',
           entry: px, stop, target, risk, rr,
           meta: {
-            level: z.price, holdDays: holdCount, armedAt, mode: 'level_rejection',
-            rejectBar: c.time, touches: z.touches,
-            riskPips: risk, rr,
-            // conditions at the entry bar on H4
-            rsi: iRsi[idx], stoch: iStoch.k[idx], macdHist: iMacd.hist[idx],
-            rviAbove: (iRvi.rvi[idx] != null && iRvi.signal[idx] != null)
-              ? (iRvi.rvi[idx] > iRvi.signal[idx] ? 1 : 0) : null,
-            bbPct: iBb.pctB[idx],
-            vsSma50: s50[idx] != null ? (px - s50[idx]) / aH[idx] : null,
-            vsSma200: s200[idx] != null ? (px - s200[idx]) / aH[idx] : null,
-            // daily context
-            dRsi: dRsi[k], dTrend: dS50[k] != null ? (c.close > dS50[k] ? 1 : 0) : null,
+            level: z.price, mode: 'level_rejection', fill,
+            rejectBar: c.time, touches: z.touches, riskPips: risk, rr,
+            dRsi: dRsi[rejectTF === 'D' ? k : alignedIdx(D, c.time)],
+            dTrend: dS50[k] != null ? (c.close > dS50[k] ? 1 : 0) : null,
             atrPips: aSrc[k],
-            hour: new Date(entry[idx + 1].time).getUTCHours(),
+            // conditions at the FILL bar — the inputs any future entry filter
+            // gets to use, all knowable at fill time
+            rsi: iRsi[fillIdx], stoch: iStoch.k[fillIdx], macdHist: iMacd.hist[fillIdx],
+            bbPct: iBb.pctB[fillIdx],
+            vsSma50: s50[fillIdx] != null ? (px - s50[fillIdx]) / aH[fillIdx] : null,
+            vsSma200: s200[fillIdx] != null ? (px - s200[fillIdx]) / aH[fillIdx] : null,
+            hour: new Date(entry[fillIdx].time).getUTCHours(),
           },
         });
-        break;
+        tookOne = true;
       }
-      continue;
+      continue;                       // this mode is done with the level
     }
+
+    if (!events.length) continue;
+
+    for (const evt of events) {
+      const armedAt = evt.at, dir = evt.dir, holdCount = evt.holdDays;
+      const isSup = dir === 'long';
 
     // ── H4: require momentum on the resolution, then wait for the retest ───
     const i0 = alignedIdx(entry, armedAt);

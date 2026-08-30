@@ -6,7 +6,7 @@
  * backtestable and unit-testable, which the CDP-scraped version never was —
  * and removes the last reason the system needed TradingView.
  */
-import { swings, atr } from './indicators.js';
+import { swings, atr, lastConfirmedSwing } from './indicators.js';
 
 /**
  * Multi-touch zones. Prices are never exact, so nearby swing points are one
@@ -189,4 +189,184 @@ export function buildLevels(bars, { binATR = 0.35, minBars = 3, gap = 3, lookbac
     return out;
   };
   return [...mk(b => b.low, 'support'), ...mk(b => b.high, 'resistance')];
+}
+
+/**
+ * Levels the way the user actually counts them.
+ *
+ * buildLevels counts a TOUCH as any bar whose high/low lands in the band, 3+
+ * bars apart. No excursion required. That is why NZDJPY 95.303 scored "4
+ * touches" while price had only genuinely come back to it once.
+ *
+ * The user's count is a round trip: price forms a swing high/low, LEAVES,
+ * makes the opposing swing on the other side, and only then does a return
+ * count as a touch. Resistance formed 7/19-7/20, price made a swing low at
+ * 91.669 on 8/02, came back 8/20 — that is one touch, not four.
+ *
+ * awayATR is what makes the opposing swing structural rather than a wiggle:
+ * the swing must sit at least that many ATR beyond the far side of the band.
+ *
+ * `confirmedAt` is the bar the level reaches minTouches, so nothing is
+ * tradeable before the round trips that qualify it have actually happened.
+ */
+export function buildSwingTouchLevels(bars, {
+  lookback = 5, binATR = 0.35, minTouches = 1, awayATR = 1.0,
+} = {}) {
+  const a = atr(bars, 14);
+  const defined = a.filter(Boolean).sort((x, y) => x - y);
+  const ref = defined[Math.floor(defined.length / 2)] || 0;
+  if (!ref) return [];
+  const bin = ref * binATR;
+
+  const { highs, lows } = swings(bars, lookback);
+  const out = [];
+
+  const build = (anchors, opposing, kind) => {
+    for (const k of anchors) {
+      const px = kind === 'resistance' ? bars[k].high : bars[k].low;
+      const low = px - bin / 2, high = px + bin / 2;
+      const born = k + lookback;                 // swing unknowable before this
+      if (born >= bars.length) continue;
+
+      const touchAt = [];
+      let armed = false;                         // an opposing swing has landed
+      let inBand = true;                         // start at the level itself
+
+      for (let i = born + 1; i < bars.length; i++) {
+        const inNow = bars[i].low <= high && bars[i].high >= low;
+
+        // Has an opposing swing confirmed since we last stood at the band, and
+        // is it far enough past the band to count as a real excursion?
+        if (!armed && !inNow) {
+          for (const j of opposing) {
+            if (j + lookback > i) break;         // not yet confirmed
+            if (j <= (touchAt.length ? touchAt[touchAt.length - 1] : born)) continue;
+            const sp = kind === 'resistance' ? bars[j].low : bars[j].high;
+            const beyond = kind === 'resistance' ? low - sp : sp - high;
+            if (beyond >= (a[j] || ref) * awayATR) { armed = true; break; }
+          }
+        }
+
+        if (inNow && !inBand && armed) { touchAt.push(i); armed = false; }
+        inBand = inNow;
+      }
+
+      if (touchAt.length < minTouches) continue;
+      out.push({
+        kind, price: px, low, high,
+        touches: touchAt.length,
+        firstAt: k,
+        confirmedAt: touchAt[minTouches - 1],
+        confirmedTime: bars[touchAt[minTouches - 1]].time,
+      });
+    }
+  };
+
+  build(highs, lows, 'resistance');
+  build(lows, highs, 'support');
+  return out;
+}
+
+/**
+ * Classify every historical touch at a level: did price TURN AWAY or PASS THROUGH?
+ *
+ * The point of this is target grading. buildLevels scores a level by visit
+ * count, which says nothing about what happened when price got there. NZDJPY
+ * 94.145 carried 11 visits and a 55% respect rate — six holds, five passes, no
+ * pattern — and still got picked as a target purely because of where it sat.
+ *
+ * respected — price moved `thresh` ATR back the way it came
+ * passed    — price closed through and travelled `thresh` ATR beyond
+ * stall     — neither, inside the forward window
+ *
+ * Each event carries the bar it resolved on, so a caller can take only the
+ * history available at a given bar and avoid lookahead.
+ */
+export function levelRespectEvents(bars, zone, { forward = 10, threshATR = 1.0 } = {}) {
+  const a = atr(bars, 14);
+  const hits = [];
+  for (let k = 0; k < bars.length; k++)
+    if (bars[k].low <= zone.high && bars[k].high >= zone.low) hits.push(k);
+
+  const spans = [];
+  let start = null, prev = null;
+  for (const k of hits) {
+    if (start == null) { start = k; prev = k; continue; }
+    if (k - prev <= 2) { prev = k; continue; }
+    spans.push([start, prev]); start = k; prev = k;
+  }
+  if (start != null) spans.push([start, prev]);
+
+  const out = [];
+  for (const [st, en] of spans) {
+    if (st === 0 || !a[en]) continue;
+    const fromAbove = bars[st - 1].close > zone.price;
+    const thresh = a[en] * threshATR;
+    let kind = 'stall';
+    for (let j = en + 1; j <= Math.min(bars.length - 1, en + forward); j++) {
+      const b = bars[j];
+      if (fromAbove) {
+        if (b.high >= zone.high + thresh) { kind = 'respected'; break; }
+        if (b.close < zone.low && (zone.low - b.low) >= thresh) { kind = 'passed'; break; }
+      } else {
+        if (b.low <= zone.low - thresh) { kind = 'respected'; break; }
+        if (b.close > zone.high && (b.high - zone.high) >= thresh) { kind = 'passed'; break; }
+      }
+    }
+    out.push({ end: en, kind });
+  }
+  return out;
+}
+
+/**
+ * PROVISIONAL breaks of structure — the way a trader reads a chart.
+ *
+ * structureEvents() only calls a break when a NEW swing forms past the old one,
+ * and a swing is not knowable until `lookback` bars have closed either side. So
+ * the code sees a break roughly a day (5 H4 bars) after the trader does.
+ *
+ * This is the trader's definition instead: price CLOSES beyond the last
+ * confirmed swing. It is available the moment that bar closes.
+ *
+ * Note carefully what is and is not provisional. The SWING must still be fully
+ * confirmed — using an unconfirmed swing would be lookahead, since you cannot
+ * know a bar was a swing high until the bars after it have closed. Only the
+ * BREAK is recognised early, and a close beyond a price that was already known
+ * needs no future information at all.
+ *
+ * Returns events stamped with the bar the close happened on, which is also the
+ * first bar they could be acted upon.
+ */
+export function provisionalEvents(bars, { lookback = 5 } = {}) {
+  const { highs, lows } = swings(bars, lookback);
+  const events = [];
+  let trend = null;
+  let usedHigh = null, usedLow = null;
+
+  for (let i = lookback; i < bars.length; i++) {
+    // Only swings whose confirmation window has already closed as of bar i.
+    const hi = lastConfirmedSwing(highs, i, lookback);
+    const lo = lastConfirmedSwing(lows, i, lookback);
+    const c = bars[i].close;
+
+    if (hi != null && hi !== usedHigh && c > bars[hi].high) {
+      events.push({
+        type: trend === 'bear' ? 'CHoCH' : 'BOS', dir: 'bull',
+        at: i, level: bars[hi].high, time: bars[i].time,
+        confirmedAt: i,                    // actionable on this bar's close
+      });
+      trend = 'bull';
+      usedHigh = hi;                       // one event per swing, not one per bar
+    }
+    if (lo != null && lo !== usedLow && c < bars[lo].low) {
+      events.push({
+        type: trend === 'bull' ? 'CHoCH' : 'BOS', dir: 'bear',
+        at: i, level: bars[lo].low, time: bars[i].time,
+        confirmedAt: i,
+      });
+      trend = 'bear';
+      usedLow = lo;
+    }
+  }
+  return events;
 }

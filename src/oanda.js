@@ -232,3 +232,63 @@ export function assertWritable(accountId) {
     );
   }
 }
+
+/**
+ * The only write path in this module.
+ *
+ * Everything above is a GET. This is not, so it goes through assertWritable(),
+ * which refuses unless OANDA_ALLOW_TRADING=1 AND the target is the sandbox
+ * account. That guard is deliberate and should not be relaxed to "the live
+ * account, carefully" — the whole point is that a bug, a bad loop, or a
+ * misread signal cannot reach real money by accident.
+ *
+ * The stop and target go on as ON-FILL orders, not as follow-up requests. If
+ * this process dies between placing the entry and placing the stop, OANDA has
+ * still recorded both — an unprotected position cannot exist.
+ */
+async function post(path, body, accountId) {
+  assertWritable(accountId);
+  const res = await fetch(new URL(HOST + path), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json',
+      'Accept-Datetime-Format': 'RFC3339',
+    },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    let msg = text.slice(0, 400);
+    try { const j = JSON.parse(text); msg = j.errorMessage || j.orderRejectTransaction?.reason || msg; } catch { /* raw */ }
+    throw new Error(`OANDA ${res.status} ${path} — ${msg}`);
+  }
+  return JSON.parse(text);
+}
+
+/**
+ * Market order with the stop and target attached on fill.
+ *
+ * `units` is signed: positive is long, negative is short. 1000 units is 0.01
+ * lot, the broker minimum and the "marker" size.
+ */
+export async function placeMarketOrder({
+  symbol, units, stop, target, accountId = SANDBOX_ACCOUNT_ID, reason = '',
+}) {
+  if (!Number.isInteger(units) || units === 0) throw new Error(`units must be a non-zero integer, got ${units}`);
+  if (stop == null) throw new Error('Refusing to place an order with no stop.');
+  const digits = /JPY$/.test(symbol) ? 3 : 5;
+  const order = {
+    type: 'MARKET',
+    instrument: toInstrument(symbol),
+    units: String(units),
+    timeInForce: 'FOK',
+    positionFill: 'DEFAULT',
+    stopLossOnFill: { price: stop.toFixed(digits), timeInForce: 'GTC' },
+    clientExtensions: { tag: 'scan_live', comment: reason.slice(0, 128) },
+  };
+  if (target != null) {
+    order.takeProfitOnFill = { price: target.toFixed(digits), timeInForce: 'GTC' };
+  }
+  return post(`/v3/accounts/${accountId}/orders`, { order }, accountId);
+}

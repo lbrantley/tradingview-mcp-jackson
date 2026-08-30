@@ -8,16 +8,26 @@
  *
  *   WATCHING   daily close within 1 daily ATR of a level
  *   CODE RED   holding there without closing beyond  (n days)
- *   ENTRY      a candle rejects the level AND daily RSI is at an extreme
+ *   ENTRY      a candle rejects the level
  *
- * The RSI filter is what makes this tradeable. Unfiltered, level rejections sit
- * at breakeven (+0.031 / -0.046 / +0.016R across three windows). With daily RSI
- * below 40 for longs or above 60 for shorts: +0.251 / +0.098 / +0.143R, and max
- * drawdown falls from -173R to -22R.
+ * RSI GATE REMOVED 2026-08-26. It used to be required here — longs under 40,
+ * shorts over 60 — on the strength of +0.251/+0.098/+0.143R against a breakeven
+ * baseline. Those numbers were measured through a 23-hour lookahead in
+ * watchlist.js (OANDA stamps a bar with its OPEN time; see the memory note on
+ * bar timestamps). Corrected, the gate helps in one window, does nothing in two,
+ * and is harmful in the 6-year holdout, where the WRONG-way RSI bucket returns
+ * +0.26R against the gate's -0.075R.
+ *
+ * Corrected baseline, ungated, target 1.0R, four windows:
+ *     +0.128 / +0.097 / +0.106 / +0.156 R    t = 6.0-7.7, positive in all four
+ *
+ * So the setup stands on its own and there is currently NO validated entry
+ * filter. Daily RSI is still printed as context — it is just not a gate.
  *
  * Usage: node scripts/scan_live.mjs [--pairs A,B] [--risk 1.0] [--notify] [--all]
  */
-import { getCandles, getPricing, getSummary, getOpenTrades, ACCOUNT_ID, LIVE_ACCOUNT_ID } from '../src/oanda.js';
+import { getCandles, getPricing, getSummary, getOpenTrades, placeMarketOrder,
+         ACCOUNT_ID, LIVE_ACCOUNT_ID, SANDBOX_ACCOUNT_ID } from '../src/oanda.js';
 import { atr, rsi } from '../src/indicators.js';
 import { buildLevels } from '../src/structure.js';
 import https from 'https';
@@ -30,11 +40,43 @@ const args = process.argv.slice(2);
 const argOf = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
 const ALL = 'GBPCHF AUDNZD EURNZD GBPNZD EURCHF CADCHF EURAUD GBPJPY AUDCHF GBPUSD GBPCAD USDCHF GBPAUD CADJPY EURCAD USDCAD AUDUSD NZDCHF USDJPY AUDJPY EURJPY NZDCAD EURUSD AUDCAD EURGBP NZDJPY NZDUSD CHFJPY'.split(' ');
 const PAIRS = (argOf('--pairs') || ALL.join(',')).split(',').map(s => s.trim());
-const RISK_PCT = parseFloat(argOf('--risk') || '1.0');
+// SIZE IS FIXED, NOT A PERCENTAGE. Every entry is one marker — 0.01 lot, the
+// broker minimum. The user adds to winners by hand; the scanner never sizes off
+// NAV and never compounds. Dollar risk therefore VARIES with the stop: a 49-pip
+// NZDJPY stop is ~$3.30, a 120-pip GBPJPY stop is ~$8.20. That spread is
+// accepted deliberately in exchange for one less moving part.
+const RISK_PCT = argOf('--risk') ? parseFloat(argOf('--risk')) : null;
+const TARGET_R = parseFloat(argOf('--targetR') || '1.0');
+const MARKER_UNITS = parseInt(argOf('--units') || '1000', 10);   // 0.01 lot
+const TRADE = args.includes('--trade');
 const NOTIFY = args.includes('--notify');
 const SHOW_ALL = args.includes('--all');
 
 const REPO_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * No orders near the daily roll.
+ *
+ * The FX day opens and closes at 17:00 New York, and that is also when the
+ * week opens and closes. Spreads blow out across it and liquidity is thin, so
+ * the user's rule is: nothing inside 90 minutes either side. Computed in NY
+ * time rather than UTC because the offset moves with daylight saving — 17:00 NY
+ * is 21:00 UTC in summer and 22:00 in winter, and hard-coding either is wrong
+ * for half the year.
+ *
+ * Note this bites: a daily rejection candle CLOSES at 17:00 NY, dead centre of
+ * the window, so the earliest an entry can go on is 18:30 NY.
+ */
+function rollWindow(now = new Date(), minutes = 90) {
+  const ny = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const mins = ny.getHours() * 60 + ny.getMinutes();
+  const roll = 17 * 60;
+  const delta = Math.abs(mins - roll);
+  const blocked = delta <= minutes;
+  const label = ny.toTimeString().slice(0, 5) + ' NY';
+  return { blocked, label, minsToRoll: mins - roll };
+}
+const ROLL = rollWindow();
 const pipOf = s => /JPY$/.test(s) ? 0.01 : 0.0001;
 const fmt = (s, v) => v.toFixed(/JPY$/.test(s) ? 3 : 5);
 
@@ -120,6 +162,7 @@ for (const sym of PAIRS) {
         hold++;
       }
       const dir = isSup ? 'LONG' : 'SHORT';
+      // Reported, not enforced. See the note at the top of this file.
       const rsiOK = isSup ? dr < 40 : dr > 60;
       const rejected = (isSup ? last.low <= z.high : last.high >= z.low)
                     && (isSup ? last.close > z.high : last.close < z.low);
@@ -127,24 +170,32 @@ for (const sym of PAIRS) {
       const px = last.close;
       const stop = isSup ? z.low - av * 0.3 : z.high + av * 0.3;
       const risk = Math.abs(px - stop);
-      const tgt = levels.filter(w => isSup ? w.price > px : w.price < px)
-        .sort((x, y) => Math.abs(x.price - px) - Math.abs(y.price - px))
-        .find(w => Math.abs(w.price - px) / risk >= 1.5);
-      const rr = tgt ? Math.abs(tgt.price - px) / risk : null;
-      const units = nav && risk
+      // TARGET: a flat 1.0R, not a level.
+      //
+      // Level bands cover ~73% of the traded range, so "first level >= 1.5R"
+      // was resolving to "roughly 1.5R" — the level was not constraining the
+      // choice, it was just picking a worse distance. A fixed 1.0R beat it in
+      // all four windows including the 6y holdout (+0.109/+0.039/+0.079/+0.144
+      // vs +0.082/+0.004/+0.055/+0.143), and independently beat every trailing
+      // and partial-exit variant. See project-backtest-findings.
+      const tgt = { price: isSup ? px + risk * TARGET_R : px - risk * TARGET_R };
+      const rr = TARGET_R;
+      // One marker per entry. --risk is an override for sizing off NAV instead.
+      const units = RISK_PCT && nav && risk
         ? Math.floor((nav * RISK_PCT / 100) / (risk * (/JPY$/.test(sym) ? 1 / usdjpy : 1)))
-        : null;
+        : MARKER_UNITS;
+      const riskUsd = risk * units * (/JPY$/.test(sym) ? 1 / usdjpy : 1);
 
-      const state = (rejected && rsiOK && tgt) ? 'ENTRY' : hold >= 2 ? 'CODE_RED' : 'WATCHING';
+      const state = rejected ? 'ENTRY' : hold >= 2 ? 'CODE_RED' : 'WATCHING';
       const key = `${sym}:${dir}:${z.price.toFixed(5)}`;
       nowSeen[key] = state;
       const isNew = seen[key] !== state;          // only transitions are news
       const distPips = Math.abs(spot - z.price) / pip;
 
       const rec = { sym, dir, level: z.price, hold, dr, rsiOK, rejected, px, stop,
-                    target: tgt?.price, rr, risk: risk / pip, units, touches: z.touches,
+                    target: tgt?.price, rr, risk: risk / pip, units, riskUsd, touches: z.touches,
                     spot, distPips, isNew, key };
-      if (rejected && rsiOK && tgt) entries.push(rec);
+      if (rejected) entries.push(rec);
       else if (hold >= 2) codeRed.push(rec);
       else watching.push(rec);
       void 0;
@@ -170,8 +221,16 @@ const conflicted = [...new Set(entries.map(e => e.sym))]
 const finalEntries = dedupe(entries);
 
 console.log(`\nLIVE SCAN — ${new Date().toISOString().slice(0, 16)}Z   ${PAIRS.length} pairs`);
-if (nav) console.log(`sizing off ${LIVE_ACCOUNT_ID || ACCOUNT_ID}   NAV $${nav.toFixed(2)}   risking ${RISK_PCT}%/trade   (read-only)`);
+if (nav) console.log(`account ${LIVE_ACCOUNT_ID || ACCOUNT_ID}   NAV $${nav.toFixed(2)}   ` +
+  `size ${RISK_PCT ? RISK_PCT + '%/trade' : `${MARKER_UNITS} units (0.01 lot) flat`}   ` +
+  `target ${TARGET_R.toFixed(1)}R   ${TRADE ? '\u26a0 TRADING ARMED' : '(read-only)'}`);
 console.log('='.repeat(72));
+if (TRADE) {
+  console.log(ROLL.blocked
+    ? `⏸ ${ROLL.label} — inside the 17:00 NY roll window, no orders will be placed`
+    : `⏱ ${ROLL.label} — clear of the roll window (${Math.abs(ROLL.minsToRoll)}m ${ROLL.minsToRoll < 0 ? 'before' : 'after'} 17:00 NY)`);
+  console.log(`orders go to ${SANDBOX_ACCOUNT_ID || '(no sandbox account set)'} at ${MARKER_UNITS} units, stop + target attached on fill`);
+}
 if (Object.keys(exposure).length) {
   const line = Object.entries(exposure).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
     .map(([c, u]) => `${c} ${u > 0 ? '+' : '-'}${Math.abs(u).toLocaleString()}`).join('   ');
@@ -179,15 +238,48 @@ if (Object.keys(exposure).length) {
 }
 
 if (finalEntries.length) {
-  console.log('\n🎯 ENTRY — level rejected AND daily RSI at an extreme\n');
+  console.log('\n🎯 ENTRY — a daily candle rejected the level\n');
   for (const e of finalEntries) {
     const ov = overlap(e.sym, e.dir);
     console.log(`  ${e.sym}  ${e.dir}${e.isNew ? '   ** NEW **' : ''}   level ${fmt(e.sym, e.level)} (${e.touches} touches, held ${e.hold}d)`);
-    if (ov.length) console.log(`    ⚠ overlaps open risk: ${ov.join(', ')}`);
+    // Overlap is no longer a reason to skip. Taking every signal at small size
+    // beat taking a quarter of them at 1% — return per unit of drawdown roughly
+    // doubled in all three windows tested, with up to 24 positions open and a
+    // worst day of -1.6%. It is still worth SEEING, because it is the exposure
+    // that would concentrate if correlations went to 1.
+    if (ov.length) console.log(`    ↔ adds to existing exposure: ${ov.join(', ')}`);
     else if (openTrades.length) console.log(`    ✓ diversifies — no currency shared with open positions`);
     console.log(`    entry ${fmt(e.sym, e.px)}   stop ${fmt(e.sym, e.stop)} (${e.risk.toFixed(0)}p)   target ${fmt(e.sym, e.target)} (${e.rr.toFixed(1)}R)`);
-    if (e.units) console.log(`    size ${e.units.toLocaleString()} units = $${(nav * RISK_PCT / 100).toFixed(2)} risk    daily RSI ${e.dr.toFixed(1)}`);
-    console.log(`    PUT THE STOP IN AS A REAL ORDER.`);
+    if (e.units) console.log(`    size ${e.units.toLocaleString()} units (0.01 lot) = $${e.riskUsd.toFixed(2)} risk` +
+      (nav ? ` = ${(e.riskUsd / nav * 100).toFixed(2)}% of NAV` : '') + `    daily RSI ${e.dr.toFixed(1)}`);
+    if (!TRADE) console.log(`    PUT THE STOP IN AS A REAL ORDER.`);
+  }
+  if (TRADE) {
+    const openSyms = new Set(openTrades.map(t => t.instrument.replace('_', '')));
+    for (const e of finalEntries) {
+      const why = ROLL.blocked
+        ? `inside the ${ROLL.label} roll window — no orders within 90m of 17:00 NY`
+        : openSyms.has(e.sym) ? 'already holding this pair'
+        : null;
+      if (why) { console.log(`    ⏸ not placed: ${why}`); continue; }
+      const units = e.dir === 'LONG' ? MARKER_UNITS : -MARKER_UNITS;
+      try {
+        const res = await placeMarketOrder({
+          symbol: e.sym, units, stop: e.stop, target: e.target,
+          accountId: SANDBOX_ACCOUNT_ID,
+          reason: `${e.dir} lvl ${fmt(e.sym, e.level)} rsi ${e.dr.toFixed(0)}`,
+        });
+        const fill = res.orderFillTransaction;
+        console.log(fill
+          ? `    ✅ FILLED ${units > 0 ? '+' : ''}${units} @ ${fill.price}  (trade ${fill.tradeOpened?.tradeID})`
+          : `    ⚠ order accepted but not filled — ${res.orderCancelTransaction?.reason || 'see OANDA'}`);
+        appendFileSync(join(REPO_DIR, 'orders.jsonl'),
+          JSON.stringify({ ts: new Date().toISOString(), sym: e.sym, dir: e.dir, units,
+                           entry: e.px, stop: e.stop, target: e.target, res: fill || res }) + '\n');
+      } catch (err) {
+        console.log(`    ❌ order failed: ${err.message}`);
+      }
+    }
   }
 } else console.log('\nNo entries.');
 if (conflicted.length) console.log(`\n  (dropped ${conflicted.join(', ')} — levels either side firing opposite ways, no view)`);
@@ -195,7 +287,7 @@ if (conflicted.length) console.log(`\n  (dropped ${conflicted.join(', ')} — le
 if (codeRed.length) {
   console.log(`\n🔴 CODE RED — holding at a level, waiting for it to resolve\n`);
   for (const c of codeRed.sort((a, b) => b.hold - a.hold)) {
-    const gate = c.rsiOK ? 'RSI ready' : `RSI ${c.dr.toFixed(0)} — needs ${c.dir === 'LONG' ? '<40' : '>60'}`;
+    const gate = `RSI ${c.dr.toFixed(0)}${c.rsiOK ? ' (extreme)' : ''}`;
     console.log(`  ${c.sym.padEnd(7)} ${c.dir.padEnd(6)} level ${fmt(c.sym, c.level)}  ${c.distPips.toFixed(0)}p away  held ${c.hold}d  ${c.touches} touches   ${gate}${c.isNew ? '   ** NEW **' : ''}`);
   }
 }
@@ -226,7 +318,7 @@ for (const c of codeRed.filter(x => x.isNew)) {
   appendFileSync(join(REPO_DIR, 'alerts.jsonl'), JSON.stringify({
     ts: new Date().toISOString(), sym: c.sym, dir: c.dir, level: c.level,
     dailyRsi: c.dr, heldDays: c.hold, touches: c.touches,
-    state: 'CODE_RED', gate: c.rsiOK ? 'rsi_ready' : 'rsi_pending',
+    state: 'CODE_RED', gate: c.rsiOK ? 'rsi_extreme' : 'rsi_mid',
   }) + '\n');
 }
 // Only transitions are logged. Logging current state on every run would write

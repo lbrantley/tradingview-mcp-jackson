@@ -35,11 +35,11 @@ function simulate(bars, sig, spread) {
   const end = Math.min(bars.length, sig.index + MAX_HOLD);
   for (let i = sig.index; i < end; i++) {
     const b = bars[i];
-    if (L ? b.low <= sig.stop : b.high >= sig.stop) return { r: -1 - costR, exit: 'stop' };
-    if (L ? b.high >= sig.target : b.low <= sig.target) return { r: sig.rr - costR, exit: 'target' };
+    if (L ? b.low <= sig.stop : b.high >= sig.stop) return { r: -1 - costR, exit: 'stop', bars: i - sig.index };
+    if (L ? b.high >= sig.target : b.low <= sig.target) return { r: sig.rr - costR, exit: 'target', bars: i - sig.index };
   }
   const last = bars[end - 1];
-  return { r: (L ? last.close - sig.entry : sig.entry - last.close) / sig.risk - costR, exit: 'timeout' };
+  return { r: (L ? last.close - sig.entry : sig.entry - last.close) / sig.risk - costR, exit: 'timeout', bars: end - 1 - sig.index };
 }
 
 function stats(rs) {
@@ -100,7 +100,7 @@ async function main() {
       if (!sigs.length) { console.log(`  ${sym.padEnd(7)} no signals`); continue; }
       rrs.push(...sigs.map(s => s.rr));
       const res = sigs.map((s, k) => ({ ...simulate(h1, s, spread), rr: sigs[k].rr }));
-      if (DUMP) res.forEach((r, k) => dump.push({ sym, r: r.r, exit: r.exit, dir: sigs[k].dir, ...sigs[k].meta }));
+      if (DUMP) res.forEach((r, k) => dump.push({ sym, r: r.r, exit: r.exit, bars: r.bars, dir: sigs[k].dir, ...sigs[k].meta }));
       resolved.push(...res.filter(x => x.exit !== 'timeout'));
       exits.timeout = (exits.timeout || 0) + res.filter(x => x.exit === 'timeout').length;
       const rs = res.map(x => x.r);
