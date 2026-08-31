@@ -4,8 +4,8 @@
  *
  * Flow:
  *   1. Prune news_overrides.json (drop FF-cache dupes and past-stale entries)
- *   2. Pause the running scanner via SIGSTOP (avoids CDP contention)
- *   3. Run `node scripts/scanner.mjs --review` and capture output
+ *   2. Build the setup review from OANDA candles (src/review_v2.js)
+ *      — no browser, no CDP, no scanner_audit.json
  *   4. Resume scanner via SIGCONT
  *   5. Save output to briefs/YYYY-MM-DD-review.md
  *   6. Commit + push to GitHub
@@ -258,57 +258,27 @@ async function main() {
     }
   }
 
-  // Step 2-3: the legacy setup review. This shells out to scanner.mjs --review,
-  // which drives TradingView over CDP. That scanner was retired on 2026-08-20
-  // in favour of scan_live.mjs (OANDA HTTP, no desktop app), so on a machine
-  // without TradingView running this only produces CDP errors.
+  // Step 2-3: the setup review.
   //
-  // Skipped automatically when the audit has nothing left to review, so the
-  // job stops needing TradingView the moment the last legacy setup expires.
-  // BRIEF_SKIP_REVIEW=1 forces it off regardless.
+  // REWRITTEN 2026-08-31. This used to shell out to scanner.mjs --review, which
+  // drives TradingView over CDP on port 9222. The VM has no browser, so every
+  // review for weeks opened with 28 lines of "CDP connection failed" while
+  // checking setups from the retired level-rejection scanner — broken tooling
+  // reporting on a deleted strategy.
+  //
+  // src/review_v2.js resolves outcomes from OANDA candles instead. No browser,
+  // no CDP, no scanner_audit.json. It reports the account first, because that
+  // is what is actually at risk, then what the scanner called and how it went.
   let reviewText = '';
-  const forcedOff = process.env.BRIEF_SKIP_REVIEW === '1';
-  let pendingCount = 0;
   try {
-    const auditPath = join(REPO, 'scanner_audit.json');
-    if (existsSync(auditPath)) {
-      const audit = JSON.parse(readFileSync(auditPath, 'utf8'));
-      pendingCount = (audit.setups || []).filter(x => x.status === 'pending').length;
-    }
-  } catch { pendingCount = 0; }
-
-  if (forcedOff || pendingCount === 0) {
-    log(forcedOff
-      ? 'BRIEF_SKIP_REVIEW=1 — skipping the legacy setup review (no TradingView needed)'
-      : `No pending legacy setups — skipping the review (retired scanner, no TradingView needed)`);
-    reviewText = `Legacy setup review skipped — the CDP scanner was retired 2026-08-20.\n` +
-      `Live setups now come from scripts/scan_live.mjs (OANDA, no TradingView).\n` +
-      (pendingCount ? `${pendingCount} legacy setup(s) still pending.\n` : '');
-  } else {
-    const scannerPid = findScannerPid();
-    if (scannerPid) log(`Found running scanner: PID ${scannerPid}`);
-    else log('No running scanner detected — proceeding without pause');
-    pauseCtx = pauseScanner(scannerPid, { log, cwd: REPO });
-
-    log(`Running scanner --review (${pendingCount} legacy setups still pending)...`);
-    try {
-      const result = spawnSync('node', ['scripts/scanner.mjs', '--review'], {
-        cwd: REPO, encoding: 'utf8', timeout: 15 * 60 * 1000, env: process.env,
-      });
-      reviewText = (result.stdout || '') + (result.stderr ? '\n\nSTDERR:\n' + result.stderr : '');
-      log(`Review captured: ${reviewText.length} bytes`);
-    } catch (e) {
-      resumeOnce();
-      throw e;
-    }
-    // A short or failed review is no longer fatal — the macro refresh is the
-    // part worth delivering, and aborting here threw away a good refresh
-    // because a retired scanner could not reach a chart.
-    if (reviewText.length < 100) {
-      log('Review output empty or failed — continuing with macro context only');
-      reviewText = 'Legacy setup review failed (CDP/TradingView unavailable). Macro context below is current.';
-    }
+    const { buildReview } = await import('../src/review_v2.js');
+    reviewText = await buildReview({ days: KIND === 'weekly' ? 7 : 1 });
+    log(`Review built: ${reviewText.length} bytes`);
+  } catch (e) {
+    log(`Review failed: ${e.message}`);
+    reviewText = `_Setup review unavailable: ${e.message}_\n`;
   }
+
 
   // Step 5: write to briefs/
   if (!existsSync(BRIEFS)) mkdirSync(BRIEFS, { recursive: true });

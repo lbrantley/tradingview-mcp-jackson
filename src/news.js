@@ -66,9 +66,25 @@ function merge(feed, extra) {
 
 /** Fetch, merge, and snapshot to news_history/. */
 export async function getCalendar({ snapshot = true } = {}) {
+  let stale = false;
   const parts = await Promise.all(FEEDS.map(u => pull(u).catch(() => [])));
-  const feed = parts.flat();
-  if (!feed.length) throw new Error('calendar feed returned nothing');
+  let feed = parts.flat();
+
+  // Faireconomy rate limits to two pulls per five minutes, so a scan running
+  // hourly alongside a review will sometimes get nothing. Falling through with
+  // an empty calendar means the review silently reports NO NEWS, which is the
+  // most dangerous possible failure for the thing the user says costs them
+  // most. Use the newest snapshot instead — that is what the archive is for.
+  if (!feed.length && existsSync(HIST)) {
+    const files = readdirSync(HIST).filter(x => x.endsWith('.json')).sort();
+    if (files.length) {
+      try {
+        feed = JSON.parse(readFileSync(join(HIST, files[files.length - 1]), 'utf8'));
+        snapshot = false; stale = true;        // never overwrite an archive with itself
+      } catch { /* fall through to the throw */ }
+    }
+  }
+  if (!feed.length) throw new Error('calendar feed returned nothing and no snapshot available');
   const events = merge(feed, overrides())
     .filter(e => e.date && e.country)
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -78,6 +94,7 @@ export async function getCalendar({ snapshot = true } = {}) {
     const stamp = events[0].date.slice(0, 10);
     writeFileSync(join(HIST, `ff_${stamp}.json`), JSON.stringify(events, null, 1));
   }
+  if (stale) events.stale = true;
   return events;
 }
 
