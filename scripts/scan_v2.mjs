@@ -24,7 +24,7 @@
  */
 import { getCandles, getPricing, getSummary, LIVE_ACCOUNT_ID, ACCOUNT_ID } from '../src/oanda.js';
 import { sma, rsi } from '../src/indicators.js';
-import { findSetups, DEFAULTS } from '../src/setups.js';
+import { findSetups, findWatching, DEFAULTS } from '../src/setups.js';
 import { getCalendar, eventsFor } from '../src/news.js';
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import https from 'https';
@@ -108,9 +108,11 @@ const pipOf = s => /JPY$/.test(s) ? 0.01 : 0.0001;
 
 const nav = await getSummary(LIVE_ACCOUNT_ID || ACCOUNT_ID).then(a => parseFloat(a.NAV)).catch(() => null);
 const cal = await getCalendar().catch(() => []);
+const px = await getPricing(PAIRS).catch(() => ({}));
 const seen = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : {};
 const nowSeen = {};
 const hits = [];
+const watch = [];
 
 for (const sym of PAIRS) {
   try {
@@ -128,6 +130,11 @@ for (const sym of PAIRS) {
     const s50 = sma(b.map(x => x.close), 50);
     const pip = pipOf(sym);
     const usdjpy = 147;                         // rough, for the JPY-quote conversion
+
+    // Levels price is standing at RIGHT NOW, on live price rather than closed
+    // bars — so an hourly scan has something to say between H4 closes.
+    const live = px[sym]?.mid ?? b[last].close;
+    for (const w of findWatching(b, d, live)) watch.push({ sym, ...w });
 
     // ONE definition of a setup, shared with the backtest. A live scan is
     // simply the setups sitting on the most recent closed bar.
@@ -154,8 +161,6 @@ for (const sym of PAIRS) {
     }
   } catch (e) { if (SHOW_ALL) console.log(`  ${sym}: ${e.message}`); }
 }
-
-writeFileSync(STATE, JSON.stringify(nowSeen, null, 1));
 
 console.log(`\nSCAN v2 — ${cst(new Date().toISOString())} CST   ${PAIRS.length} pairs`);
 if (nav) console.log(`account NAV $${nav.toFixed(2)}   size ${UNITS} units (0.01 lot) flat   READ-ONLY`);
@@ -185,6 +190,42 @@ for (const k of order) {
     console.log('');
   }
 }
+// Same dedupe as the setups: zones a few pips apart are one wall. Keep the
+// best-evidenced. Without this NZDUSD shows two levels 5.6p apart pointing in
+// OPPOSITE directions, which is noise dressed as a contradiction.
+const mergedW = [];
+for (const w of watch.sort((x, y) => y.touches - x.touches)) {
+  const dup = mergedW.find(m => m.sym === w.sym &&
+    Math.abs(m.level - w.level) <= Math.abs(w.band[1] - w.band[0]) * 2);
+  if (dup) { dup.alsoAt = (dup.alsoAt || []).concat(w.level); continue; }
+  mergedW.push(w);
+}
+// Only a level's FIRST bar at code red is news; after that it is the same story.
+for (const w of mergedW) {
+  const k = `W:${w.sym}:${w.level.toFixed(5)}`;
+  nowSeen[k] = w.state;
+  w.isNew = seen[k] !== w.state;
+}
+const cr = mergedW.filter(w => w.state === 'CODE RED');
+const wa = mergedW.filter(w => w.state === 'WATCHING');
+const crNew = cr.filter(w => w.isNew);
+for (const [title, list] of [['\n\u{1F534} CODE RED — at the level, resolution close', SHOW_ALL ? cr : crNew],
+                             ['\n\u{1F440} WATCHING — price within 1 ATR of a level', wa]]) {
+  if (!list.length || (!SHOW_ALL && title.includes('WATCHING'))) continue;
+  console.log(`${title}   (${list.length})\n`);
+  for (const w of list) {
+    const D = dp(w.sym), pip = pipOf(w.sym);
+    console.log(`  ${w.sym}  level ${w.level.toFixed(D)}   ${(w.distPrice / pip).toFixed(0)}p away` +
+      `   ${w.touches} swings, ${w.ageBars ? (w.ageBars * 4 / 24).toFixed(0) + 'd old' : '?'}` +
+      `   held ${w.hold} bars   room ${w.room.toFixed(1)} ATR${w.twoSided ? '   \u2194 TWO-SIDED' : ''}`);
+    if (w.ifBreak) console.log(`     if it CLOSES THROUGH  → ${w.ifBreak.kind} ${w.ifBreak.dir > 0 ? 'LONG' : 'SHORT'}` +
+      `   stop ${w.ifBreak.stop.toFixed(D)}   target ${w.ifBreak.target.toFixed(D)}`);
+    if (w.ifReject) console.log(`     if it REJECTS         → ${w.ifReject.kind} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` +
+      `   stop ${w.ifReject.stop.toFixed(D)}   target ${w.ifReject.target.toFixed(D)}`);
+    console.log('');
+  }
+}
+
 if (fresh.length) {
   for (const h of fresh) appendFileSync(LOG, JSON.stringify(h) + '\n');
   console.log(`${fresh.length} new setup(s) logged to alerts_v2.jsonl`);
@@ -197,4 +238,18 @@ if (fresh.length) {
   });
   pushover(`${fresh.length} setup${fresh.length > 1 ? 's' : ''} · scan v2`, lines.join('\n\n'));
 }
-console.log(`\n${hits.length} total live setups, ${fresh.length} new since last scan.`);
+if (crNew.length) {
+  const lines = crNew.map(w => {
+    const D = dp(w.sym), pip = pipOf(w.sym);
+    return `${w.sym} @ ${w.level.toFixed(D)}${w.twoSided ? '  ↔ two-sided' : ''}\n` +
+      `  ${w.touches} swings, ${w.ageBars ? (w.ageBars * 4 / 24).toFixed(0) + 'd' : '?'}, room ${w.room.toFixed(1)} ATR\n` +
+      (w.ifBreak ? `  through → ${w.ifBreak.kind} ${w.ifBreak.dir > 0 ? 'LONG' : 'SHORT'}\n` : '') +
+      (w.ifReject ? `  rejects → ${w.ifReject.kind} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` : '');
+  });
+  pushover(`${crNew.length} level${crNew.length > 1 ? 's' : ''} at code red`, lines.join('\n\n'));
+}
+// Written LAST, so it captures both setup and watch keys. Writing it earlier
+// meant every code-red level looked new on every scan.
+writeFileSync(STATE, JSON.stringify(nowSeen, null, 1));
+
+console.log(`\n${hits.length} setups (${fresh.length} new)   |   ${cr.length} code red (${crNew.length} new)   |   ${wa.length} watching`);

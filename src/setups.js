@@ -172,3 +172,84 @@ export function findSetups(bars, daily, opts = {}) {
   }
   return out;
 }
+
+/**
+ * WHAT PRICE IS CURRENTLY STANDING AT — the tier a completed setup cannot give.
+ *
+ * findSetups only fires when an H4 bar CLOSES through or rejects a level, which
+ * happens four times a day. Between those closes there is nothing new to report,
+ * so an hourly scan is silent three runs in four. This uses the LIVE price
+ * instead, so it moves continuously.
+ *
+ * A level price is sitting on has not resolved yet, so both outcomes are still
+ * open — and because room ahead is knowable now, BOTH prospective trades can be
+ * described before the bar closes. That is the two-sided situation: a heavy
+ * band with a defined trade whichever way it breaks.
+ *
+ * `holdBars` counts consecutive recent bars that touched the band without
+ * closing beyond it — the old scanner's CODE RED, which is the tell that a
+ * resolution is near.
+ */
+export function findWatching(bars, daily, live, opts = {}) {
+  const o = { ...DEFAULTS, watchATR: 1.0, ...opts };
+  const a = atr(bars, 14);
+  const cl = bars.map(x => x.close);
+  const swD = swings(daily, o.lookback);
+  const zones = buildZones(bars, { lookback: o.lookback, tolATR: o.tolATR, minTouches: o.zoneMinTouches });
+  const i = bars.length - 1;
+  if (!a[i]) return [];
+  const out = [];
+
+  for (const z of zones) {
+    if (z.confirmedTime > bars[i].time) continue;
+    const dist = live > z.high ? live - z.high : live < z.low ? z.low - live : 0;
+    if (dist > a[i] * o.watchATR) continue;
+
+    const fromAbove = cl[i - 5] > z.price;
+    const ahead = zones.filter(w => w.confirmedTime <= bars[i].time && Math.abs(w.price - z.price) > a[i] * 0.5)
+      .filter(w => fromAbove ? w.price < z.price : w.price > z.price)
+      .sort((x, y) => Math.abs(x.price - z.price) - Math.abs(y.price - z.price));
+    const behind = zones.filter(w => w.confirmedTime <= bars[i].time && Math.abs(w.price - z.price) > a[i] * 0.5)
+      .filter(w => fromAbove ? w.price > z.price : w.price < z.price)
+      .sort((x, y) => Math.abs(x.price - z.price) - Math.abs(y.price - z.price));
+    const room = ahead[0] ? Math.abs(ahead[0].price - z.price) / a[i] : 99;
+    const backup = ahead.filter(w => Math.abs(w.price - z.price) <= a[i] * 8).length;
+
+    // consecutive recent bars touching the band without closing beyond it
+    let hold = 0;
+    for (let k = i; k >= Math.max(0, i - 20); k--) {
+      const touched = bars[k].low <= z.high && bars[k].high >= z.low;
+      const beyond = fromAbove ? bars[k].close < z.low : bars[k].close > z.high;
+      if (!touched || beyond) break;
+      hold++;
+    }
+
+    // Both prospective resolutions, since neither has happened yet.
+    const legs = {};
+    for (const [tag, dir] of [['break', fromAbove ? -1 : 1], ['reject', fromAbove ? 1 : -1]]) {
+      const leg = lastLeg(daily, swD, daily.length - 1, o.lookback, dir);
+      if (!leg || leg.size < a[i] * o.minLegATR) continue;
+      const kind = tag === 'break'
+        ? (room < o.wallRoom && backup >= o.backupMin && backup <= o.backupMax ? 'WALL'
+           : room > o.fieldRoom ? 'FIELD' : null)
+        : (room < o.wallRoom ? 'REV' : null);
+      if (!kind) continue;
+      const stop = dir > 0 ? z.low - a[i] * o.stopATR[kind] : z.high + a[i] * o.stopATR[kind];
+      legs[tag] = { kind, dir, stop,
+        target: dir > 0 ? leg.to + leg.size * o.fibExt : leg.to - leg.size * o.fibExt,
+        risk: Math.abs(live - stop) };
+    }
+    if (!legs.break && !legs.reject) continue;
+
+    out.push({
+      level: z.price, band: [z.low, z.high], touches: z.touches,
+      formedTime: bars[Math.max(0, z.firstAt)]?.time ?? null,
+      ageBars: z.firstAt != null ? i - z.firstAt : null,
+      distATR: dist / a[i], distPrice: dist, hold, room, backup, atr: a[i],
+      state: hold >= 2 ? 'CODE RED' : 'WATCHING',
+      ifBreak: legs.break ?? null, ifReject: legs.reject ?? null,
+      twoSided: !!(legs.break && legs.reject),
+    });
+  }
+  return out.sort((x, y) => x.distATR - y.distATR);
+}
