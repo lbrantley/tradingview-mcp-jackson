@@ -58,7 +58,16 @@ export const DEFAULTS = {
   // other two. One universe, and it is the stricter one.
   zoneMinTouches: 3,
   cooldown: 5,
-  wallRoom: 2,              // ATR — under this is wall / reversal country
+  // SPLIT 2026-08-31. One threshold served both branches, and they want
+  // opposite things from it: a wall break improves monotonically as the room
+  // tightens, while a reversal degrades below 2. A single number was a
+  // compromise neither branch wanted.
+  //   WALL sits on a broad plateau from 1.0 to 2.0 — averages span 0.09R and the
+  //   rank order changes by window, so 1.5 is the middle rather than the peak.
+  //   REV genuinely prefers 2.5: better in three of four windows and ~18% more
+  //   trades than 2.0.
+  wallRoom: 1.5,            // ATR of clear space above which a break is not a WALL
+  revRoom: 2.5,             // ATR of clear space above which a rejection is not a REV
   fieldRoom: 8,             // ATR — over this is open field
   backupMin: 2, backupMax: 6,
   fieldMaxTest: 2,          // fresh: 1st or 2nd return to the level
@@ -138,7 +147,7 @@ export function findSetups(bars, daily, opts = {}) {
       if (through && room < o.wallRoom && backup >= o.backupMin && backup <= o.backupMax) kind = 'WALL';
       else if (through && room > o.fieldRoom && test <= o.fieldMaxTest &&
                speed >= o.fastATR) kind = 'FIELD';
-      else if (rejected && room < o.wallRoom) kind = 'REV';
+      else if (rejected && room < o.revRoom) kind = 'REV';
       if (!kind) continue;
 
       const dir = kind === 'REV' ? (fromAbove ? 1 : -1) : (fromAbove ? -1 : 1);
@@ -237,7 +246,7 @@ export function findWatching(bars, daily, live, opts = {}) {
       const kind = tag === 'break'
         ? (room < o.wallRoom && backup >= o.backupMin && backup <= o.backupMax ? 'WALL'
            : room > o.fieldRoom ? 'FIELD' : null)
-        : (room < o.wallRoom ? 'REV' : null);
+        : (room < o.revRoom ? 'REV' : null);
       if (!kind) continue;
       const stop = dir > 0 ? z.low - a[i] * o.stopATR[kind] : z.high + a[i] * o.stopATR[kind];
       legs[tag] = { kind, dir, stop,
