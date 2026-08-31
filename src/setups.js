@@ -62,7 +62,11 @@ export const DEFAULTS = {
   fieldRoom: 8,             // ATR — over this is open field
   backupMin: 2, backupMax: 6,
   fieldMaxTest: 2,          // fresh: 1st or 2nd return to the level
-  fastATR: 1.5,             // 5-bar travel that counts as arriving fast
+  // The bar count was HARDCODED as cl[i-5] until 2026-08-31 and never tested.
+  // It does two jobs: measures approach speed, and decides `fromAbove`, which
+  // sets the trade DIRECTION. Both now swept.
+  speedBars: 5,
+  fastATR: 1.5,
   stopATR: { WALL: 0.5, FIELD: 1.5, REV: 2.0 },
   fibExt: 1.0,              // measured move beyond the daily leg's far end
   minLegATR: 0.5,
@@ -105,7 +109,7 @@ export function findSetups(bars, daily, opts = {}) {
   const out = [];
 
   for (let i = 220; i < bars.length; i++) {
-    if (a[i] == null || i < 6) continue;
+    if (a[i] == null || i <= o.speedBars) continue;
     for (const z of zones) {
       if (z.confirmedTime > bars[i].time) continue;
       if (!(bars[i].low <= z.high && bars[i].high >= z.low)) continue;
@@ -115,8 +119,9 @@ export function findSetups(bars, daily, opts = {}) {
       const test = (testNo.get(key) ?? 0) + 1;
       testNo.set(key, test);
 
-      const fromAbove = cl[i - 5] > z.price;
-      const speed = Math.abs(cl[i] - cl[i - 5]) / a[i];
+      const ref = cl[Math.max(0, i - o.speedBars)];
+      const fromAbove = ref > z.price;
+      const speed = Math.abs(cl[i] - ref) / a[i];
       const ahead = zones.filter(w => w.confirmedTime <= bars[i].time && Math.abs(w.price - z.price) > a[i] * 0.5)
         .filter(w => fromAbove ? w.price < z.price : w.price > z.price)
         .sort((x, y) => Math.abs(x.price - z.price) - Math.abs(y.price - z.price));
