@@ -1,26 +1,9 @@
 {
-  "generatedAt": "2026-08-30T19:10:34.476Z",
+  "generatedAt": "2026-08-31T11:10:43.132Z",
   "horizonHours": 72,
-  "sourceCacheAt": "2026-08-30T19:10:34.426Z",
+  "sourceCacheAt": "2026-08-31T11:10:43.076Z",
   "count": 15,
   "events": [
-    {
-      "date": "2026-08-31T02:29:00-04:00",
-      "currency": "EUR",
-      "impact": "Medium",
-      "title": "German Prelim CPI m/m",
-      "forecast": "0.3%",
-      "previous": "0.8%",
-      "affectedPairs": [
-        "EURUSD",
-        "EURJPY",
-        "EURCHF",
-        "EURNZD",
-        "EURCAD",
-        "EURAUD",
-        "EURGBP"
-      ]
-    },
     {
       "date": "2026-09-01T05:00:00-04:00",
       "currency": "EUR",
@@ -257,6 +240,23 @@
         "NZDCAD",
         "CADCHF",
         "CADJPY"
+      ]
+    },
+    {
+      "date": "2026-09-03T02:30:00-04:00",
+      "currency": "CHF",
+      "impact": "Medium",
+      "title": "CPI m/m",
+      "forecast": "0.0%",
+      "previous": "-0.1%",
+      "affectedPairs": [
+        "USDCHF",
+        "GBPCHF",
+        "EURCHF",
+        "AUDCHF",
+        "NZDCHF",
+        "CADCHF",
+        "CHFJPY"
       ]
     }
   ]
