@@ -22,6 +22,56 @@ import { getCalendar, eventsFor } from './news.js';
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ALERTS = join(REPO, 'alerts_v2.jsonl');
 const dp = s => /JPY$/.test(s) ? 3 : 5;
+
+/**
+ * TAILWIND / HEADWIND — ported from the retired scanner (scanner.mjs:2047),
+ * because it was the part of the old brief the user found genuinely useful:
+ * not "there is an event" but "this event is working for or against you."
+ *
+ * Direction comes from forecast vs previous. Higher normally means a stronger
+ * currency — except for unemployment-style prints, where higher is weakness.
+ * Alignment then depends on which side of the pair the currency sits on: for a
+ * LONG, base strength helps and quote strength hurts; a SHORT is the mirror.
+ *
+ * Note this reads the FORECAST, so it says which way the consensus leans, not
+ * what will actually print. A tailwind here is an expectation, not a promise.
+ */
+function parseNewsValue(v) {
+  if (v == null) return null;
+  const m = String(v).replace(/[,%$]/g, '').match(/-?\d+(\.\d+)?/);
+  if (!m) return null;
+  let n = parseFloat(m[0]);
+  if (/K/i.test(v)) n *= 1e3;
+  if (/M/i.test(v)) n *= 1e6;
+  if (/B/i.test(v)) n *= 1e9;
+  return n;
+}
+
+function newsDirection(e) {
+  const f = parseNewsValue(e.forecast), p = parseNewsValue(e.previous);
+  if (f === null || p === null) return null;
+  const t = (e.title || '').toLowerCase();
+  const inverted = t.includes('unemployment') || t.includes('jobless') || t.includes('claimant');
+  const diff = f - p;
+  if (diff === 0) return 'neutral';
+  return (inverted ? diff < 0 : diff > 0) ? 'strength' : 'weakness';
+}
+
+function alignment(isLong, isBase, dir) {
+  if (!dir || dir === 'neutral') return 'neutral';
+  if (isLong) return isBase ? (dir === 'strength' ? 'tailwind' : 'headwind')
+                            : (dir === 'weakness' ? 'tailwind' : 'headwind');
+  return isBase ? (dir === 'weakness' ? 'tailwind' : 'headwind')
+                : (dir === 'strength' ? 'tailwind' : 'headwind');
+}
+
+/** Every upcoming event on a pair, tagged for how it leans against a position. */
+function windsFor(cal, sym, isLong, hours = 96) {
+  const base = sym.slice(0, 3), quote = sym.slice(3);
+  return eventsFor(cal, sym, new Date(), { hoursAhead: hours })
+    .map(e => ({ e, side: e.country === base ? 'base' : 'quote' }))
+    .map(({ e, side }) => ({ ...e, side, lean: alignment(isLong, side === 'base', newsDirection(e)) }));
+}
 const pipOf = s => /JPY$/.test(s) ? 0.01 : 0.0001;
 
 function loadAlerts(sinceDays) {
@@ -70,24 +120,50 @@ export async function buildReview({ days = 1 } = {}) {
   const px = syms.length ? await getPricing(syms).catch(() => ({})) : {};
   const cal = await getCalendar({ snapshot: false }).catch(() => []);
 
+  const positionWinds = [];
   out.push('## Account\n');
   if (cal.stale) out.push('_Calendar from the last snapshot — the live feed was rate limited._\n');
   if (acct) out.push(`NAV **$${(+acct.NAV).toFixed(2)}**   unrealised $${(+acct.unrealizedPL).toFixed(2)}   ` +
     `margin available $${(+acct.marginAvailable).toFixed(2)}   ${trades.length} open\n`);
   if (trades.length) {
-    out.push('| pair | units | entry | now | P/L | stop | distance | news 48h |');
-    out.push('|---|---|---|---|---|---|---|---|');
+    out.push('| pair | units | now | P/L | stop | distance | news lean |');
+    out.push('|---|---|---|---|---|---|---|');
     for (const t of trades) {
       const s = t.instrument.replace('_', ''), d = dp(s), pip = pipOf(s);
       const now = px[s]?.mid, sl = t.stopLossOrder ? +t.stopLossOrder.price : null;
-      const ev = eventsFor(cal, s, new Date(), { hoursAhead: 96 });   // trades hold ~7 days
-      out.push(`| ${s} | ${t.currentUnits} | ${(+t.price).toFixed(d)} | ${now ? now.toFixed(d) : '—'} | ` +
+      const isLong = +t.currentUnits > 0;
+      const w = windsFor(cal, s, isLong);
+      const tw = w.filter(x => x.lean === 'tailwind'), hw = w.filter(x => x.lean === 'headwind');
+      const lean = !w.length ? '—'
+        : `${tw.length ? `🟢 ${tw.length} tailwind` : ''}${tw.length && hw.length ? ' · ' : ''}` +
+          `${hw.length ? `🔴 ${hw.length} headwind` : ''}${!tw.length && !hw.length ? `${w.length} neutral` : ''}`;
+      out.push(`| ${s} | ${t.currentUnits} | ${now ? now.toFixed(d) : '—'} | ` +
         `$${(+t.unrealizedPL).toFixed(2)} | ${sl ? sl.toFixed(d) : '**none**'} | ` +
-        `${sl && now ? Math.abs((now - sl) / pip).toFixed(0) + 'p' : '—'} | ` +
-        `${ev.length ? ev.map(e => e.title).join(', ') : '—'} |`);
+        `${sl && now ? Math.abs((now - sl) / pip).toFixed(0) + 'p' : '—'} | ${lean} |`);
+      positionWinds.push({ sym: s, isLong, w });
     }
     out.push('');
   } else out.push('_No open positions._\n');
+
+  // ---- the winds, per position, in time order ----
+  // Two positions on one pair share one calendar — list it once.
+  const byPair = [];
+  for (const p of positionWinds.filter(x => x.w.length))
+    if (!byPair.some(x => x.sym === p.sym && x.isLong === p.isLong)) byPair.push(p);
+  const anyWind = byPair;
+  if (anyWind.length) {
+    out.push('## What is coming, and which way it leans\n');
+    for (const p of anyWind) {
+      out.push(`**${p.sym} ${p.isLong ? 'LONG' : 'SHORT'}**`);
+      for (const e of p.w.sort((a, b) => a.date.localeCompare(b.date))) {
+        const mark = e.lean === 'tailwind' ? '🟢' : e.lean === 'headwind' ? '🔴' : '⚪';
+        out.push(`- ${mark} ${e.date.slice(5, 16)} ${e.country} — ${e.title}` +
+          (e.forecast ? `  (fc ${e.forecast}${e.previous ? ` vs prev ${e.previous}` : ''})` : ''));
+      }
+      out.push('');
+    }
+    out.push('_Lean is read from forecast vs previous — which way consensus leans, not what will print._\n');
+  }
 
   // ---- what the scanner called, and how it went ----
   out.push(`## Scanner calls, last ${days} day${days > 1 ? 's' : ''}\n`);
