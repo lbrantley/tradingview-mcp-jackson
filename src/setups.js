@@ -57,7 +57,13 @@ export const DEFAULTS = {
   // field in all four windows (roughly double in two of them) and a wash for the
   // other two. One universe, and it is the stricter one.
   zoneMinTouches: 3,
-  cooldown: 5,
+  // Settled on the ACCOUNT WALK, not per-trade R — expectancy cannot see this
+  // parameter's real cost. Shorter is better and not for the obvious reason:
+  // trades TAKEN barely changes (the cap binds either way), but a bigger
+  // candidate pool refills a freed slot immediately instead of leaving capital
+  // idle. 3 beats 5 on return AND drawdown in three of four windows, at 25
+  // alerts a week instead of 18.
+  cooldown: 3,
   // SPLIT 2026-08-31. One threshold served both branches, and they want
   // opposite things from it: a wall break improves monotonically as the room
   // tightens, while a reversal degrades below 2. A single number was a
