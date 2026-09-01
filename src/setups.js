@@ -175,7 +175,7 @@ export function findSetups(bars, daily, opts = {}) {
 
       // Same mechanic, two different situations. A rejection at a level price
       // has been respecting is a reversal. A rejection at a level price already
-      // broke through is a retest — the break continuing. Measures differently
+      // broke through is a CONTINUATION — the break resuming. Measures differently
       // (+1.0R vs +1.3R across four windows), so it is worth saying which.
       let retest = null;
       if (kind === 'REV') {
@@ -187,7 +187,7 @@ export function findSetups(bars, daily, opts = {}) {
 
       out.push({
         i, time: bars[i].time, kind, dir, zone: z,
-        retest, context: kind !== 'REV' ? null : (retest ? 'RETEST' : 'REVERSAL'),
+        retest, context: kind !== 'REV' ? null : (retest ? 'CONTINUATION' : 'REVERSAL'),
         level: z.price, band: [z.low, z.high], touches: z.touches,
         confirmedTime: z.confirmedTime,
         // When the level FORMED, not when its last swing confirmed. A band with
@@ -282,7 +282,7 @@ export function findWatching(bars, daily, live, opts = {}) {
         }
       }
       legs[tag] = { kind, dir, stop, retest,
-        context: kind !== 'REV' ? null : (retest ? 'RETEST' : 'REVERSAL'),
+        context: kind !== 'REV' ? null : (retest ? 'CONTINUATION' : 'REVERSAL'),
         target: dir > 0 ? leg.to + leg.size * o.fibExt : leg.to - leg.size * o.fibExt,
         risk: Math.abs(live - stop) };
     }

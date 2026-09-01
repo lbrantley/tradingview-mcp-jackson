@@ -104,13 +104,13 @@ const SPEC = {
 // A REV fires on the same mechanic — price touched the level and closed back
 // out — whether the level is holding as originally formed or holding after
 // being broken. Those are opposite stories, so say which one it is.
-//   RETEST    price already broke through; this is the break continuing.
+//   CONTINUATION  price already broke through; the break is resuming.
 //             Wins more often (54-64% vs 43-56%) and digs a shallower hole
 //             (median 0.55-0.73R against vs 0.65-1.00R) — but pays less,
 //             because part of the run to target is already spent.
-//   REVERSAL  price has been respecting this level and turned away from it.
+//   REVERSAL      price has been respecting this level and turned away.
 const ctxLabel = h => h.kind !== 'REV' ? SPEC[h.kind].label
-  : h.context === 'RETEST' ? 'RETEST  (break continuing)'
+  : h.context === 'CONTINUATION' ? 'CONTINUATION  (retest of a broken level)'
   : 'REVERSAL  (turn at the level)';
 
 const cst = t => new Date(t).toLocaleString('en-US', { timeZone: 'America/Chicago',
