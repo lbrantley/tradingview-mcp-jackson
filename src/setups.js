@@ -24,7 +24,7 @@
  * is a measured move: the last directional DAILY swing leg, projected `fibExt`
  * beyond that leg's far end.
  */
-import { atr, swings } from './indicators.js';
+import { atr, swings, rsi } from './indicators.js';
 import { buildZones } from './structure.js';
 
 export const DEFAULTS = {
@@ -97,6 +97,12 @@ export const DEFAULTS = {
   volFast: 20, volSlow: 60,
   volTrendMaxRev: 1.10,    // loud approach → the level usually goes
   volTrendMinBreak: 0.90,  // dead tape → the break has no fuel
+  // Grading a CONTINUATION by daily RSI leaning toward the trade. Survives a
+  // control for target distance in 12 of 12 cells (3 distance bands x 4
+  // windows), which is what separates it from the features that were noise.
+  // Win rate runs A > B > C in all four windows: 69/62/34, 67/62/41,
+  // 81/62/54, 74/57/25. The cutoffs are fitted; the gradient is not.
+  gradeA: 60, gradeB: 48,
 };
 
 /** Last directional leg: a confirmed swing low then a LATER confirmed swing high
@@ -123,12 +129,21 @@ export function lastLeg(bars, sw, i, lookback, dir) {
  * Every setup in `bars`, in order. `daily` supplies the measured-move leg.
  * Nothing here reads a bar later than the one being decided on.
  */
+// Daily RSI leaning toward the trade — for a short, a LOW daily RSI is the
+// favourable reading, so the scale is flipped. Continuations only for now.
+function gradeOf(dr, dir, o) {
+  if (dr == null) return null;
+  const lean = dir > 0 ? dr : 100 - dr;
+  return lean >= o.gradeA ? 'A' : lean >= o.gradeB ? 'B' : 'C';
+}
+
 export function findSetups(bars, daily, opts = {}) {
   const o = { ...DEFAULTS, ...opts };
   const a = atr(bars, 14);
   const cl = bars.map(x => x.close);
   const sw = swings(bars, o.lookback);
   const swD = swings(daily, o.lookback);
+  const dRsi = rsi(daily.map(x => x.close), 14);
   const zones = buildZones(bars, { lookback: o.lookback, tolATR: o.tolATR, minTouches: o.zoneMinTouches });
   if (!zones.length) return [];
 
@@ -207,7 +222,9 @@ export function findSetups(bars, daily, opts = {}) {
       out.push({
         i, time: bars[i].time, kind, dir, zone: z,
         retest, context: kind !== 'REV' ? null : (retest ? 'CONTINUATION' : 'REVERSAL'),
-        volTrend,
+        volTrend, grade: retest === true ? gradeOf(dRsi[dIdx], dir, o) : null,
+        gradeRsi: retest === true && dRsi[dIdx] != null
+          ? (dir > 0 ? dRsi[dIdx] : 100 - dRsi[dIdx]) : null,
         level: z.price, band: [z.low, z.high], touches: z.touches,
         confirmedTime: z.confirmedTime,
         // When the level FORMED, not when its last swing confirmed. A band with
@@ -252,6 +269,7 @@ export function findWatching(bars, daily, live, opts = {}) {
   const a = atr(bars, 14);
   const cl = bars.map(x => x.close);
   const swD = swings(daily, o.lookback);
+  const dRsiW = rsi(daily.map(x => x.close), 14);
   const zones = buildZones(bars, { lookback: o.lookback, tolATR: o.tolATR, minTouches: o.zoneMinTouches });
   const i = bars.length - 1;
   // Same activity measure the setups use. Shown on the watch so a level can be
@@ -298,8 +316,6 @@ export function findWatching(bars, daily, live, opts = {}) {
         : (room < o.revRoom ? 'REV' : null);
       if (!kind) continue;
       const stop = dir > 0 ? z.low - a[i] * o.stopATR[kind] : z.high + a[i] * o.stopATR[kind];
-      // Knowable before it happens: if price has already been on the far side
-      // recently, a rejection here is the break retesting, not a turn.
       // Activity into the level, relative to its own two-week baseline.
       let vf = 0, vs = 0;
       for (let k = i - o.volFast + 1; k <= i; k++) vf += bars[k].volume;
@@ -307,6 +323,8 @@ export function findWatching(bars, daily, live, opts = {}) {
       const volTrend = vs > 0 ? (vf / o.volFast) / (vs / o.volSlow) : 1;
       if (kind !== 'REV' && volTrend < o.volTrendMinBreak) continue;
 
+      // Knowable before it happens: if price has already been on the far side
+      // recently, a rejection here is the break retesting, not a turn.
       let retest = null;
       if (kind === 'REV') {
         retest = false;
@@ -318,6 +336,7 @@ export function findWatching(bars, daily, live, opts = {}) {
       const volOk = kind === 'REV' ? (retest === true || volTrend <= o.volTrendMaxRev)
                                    : volTrend >= o.volTrendMinBreak;
       legs[tag] = { kind, dir, stop, retest, volOk,
+        grade: retest === true ? gradeOf(dRsiW[daily.length - 1], dir, o) : null,
         context: kind !== 'REV' ? null : (retest ? 'CONTINUATION' : 'REVERSAL'),
         target: dir > 0 ? leg.to + leg.size * o.fibExt : leg.to - leg.size * o.fibExt,
         risk: Math.abs(live - stop) };

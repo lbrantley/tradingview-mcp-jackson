@@ -110,8 +110,9 @@ const SPEC = {
 //             because part of the run to target is already spent.
 //   REVERSAL      price has been respecting this level and turned away.
 const ctxLabel = h => h.kind !== 'REV' ? SPEC[h.kind].label
-  : h.context === 'CONTINUATION' ? 'CONTINUATION  (retest of a broken level)'
-  : 'REVERSAL  (turn at the level)';
+  : h.context === 'CONTINUATION'
+    ? `CONTINUATION  (retest of a broken level)${h.grade ? `   Grade ${h.grade}` : ''}`
+    : 'REVERSAL  (turn at the level)';
 
 const cst = t => new Date(t).toLocaleString('en-US', { timeZone: 'America/Chicago',
   weekday: 'short', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
@@ -233,7 +234,7 @@ for (const [title, list] of [['\n\u{1F534} CODE RED — at the level, resolution
       `   held ${w.hold} bars   room ${w.room.toFixed(1)} ATR${w.twoSided ? '   \u2194 TWO-SIDED' : ''}`);
     if (w.ifBreak) console.log(`     if it CLOSES THROUGH  → ${w.ifBreak.kind} ${w.ifBreak.dir > 0 ? 'LONG' : 'SHORT'}` +
       `   stop ${w.ifBreak.stop.toFixed(D)}   target ${w.ifBreak.target.toFixed(D)}`);
-    if (w.ifReject) console.log(`     if it REJECTS         → ${w.ifReject.context || w.ifReject.kind} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` +
+    if (w.ifReject) console.log(`     if it REJECTS         → ${w.ifReject.context || w.ifReject.kind}${w.ifReject.grade ? ' (Grade ' + w.ifReject.grade + ')' : ''} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` +
       `   stop ${w.ifReject.stop.toFixed(D)}   target ${w.ifReject.target.toFixed(D)}`);
     console.log('');
   }
@@ -257,7 +258,7 @@ if (crNew.length) {
     return `${w.sym} @ ${w.level.toFixed(D)}${w.twoSided ? '  ↔ two-sided' : ''}\n` +
       `  ${w.touches} swings, ${w.ageBars ? (w.ageBars * 4 / 24).toFixed(0) + 'd' : '?'}, room ${w.room.toFixed(1)} ATR\n` +
       (w.ifBreak ? `  through → ${w.ifBreak.kind} ${w.ifBreak.dir > 0 ? 'LONG' : 'SHORT'}\n` : '') +
-      (w.ifReject ? `  rejects → ${w.ifReject.context || w.ifReject.kind} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` : '');
+      (w.ifReject ? `  rejects → ${w.ifReject.context || w.ifReject.kind}${w.ifReject.grade ? ' ' + w.ifReject.grade : ''} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` : '');
   });
   pushover(`${crNew.length} level${crNew.length > 1 ? 's' : ''} at code red`, lines.join('\n\n'));
 }
