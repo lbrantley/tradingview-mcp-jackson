@@ -101,6 +101,18 @@ const SPEC = {
   REV:   { stopATR: 2.0, label: 'REVERSAL'        },
 };
 
+// A REV fires on the same mechanic — price touched the level and closed back
+// out — whether the level is holding as originally formed or holding after
+// being broken. Those are opposite stories, so say which one it is.
+//   RETEST    price already broke through; this is the break continuing.
+//             Wins more often (54-64% vs 43-56%) and digs a shallower hole
+//             (median 0.55-0.73R against vs 0.65-1.00R) — but pays less,
+//             because part of the run to target is already spent.
+//   REVERSAL  price has been respecting this level and turned away from it.
+const ctxLabel = h => h.kind !== 'REV' ? SPEC[h.kind].label
+  : h.context === 'RETEST' ? 'RETEST  (break continuing)'
+  : 'REVERSAL  (turn at the level)';
+
 const cst = t => new Date(t).toLocaleString('en-US', { timeZone: 'America/Chicago',
   weekday: 'short', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
 const dp = s => /JPY$/.test(s) ? 3 : 5;
@@ -175,7 +187,8 @@ for (const k of order) {
   console.log(`\n${SPEC[k].label}   (${g.length})\n`);
   for (const h of g) {
     const D = dp(h.sym);
-    console.log(`  ${h.sym}  ${h.dir > 0 ? 'LONG' : 'SHORT'}${h.isNew ? '   ** NEW **' : ''}`);
+    console.log(`  ${h.sym}  ${h.dir > 0 ? 'LONG' : 'SHORT'}` +
+      `${h.kind === 'REV' ? `   ${ctxLabel(h)}` : ''}${h.isNew ? '   ** NEW **' : ''}`);
     console.log(`     level ${h.level.toFixed(D)}  band ${h.band[0].toFixed(D)}-${h.band[1].toFixed(D)}  ` +
       `${h.touches} swings   formed ${h.formedTime ? h.formedTime.slice(0, 10) : '?'}` +
       `${h.ageBars ? ` (${(h.ageBars * 4 / 24).toFixed(0)}d old)` : ''}` +
@@ -220,7 +233,7 @@ for (const [title, list] of [['\n\u{1F534} CODE RED — at the level, resolution
       `   held ${w.hold} bars   room ${w.room.toFixed(1)} ATR${w.twoSided ? '   \u2194 TWO-SIDED' : ''}`);
     if (w.ifBreak) console.log(`     if it CLOSES THROUGH  → ${w.ifBreak.kind} ${w.ifBreak.dir > 0 ? 'LONG' : 'SHORT'}` +
       `   stop ${w.ifBreak.stop.toFixed(D)}   target ${w.ifBreak.target.toFixed(D)}`);
-    if (w.ifReject) console.log(`     if it REJECTS         → ${w.ifReject.kind} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` +
+    if (w.ifReject) console.log(`     if it REJECTS         → ${w.ifReject.context || w.ifReject.kind} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` +
       `   stop ${w.ifReject.stop.toFixed(D)}   target ${w.ifReject.target.toFixed(D)}`);
     console.log('');
   }
@@ -231,7 +244,7 @@ if (fresh.length) {
   console.log(`${fresh.length} new setup(s) logged to alerts_v2.jsonl`);
   const lines = fresh.map(h => {
     const D = dp(h.sym);
-    return `${h.sym} ${h.dir > 0 ? 'LONG' : 'SHORT'} · ${SPEC[h.kind].label}\n` +
+    return `${h.sym} ${h.dir > 0 ? 'LONG' : 'SHORT'} · ${ctxLabel(h)}\n` +
       `  in ${h.px.toFixed(D)}  sl ${h.stop.toFixed(D)}  tp ${h.target.toFixed(D)}\n` +
       `  ${h.riskPips.toFixed(0)}p = $${h.riskUsd.toFixed(2)} at 0.01 lot · room ${h.room.toFixed(1)} ATR` +
       (h.news.length ? `\n  ⚠ news: ${h.news[0]}` : '');
@@ -244,7 +257,7 @@ if (crNew.length) {
     return `${w.sym} @ ${w.level.toFixed(D)}${w.twoSided ? '  ↔ two-sided' : ''}\n` +
       `  ${w.touches} swings, ${w.ageBars ? (w.ageBars * 4 / 24).toFixed(0) + 'd' : '?'}, room ${w.room.toFixed(1)} ATR\n` +
       (w.ifBreak ? `  through → ${w.ifBreak.kind} ${w.ifBreak.dir > 0 ? 'LONG' : 'SHORT'}\n` : '') +
-      (w.ifReject ? `  rejects → ${w.ifReject.kind} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` : '');
+      (w.ifReject ? `  rejects → ${w.ifReject.context || w.ifReject.kind} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` : '');
   });
   pushover(`${crNew.length} level${crNew.length > 1 ? 's' : ''} at code red`, lines.join('\n\n'));
 }

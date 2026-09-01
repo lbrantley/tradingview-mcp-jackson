@@ -85,6 +85,10 @@ export const DEFAULTS = {
   stopATR: { WALL: 0.5, FIELD: 1.5, REV: 2.0 },
   fibExt: 1.0,              // measured move beyond the daily leg's far end
   minLegATR: 0.5,
+  // How far back to look for a close on the far side of the level. If price was
+  // recently over there, the level was BROKEN and this rejection is a retest
+  // holding in its new role — a continuation, not a turn.
+  retestLook: 40,
 };
 
 /** Last directional leg: a confirmed swing low then a LATER confirmed swing high
@@ -169,8 +173,21 @@ export function findSetups(bars, daily, opts = {}) {
       const target = dir > 0 ? leg.to + leg.size * o.fibExt : leg.to - leg.size * o.fibExt;
       if (dir > 0 ? target <= px : target >= px) continue;
 
+      // Same mechanic, two different situations. A rejection at a level price
+      // has been respecting is a reversal. A rejection at a level price already
+      // broke through is a retest — the break continuing. Measures differently
+      // (+1.0R vs +1.3R across four windows), so it is worth saying which.
+      let retest = null;
+      if (kind === 'REV') {
+        retest = false;
+        for (let k = Math.max(0, i - o.retestLook); k < i; k++) {
+          if (dir > 0 ? bars[k].close < z.low : bars[k].close > z.high) { retest = true; break; }
+        }
+      }
+
       out.push({
         i, time: bars[i].time, kind, dir, zone: z,
+        retest, context: kind !== 'REV' ? null : (retest ? 'RETEST' : 'REVERSAL'),
         level: z.price, band: [z.low, z.high], touches: z.touches,
         confirmedTime: z.confirmedTime,
         // When the level FORMED, not when its last swing confirmed. A band with
@@ -255,7 +272,17 @@ export function findWatching(bars, daily, live, opts = {}) {
         : (room < o.revRoom ? 'REV' : null);
       if (!kind) continue;
       const stop = dir > 0 ? z.low - a[i] * o.stopATR[kind] : z.high + a[i] * o.stopATR[kind];
-      legs[tag] = { kind, dir, stop,
+      // Knowable before it happens: if price has already been on the far side
+      // recently, a rejection here is the break retesting, not a turn.
+      let retest = null;
+      if (kind === 'REV') {
+        retest = false;
+        for (let k = Math.max(0, i - o.retestLook); k < i; k++) {
+          if (dir > 0 ? bars[k].close < z.low : bars[k].close > z.high) { retest = true; break; }
+        }
+      }
+      legs[tag] = { kind, dir, stop, retest,
+        context: kind !== 'REV' ? null : (retest ? 'RETEST' : 'REVERSAL'),
         target: dir > 0 ? leg.to + leg.size * o.fibExt : leg.to - leg.size * o.fibExt,
         risk: Math.abs(live - stop) };
     }
