@@ -89,6 +89,14 @@ export const DEFAULTS = {
   // recently over there, the level was BROKEN and this rejection is a retest
   // holding in its new role — a continuation, not a turn.
   retestLook: 40,
+  // Tick-volume trend: recent activity vs the longer baseline. Forex has no
+  // real volume, but OANDA's tick count (price updates per bar) proxies it.
+  // A break needs participation; a reversal needs quiet. Same number, opposite
+  // sign on the two trade types — which is why it reads as a mechanism rather
+  // than a fitted constant.
+  volFast: 20, volSlow: 60,
+  volTrendMaxRev: 1.10,    // loud approach → the level usually goes
+  volTrendMinBreak: 0.90,  // dead tape → the break has no fuel
 };
 
 /** Last directional leg: a confirmed swing low then a LATER confirmed swing high
@@ -177,6 +185,13 @@ export function findSetups(bars, daily, opts = {}) {
       // has been respecting is a reversal. A rejection at a level price already
       // broke through is a CONTINUATION — the break resuming. Measures differently
       // (+1.0R vs +1.3R across four windows), so it is worth saying which.
+      // Activity into the level, relative to its own two-week baseline.
+      let vf = 0, vs = 0;
+      for (let k = i - o.volFast + 1; k <= i; k++) vf += bars[k].volume;
+      for (let k = i - o.volSlow + 1; k <= i; k++) vs += bars[k].volume;
+      const volTrend = vs > 0 ? (vf / o.volFast) / (vs / o.volSlow) : 1;
+      if (kind !== 'REV' && volTrend < o.volTrendMinBreak) continue;
+
       let retest = null;
       if (kind === 'REV') {
         retest = false;
@@ -184,10 +199,15 @@ export function findSetups(bars, daily, opts = {}) {
           if (dir > 0 ? bars[k].close < z.low : bars[k].close > z.high) { retest = true; break; }
         }
       }
+      // Only true turns. A continuation is joining a move that already broke,
+      // so rising participation is the move you are joining, not the crowd
+      // about to run you over — it measured mixed there, not negative.
+      if (retest === false && volTrend > o.volTrendMaxRev) continue;
 
       out.push({
         i, time: bars[i].time, kind, dir, zone: z,
         retest, context: kind !== 'REV' ? null : (retest ? 'CONTINUATION' : 'REVERSAL'),
+        volTrend,
         level: z.price, band: [z.low, z.high], touches: z.touches,
         confirmedTime: z.confirmedTime,
         // When the level FORMED, not when its last swing confirmed. A band with
@@ -234,6 +254,12 @@ export function findWatching(bars, daily, live, opts = {}) {
   const swD = swings(daily, o.lookback);
   const zones = buildZones(bars, { lookback: o.lookback, tolATR: o.tolATR, minTouches: o.zoneMinTouches });
   const i = bars.length - 1;
+  // Same activity measure the setups use. Shown on the watch so a level can be
+  // read before it fires: loud tape favours the break, quiet favours the turn.
+  let _vf = 0, _vs = 0;
+  for (let k = i - o.volFast + 1; k <= i; k++) _vf += bars[k].volume;
+  for (let k = i - o.volSlow + 1; k <= i; k++) _vs += bars[k].volume;
+  const volTrend = _vs > 0 ? (_vf / o.volFast) / (_vs / o.volSlow) : 1;
   if (!a[i]) return [];
   const out = [];
 
@@ -274,6 +300,13 @@ export function findWatching(bars, daily, live, opts = {}) {
       const stop = dir > 0 ? z.low - a[i] * o.stopATR[kind] : z.high + a[i] * o.stopATR[kind];
       // Knowable before it happens: if price has already been on the far side
       // recently, a rejection here is the break retesting, not a turn.
+      // Activity into the level, relative to its own two-week baseline.
+      let vf = 0, vs = 0;
+      for (let k = i - o.volFast + 1; k <= i; k++) vf += bars[k].volume;
+      for (let k = i - o.volSlow + 1; k <= i; k++) vs += bars[k].volume;
+      const volTrend = vs > 0 ? (vf / o.volFast) / (vs / o.volSlow) : 1;
+      if (kind !== 'REV' && volTrend < o.volTrendMinBreak) continue;
+
       let retest = null;
       if (kind === 'REV') {
         retest = false;
@@ -281,7 +314,10 @@ export function findWatching(bars, daily, live, opts = {}) {
           if (dir > 0 ? bars[k].close < z.low : bars[k].close > z.high) { retest = true; break; }
         }
       }
-      legs[tag] = { kind, dir, stop, retest,
+      // Would this leg survive the volume gate if it fired now?
+      const volOk = kind === 'REV' ? (retest === true || volTrend <= o.volTrendMaxRev)
+                                   : volTrend >= o.volTrendMinBreak;
+      legs[tag] = { kind, dir, stop, retest, volOk,
         context: kind !== 'REV' ? null : (retest ? 'CONTINUATION' : 'REVERSAL'),
         target: dir > 0 ? leg.to + leg.size * o.fibExt : leg.to - leg.size * o.fibExt,
         risk: Math.abs(live - stop) };
@@ -292,7 +328,7 @@ export function findWatching(bars, daily, live, opts = {}) {
       level: z.price, band: [z.low, z.high], touches: z.touches,
       formedTime: bars[Math.max(0, z.firstAt)]?.time ?? null,
       ageBars: z.firstAt != null ? i - z.firstAt : null,
-      distATR: dist / a[i], distPrice: dist, hold, room, backup, atr: a[i],
+      distATR: dist / a[i], distPrice: dist, hold, room, backup, atr: a[i], volTrend,
       state: hold >= 2 ? 'CODE RED' : 'WATCHING',
       ifBreak: legs.break ?? null, ifReject: legs.reject ?? null,
       twoSided: !!(legs.break && legs.reject),
