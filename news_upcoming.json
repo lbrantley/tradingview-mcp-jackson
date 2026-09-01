@@ -1,43 +1,9 @@
 {
-  "generatedAt": "2026-08-31T11:10:43.132Z",
+  "generatedAt": "2026-09-01T11:03:29.927Z",
   "horizonHours": 72,
   "sourceCacheAt": "2026-08-31T11:10:43.076Z",
-  "count": 15,
+  "count": 16,
   "events": [
-    {
-      "date": "2026-09-01T05:00:00-04:00",
-      "currency": "EUR",
-      "impact": "Medium",
-      "title": "Core CPI Flash Estimate y/y",
-      "forecast": "2.5%",
-      "previous": "2.5%",
-      "affectedPairs": [
-        "EURUSD",
-        "EURJPY",
-        "EURCHF",
-        "EURNZD",
-        "EURCAD",
-        "EURAUD",
-        "EURGBP"
-      ]
-    },
-    {
-      "date": "2026-09-01T05:00:00-04:00",
-      "currency": "EUR",
-      "impact": "Medium",
-      "title": "CPI Flash Estimate y/y",
-      "forecast": "3.3%",
-      "previous": "2.9%",
-      "affectedPairs": [
-        "EURUSD",
-        "EURJPY",
-        "EURCHF",
-        "EURNZD",
-        "EURCAD",
-        "EURAUD",
-        "EURGBP"
-      ]
-    },
     {
       "date": "2026-09-01T10:00:00-04:00",
       "currency": "USD",
@@ -257,6 +223,57 @@
         "NZDCHF",
         "CADCHF",
         "CHFJPY"
+      ]
+    },
+    {
+      "date": "2026-09-03T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "Unemployment Claims",
+      "forecast": "205K",
+      "previous": "203K",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-09-03T10:00:00-04:00",
+      "currency": "USD",
+      "impact": "Medium",
+      "title": "ISM Services PMI",
+      "forecast": "54.1",
+      "previous": "54.1",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-09-04T04:50:00-04:00",
+      "currency": "GBP",
+      "impact": "High",
+      "title": "BOE Gov Bailey Speaks",
+      "forecast": "—",
+      "previous": "—",
+      "affectedPairs": [
+        "GBPUSD",
+        "GBPJPY",
+        "GBPCHF",
+        "GBPNZD",
+        "GBPCAD",
+        "GBPAUD",
+        "EURGBP"
       ]
     }
   ]
