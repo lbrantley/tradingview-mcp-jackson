@@ -18,6 +18,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getCandles, getPricing, getSummary, getOpenTrades, LIVE_ACCOUNT_ID, ACCOUNT_ID } from './oanda.js';
 import { getCalendar, eventsFor } from './news.js';
+import { findSetups } from './setups.js';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ALERTS = join(REPO, 'alerts_v2.jsonl');
@@ -125,6 +126,7 @@ export async function buildReview({ days = 1 } = {}) {
   if (cal.stale) out.push('_Calendar from the last snapshot — the live feed was rate limited._\n');
   if (acct) out.push(`NAV **$${(+acct.NAV).toFixed(2)}**   unrealised $${(+acct.unrealizedPL).toFixed(2)}   ` +
     `margin available $${(+acct.marginAvailable).toFixed(2)}   ${trades.length} open\n`);
+  const posRead = [];
   if (trades.length) {
     out.push('| pair | units | now | P/L | stop | distance | news lean |');
     out.push('|---|---|---|---|---|---|---|');
@@ -141,6 +143,43 @@ export async function buildReview({ days = 1 } = {}) {
         `$${(+t.unrealizedPL).toFixed(2)} | ${sl ? sl.toFixed(d) : '**none**'} | ` +
         `${sl && now ? Math.abs((now - sl) / pip).toFixed(0) + 'p' : '—'} | ${lean} |`);
       positionWinds.push({ sym: s, isLong, w });
+      // one read per pair+direction, however many tickets are open on it
+      if (!posRead.some(r => r.sym === s && r.isLong === isLong))
+        posRead.push({ sym: s, isLong, now });
+    }
+    out.push('');
+
+    // ---- what the system says about each position -------------------------
+    // The table above reports the trade. It never said what the trade was FOR:
+    // which level, where the measured move projects, what the system's own stop
+    // was. On 2026-09-02 the user was holding CHFJPY with an eyeballed target
+    // because the setup that generated it had been lost (see the catch-up fix
+    // in scan_v2). Even when nothing was logged, the level engine can still say
+    // where the structure sits right now.
+    out.push('**What the system reads on each position**\n');
+    for (const p of posRead) {
+      try {
+        const b = await getCandles(p.sym, { granularity: 'H4', count: 3000 });
+        const dd = await getCandles(p.sym, { granularity: 'D', count: 600 });
+        if (b.length < 1000) { out.push(`- **${p.sym}** — not enough history.`); continue; }
+        const dir = p.isLong ? 1 : -1;
+        const d2 = dp(p.sym), pip2 = pipOf(p.sym);
+        // most recent setup in the direction the position is actually held
+        const mine = findSetups(b, dd).filter(x => x.dir === dir).slice(-1)[0];
+        const bits = [];
+        if (mine) {
+          const age = Math.round((Date.now() - Date.parse(mine.time)) / 36e5);
+          bits.push(`last ${mine.context || mine.kind} ${p.isLong ? 'LONG' : 'SHORT'} ` +
+            `${age}h ago at ${mine.level.toFixed(d2)} — system stop ${mine.stop.toFixed(d2)}, ` +
+            `target **${mine.target.toFixed(d2)}**` +
+            (mine.grade ? ` (Grade ${mine.grade})` : ''));
+          if (p.now != null) {
+            const togo = Math.abs(mine.target - p.now) / pip2;
+            bits.push(`${togo.toFixed(0)}p to that target from here`);
+          }
+        } else bits.push('no setup on record in this direction');
+        out.push(`- **${p.sym}** ${p.isLong ? 'LONG' : 'SHORT'} — ${bits.join('; ')}`);
+      } catch (e) { out.push(`- **${p.sym}** — level read failed: ${e.message}`); }
     }
     out.push('');
   } else out.push('_No open positions._\n');
