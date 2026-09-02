@@ -1,145 +1,9 @@
 {
-  "generatedAt": "2026-09-01T11:03:29.927Z",
+  "generatedAt": "2026-09-02T11:03:33.760Z",
   "horizonHours": 72,
   "sourceCacheAt": "2026-08-31T11:10:43.076Z",
-  "count": 16,
+  "count": 14,
   "events": [
-    {
-      "date": "2026-09-01T10:00:00-04:00",
-      "currency": "USD",
-      "impact": "High",
-      "title": "ISM Manufacturing PMI",
-      "forecast": "55.2",
-      "previous": "55.6",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-09-01T10:00:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "ISM Manufacturing Prices",
-      "forecast": "71.2",
-      "previous": "71.1",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-09-01T10:00:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "JOLTS Job Openings",
-      "forecast": "7.33M",
-      "previous": "7.36M",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-09-01T21:30:00-04:00",
-      "currency": "AUD",
-      "impact": "High",
-      "title": "GDP q/q",
-      "forecast": "0.3%",
-      "previous": "0.3%",
-      "affectedPairs": [
-        "AUDUSD",
-        "AUDJPY",
-        "AUDNZD",
-        "AUDCAD",
-        "AUDCHF",
-        "EURAUD",
-        "GBPAUD"
-      ]
-    },
-    {
-      "date": "2026-09-01T22:00:00-04:00",
-      "currency": "NZD",
-      "impact": "High",
-      "title": "Official Cash Rate",
-      "forecast": "2.75%",
-      "previous": "2.50%",
-      "affectedPairs": [
-        "NZDUSD",
-        "NZDJPY",
-        "NZDCAD",
-        "NZDCHF",
-        "AUDNZD",
-        "EURNZD",
-        "GBPNZD"
-      ]
-    },
-    {
-      "date": "2026-09-01T22:00:00-04:00",
-      "currency": "NZD",
-      "impact": "High",
-      "title": "RBNZ Monetary Policy Statement",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "NZDUSD",
-        "NZDJPY",
-        "NZDCAD",
-        "NZDCHF",
-        "AUDNZD",
-        "EURNZD",
-        "GBPNZD"
-      ]
-    },
-    {
-      "date": "2026-09-01T22:00:00-04:00",
-      "currency": "NZD",
-      "impact": "High",
-      "title": "RBNZ Rate Statement",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "NZDUSD",
-        "NZDJPY",
-        "NZDCAD",
-        "NZDCHF",
-        "AUDNZD",
-        "EURNZD",
-        "GBPNZD"
-      ]
-    },
-    {
-      "date": "2026-09-01T23:00:00-04:00",
-      "currency": "NZD",
-      "impact": "High",
-      "title": "RBNZ Press Conference",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "NZDUSD",
-        "NZDJPY",
-        "NZDCAD",
-        "NZDCHF",
-        "AUDNZD",
-        "EURNZD",
-        "GBPNZD"
-      ]
-    },
     {
       "date": "2026-09-02T08:15:00-04:00",
       "currency": "USD",
@@ -274,6 +138,108 @@
         "GBPCAD",
         "GBPAUD",
         "EURGBP"
+      ]
+    },
+    {
+      "date": "2026-09-04T08:30:00-04:00",
+      "currency": "CAD",
+      "impact": "High",
+      "title": "Employment Change",
+      "forecast": "15.8K",
+      "previous": "75.1K",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
+      ]
+    },
+    {
+      "date": "2026-09-04T08:30:00-04:00",
+      "currency": "CAD",
+      "impact": "High",
+      "title": "Unemployment Rate",
+      "forecast": "6.4%",
+      "previous": "6.4%",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
+      ]
+    },
+    {
+      "date": "2026-09-04T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "Average Hourly Earnings m/m",
+      "forecast": "0.3%",
+      "previous": "0.1%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-09-04T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "Non-Farm Employment Change",
+      "forecast": "58K",
+      "previous": "-23K",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-09-04T08:30:00-04:00",
+      "currency": "USD",
+      "impact": "High",
+      "title": "Unemployment Rate",
+      "forecast": "4.1%",
+      "previous": "4.1%",
+      "affectedPairs": [
+        "GBPUSD",
+        "EURUSD",
+        "USDJPY",
+        "USDCAD",
+        "USDCHF",
+        "AUDUSD",
+        "NZDUSD"
+      ]
+    },
+    {
+      "date": "2026-09-04T10:00:00-04:00",
+      "currency": "CAD",
+      "impact": "Medium",
+      "title": "Ivey PMI",
+      "forecast": "56.2",
+      "previous": "55.1",
+      "affectedPairs": [
+        "USDCAD",
+        "GBPCAD",
+        "EURCAD",
+        "AUDCAD",
+        "NZDCAD",
+        "CADCHF",
+        "CADJPY"
       ]
     }
   ]
