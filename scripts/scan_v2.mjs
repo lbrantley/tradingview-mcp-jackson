@@ -25,6 +25,7 @@
 import { getCandles, getPricing, getSummary, LIVE_ACCOUNT_ID, ACCOUNT_ID } from '../src/oanda.js';
 import { sma, rsi, atr } from '../src/indicators.js';
 import { findSetups, findWatching, DEFAULTS } from '../src/setups.js';
+import { pendingBlocks } from '../src/orderblocks.js';
 import { getCalendar, eventsFor } from '../src/news.js';
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import https from 'https';
@@ -157,6 +158,7 @@ const nowSeen = {};
 const hits = [];
 const watch = [];
 const lapsed = [];
+const blocks = [];
 
 for (const sym of PAIRS) {
   try {
@@ -180,6 +182,19 @@ for (const sym of PAIRS) {
     // bars — so an hourly scan has something to say between H4 closes.
     const live = px[sym]?.mid ?? b[last].close;
     for (const w of findWatching(b, d, live)) watch.push({ sym, ...w });
+
+    // ORDER BLOCKS — the second model. Daily, and entirely separate from the
+    // level engine above: blocks find the entry, levels inform management.
+    // Only live ones matter: not yet filled, and price has not run past the
+    // stop. OANDA reserves no margin on unfilled orders, so a resting limit
+    // costs nothing but attention — worth carrying even when the median wait
+    // is 5 days and the tail runs to months.
+    for (const ob of pendingBlocks(d, live)) {
+      if (ob.invalidated || ob.filled || ob.expired) continue;
+      blocks.push({ sym, ...ob,
+        riskPips: ob.risk / pip,
+        riskUsd: ob.risk * UNITS * (/JPY$/.test(sym) ? 1 / usdjpy : 1) });
+    }
 
     // ONE definition of a setup, shared with the backtest.
     //
@@ -261,6 +276,41 @@ for (const sym of PAIRS) {
 console.log(`\nSCAN v2 — ${cst(new Date().toISOString())} CST   ${PAIRS.length} pairs`);
 if (nav) console.log(`account NAV $${nav.toFixed(2)}   size ${UNITS} units (0.01 lot) flat   READ-ONLY`);
 console.log('='.repeat(78));
+
+// ---- ORDER BLOCKS ----------------------------------------------------------
+// A block has two lifecycle moments and they are different notifications: the
+// CHoCH, when the block becomes known and a limit can go in, and the fill days
+// or weeks later. Only the first is reported here — the fill shows up as a
+// position, which the daily review already covers.
+if (blocks.length) {
+  const fresh = blocks.filter(b => seen[`OB:${b.sym}:${b.blockTime}`] === undefined);
+  console.log(`\nORDER BLOCKS   (${blocks.length} live, ${fresh.length} new)\n`);
+  for (const b of blocks.sort((x, y) => Math.abs(x.distanceR) - Math.abs(y.distanceR))) {
+    const D = dp(b.sym), isNew = seen[`OB:${b.sym}:${b.blockTime}`] === undefined;
+    console.log(`  ${b.sym}  ${b.dir > 0 ? 'LONG' : 'SHORT'}${isNew ? '   ** NEW **' : ''}` +
+      `   ${b.closedThrough ? 'closed through' : 'wicked through'}`);
+    console.log(`     block ${b.blockTime.slice(0, 10)}   zone ${b.zoneLow.toFixed(D)}-${b.zoneHigh.toFixed(D)}` +
+      `   CHoCH ${b.chochTime.slice(0, 10)} took out ${b.swing.toFixed(D)}`);
+    console.log(`     LIMIT ${b.entry.toFixed(D)}   stop ${b.stop.toFixed(D)}` +
+      `   (${b.riskPips.toFixed(0)}p = 1R, $${b.riskUsd.toFixed(2)} at 0.01 lot)`);
+    console.log(`     price is ${Math.abs(b.distanceR).toFixed(2)}R ${b.distance > 0 ? 'above' : 'below'} the limit` +
+      `   ·  ${b.barsSinceChoch}d since the CHoCH`);
+    const news = eventsFor(cal, b.sym, new Date(), { hoursAhead: 72 })
+      .map(e => `${e.date.slice(5, 16)} ${e.country} ${e.title}`);
+    if (news.length) console.log(`     ⚠ news 72h: ${news.join(' | ')}`);
+    console.log('');
+  }
+  for (const b of blocks) nowSeen[`OB:${b.sym}:${b.blockTime}`] = b.chochTime;
+  if (fresh.length) {
+    const lines = fresh.map(b => {
+      const D = dp(b.sym);
+      return `${b.sym} ${b.dir > 0 ? 'LONG' : 'SHORT'} · order block\n` +
+        `  limit ${b.entry.toFixed(D)}  stop ${b.stop.toFixed(D)}\n` +
+        `  ${b.riskPips.toFixed(0)}p = 1R ($${b.riskUsd.toFixed(2)})  ·  ${b.closedThrough ? 'closed' : 'wicked'} through`;
+    });
+    pushover(`${fresh.length} order block${fresh.length > 1 ? 's' : ''}`, lines.join('\n\n'));
+  }
+}
 
 // Levels that were code red, then resolved without qualifying for anything.
 if (lapsed.length) {
