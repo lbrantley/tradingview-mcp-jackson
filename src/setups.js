@@ -72,7 +72,20 @@ export const DEFAULTS = {
   //   rank order changes by window, so 1.5 is the middle rather than the peak.
   //   REV genuinely prefers 2.5: better in three of four windows and ~18% more
   //   trades than 2.0.
-  wallRoom: 1.5,            // ATR of clear space above which a break is not a WALL
+  //
+  // 2026-09-02: wallRoom back to 2.0 after this cost a live trade. It was set
+  // to 1.5 to maximise MEAN R, which is the wrong quantity — you can raise an
+  // average by discarding weaker-but-profitable trades. The 1.50-2.00 band
+  // makes +1.01R and is positive in all four windows (0.84 / 0.73 / 1.21 /
+  // 1.33, n=260). Cutting it lifted the average 11% and destroyed 21% of total
+  // return:
+  //     1.5 -> 716 trades, mean 1.72R, total 1,230R
+  //     2.0 -> 976 trades, mean 1.53R, total 1,492R
+  // The real cliff is at 2.0, where the next band falls to 0.318R / 23% win and
+  // goes negative in two windows. Found because CHFJPY broke at room 1.57 on
+  // 09-02, the user traded it off an older code-red alert and made money, and
+  // the system had by then decided it was not a trade at all.
+  wallRoom: 2.0,            // ATR of clear space above which a break is not a WALL
   revRoom: 2.5,             // ATR of clear space above which a rejection is not a REV
   fieldRoom: 8,             // ATR — over this is open field
   backupMin: 2, backupMax: 6,
@@ -157,7 +170,14 @@ export function findSetups(bars, daily, opts = {}) {
       if (!(bars[i].low <= z.high && bars[i].high >= z.low)) continue;
       const key = z.kind + ':' + z.price.toFixed(6);
       if (i - (lastAt.get(key) ?? -1e9) < o.cooldown) continue;
-      lastAt.set(key, i);
+      // NOTE: lastAt is set where the setup is EMITTED, not here. Keying the
+      // cooldown off a touch meant a level being ground against burned its
+      // cooldown on bars that produced nothing, and then muted the break when
+      // it finally came. CHFJPY 197.444 on 2026-09-02 was lost exactly this
+      // way: three consecutive touches, the first fired nothing but set the
+      // clock, the third was a clean close through at 196.879 and was blocked
+      // with one bar to go. The intent was always "cannot RE-FIRE within N
+      // bars", which only makes sense measured from an actual fire.
       const test = (testNo.get(key) ?? 0) + 1;
       testNo.set(key, test);
 
@@ -219,6 +239,7 @@ export function findSetups(bars, daily, opts = {}) {
       // about to run you over — it measured mixed there, not negative.
       if (retest === false && volTrend > o.volTrendMaxRev) continue;
 
+      lastAt.set(key, i);
       out.push({
         i, time: bars[i].time, kind, dir, zone: z,
         retest, context: kind !== 'REV' ? null : (retest ? 'CONTINUATION' : 'REVERSAL'),
