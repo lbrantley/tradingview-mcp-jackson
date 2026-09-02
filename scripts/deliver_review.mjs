@@ -344,7 +344,11 @@ async function main() {
     // have unstaged changes"). These are tracked files that legitimately
     // move as part of every review pass — bundling them into the review
     // commit is the correct behavior anyway.
-    for (const f of ['brief_data.json', 'observations.jsonl', 'market_context.json']) {
+    // pushes.jsonl is the verbatim record of every notification sent. It is
+    // tracked rather than ignored precisely so it leaves the VM — Pushover
+    // keeps no history the user can pull, and without this the only copy of
+    // an alert is whatever is still on their phone screen.
+    for (const f of ['brief_data.json', 'observations.jsonl', 'market_context.json', 'pushes.jsonl']) {
       if (existsSync(join(REPO, f))) run(`git add ${f}`);
     }
     const status = run(`git diff --cached --name-only`);

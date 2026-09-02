@@ -1,0 +1,5 @@
+# Append-only logs. Both the VM and a local session write to these, and a
+# union merge keeps every line from both sides instead of raising a conflict
+# on a file where nobody ever edits an existing row.
+pushes.jsonl merge=union
+observations.jsonl merge=union

@@ -23,7 +23,7 @@
  * Read-only. Prints alerts; places nothing.
  */
 import { getCandles, getPricing, getSummary, LIVE_ACCOUNT_ID, ACCOUNT_ID } from '../src/oanda.js';
-import { sma, rsi } from '../src/indicators.js';
+import { sma, rsi, atr } from '../src/indicators.js';
 import { findSetups, findWatching, DEFAULTS } from '../src/setups.js';
 import { getCalendar, eventsFor } from '../src/news.js';
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
@@ -48,6 +48,10 @@ const STATE = join(REPO, '.scan_v2_state.json');
 // dropped regardless of age.
 const CATCHUP = parseInt(process.env.CATCHUP || '3', 10);
 const LOG = join(REPO, 'alerts_v2.jsonl');
+// Verbatim record of every notification, so what the phone showed is always
+// recoverable. Setups go to alerts_v2.jsonl; this catches watch and code-red
+// messages too, which nothing else records.
+const PUSHLOG = join(REPO, 'pushes.jsonl');
 
 const args = process.argv.slice(2);
 const argOf = f => { const i = args.indexOf(f); return i >= 0 ? args[i + 1] : null; };
@@ -64,6 +68,19 @@ const NOTIFY = args.includes('--notify');
  * run idempotent, so a repeated setup is silent.
  */
 function pushover(title, message) {
+  // EVERY push is written to disk before it is sent, whether or not sending is
+  // even enabled. Pushover keeps no history the user can pull, and until now
+  // the watch and code-red messages -- the ones that actually drive trades --
+  // were logged nowhere at all. On 2026-09-02 reconstructing a single alert
+  // from 8/31 took twenty minutes of archaeology through git history, because
+  // the only copy of it was on the user's phone screen.
+  try {
+    appendFileSync(PUSHLOG, JSON.stringify({
+      at: new Date().toISOString(), title, message,
+      sent: !!(NOTIFY && process.env.PUSHOVER_ENABLED === '1' && process.env.PUSHOVER_TOKEN),
+    }) + '\n');
+  } catch (e) { console.log(`  push log failed: ${e.message}`); }
+
   if (!NOTIFY || process.env.PUSHOVER_ENABLED !== '1' || !process.env.PUSHOVER_TOKEN) return;
   const body = new URLSearchParams({
     token: process.env.PUSHOVER_TOKEN, user: process.env.PUSHOVER_USER,
@@ -139,6 +156,7 @@ const seen = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : {};
 const nowSeen = {};
 const hits = [];
 const watch = [];
+const lapsed = [];
 
 for (const sym of PAIRS) {
   try {
@@ -152,6 +170,7 @@ for (const sym of PAIRS) {
     if (b.length < 1000 || d.length < 200) continue;
     const last = b.length - 1;
     const dRsi = rsi(d.map(x => x.close), 14);
+    const aH4 = atr(b, 14);
     const dS50 = sma(d.map(x => x.close), 50);
     const s50 = sma(b.map(x => x.close), 50);
     const pip = pipOf(sym);
@@ -211,12 +230,46 @@ for (const sym of PAIRS) {
         time: s.time,
       });
     }
+    // A level that was CODE RED carried a plan: "through -> WALL short",
+    // "rejects -> REV long". When price resolves it and NO branch qualifies,
+    // that plan silently stops being true and nothing is said.
+    //
+    // CHFJPY 197.444 did exactly this. It was code red on 08-31 promising a
+    // WALL short. wallRoom was retuned from 2 to 1.5 that afternoon, so when
+    // the break came on 09-02 at 196.879 the room measured 1.57 -- above 1.5,
+    // below fieldRoom 8 -- and fell into the dead space between branches. The
+    // user took the trade on the original promise and was never told it had
+    // been withdrawn.
+    for (const [k, prev] of Object.entries(seen)) {
+      if (!k.startsWith(`W:${sym}:`) || nowSeen[k] !== undefined) continue;
+      if (prev !== 'CODE RED') continue;              // only levels that were live
+      const lvl = parseFloat(k.split(':')[2]);
+      if (!Number.isFinite(lvl)) continue;
+      if (hits.some(h => h.sym === sym && Math.abs(h.level - lvl) < 1e-5)) continue;
+      const was = b[last - 3]?.close, now = b[last].close;
+      if (was == null) continue;
+      const through = (was > lvl && now < lvl) || (was < lvl && now > lvl);
+      // Half an ATR clear of the level. Price sitting a pip the other side has
+      // not resolved anything -- it is still the same fight.
+      if (!through || Math.abs(now - lvl) < aH4[last] * 0.5) continue;
+      lapsed.push({ sym, level: lvl, dir: now < lvl ? -1 : 1,
+        movedPips: Math.abs(now - lvl) / pip });
+    }
   } catch (e) { if (SHOW_ALL) console.log(`  ${sym}: ${e.message}`); }
 }
 
 console.log(`\nSCAN v2 — ${cst(new Date().toISOString())} CST   ${PAIRS.length} pairs`);
 if (nav) console.log(`account NAV $${nav.toFixed(2)}   size ${UNITS} units (0.01 lot) flat   READ-ONLY`);
 console.log('='.repeat(78));
+
+// Levels that were code red, then resolved without qualifying for anything.
+if (lapsed.length) {
+  console.log(`\nBROKE, NO TRADE   (${lapsed.length})\n`);
+  for (const l of lapsed)
+    console.log(`  ${l.sym}  closed ${l.dir > 0 ? 'above' : 'below'} ${l.level.toFixed(dp(l.sym))}` +
+      `  (${l.movedPips.toFixed(0)}p past it) — no branch qualified, the watch plan is void`);
+  console.log('');
+}
 
 const order = ['WALL', 'FIELD', 'REV'];
 const fresh = hits.filter(h => h.isNew);
@@ -303,6 +356,17 @@ if (crNew.length) {
   });
   pushover(`${crNew.length} level${crNew.length > 1 ? 's' : ''} at code red`, lines.join('\n\n'));
 }
+// A code-red level carries a plan. When it resolves and no branch qualifies,
+// that plan is withdrawn — and being told is the whole point, because the last
+// thing sent about that level was an instruction to act on it.
+if (lapsed.length) {
+  const lines = lapsed.map(l =>
+    `${l.sym} closed ${l.dir > 0 ? 'above' : 'below'} ${l.level.toFixed(dp(l.sym))}\n` +
+    `  ${l.movedPips.toFixed(0)}p past it — no branch qualified\n` +
+    `  the earlier watch plan on this level is void`);
+  pushover(`${lapsed.length} watch${lapsed.length > 1 ? 'es' : ''} lapsed`, lines.join('\n\n'));
+}
+
 // Written LAST, so it captures both setup and watch keys. Writing it earlier
 // meant every code-red level looked new on every scan.
 writeFileSync(STATE, JSON.stringify(nowSeen, null, 1));
