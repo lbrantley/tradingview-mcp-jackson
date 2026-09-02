@@ -34,6 +34,19 @@ import 'dotenv/config';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STATE = join(REPO, '.scan_v2_state.json');
+// How many H4 bars back to still report a setup that was never sent.
+//
+// The scanner runs hourly, so each H4 bar gets four chances to be seen; losing
+// a bar takes four consecutive failures. Three bars covers twelve straight
+// missed runs, which is a generous outage, while capping how stale an alert
+// can be at twelve hours — past that the entry the setup was built on is too
+// far from current price to act on.
+//
+// In steady state this changes nothing: the state file dedupes on key+time, so
+// a setup already sent is never re-sent, and the window only ever surfaces
+// something genuinely missed. Setups that already hit stop or target are
+// dropped regardless of age.
+const CATCHUP = parseInt(process.env.CATCHUP || '3', 10);
 const LOG = join(REPO, 'alerts_v2.jsonl');
 
 const args = process.argv.slice(2);
@@ -149,14 +162,40 @@ for (const sym of PAIRS) {
     const live = px[sym]?.mid ?? b[last].close;
     for (const w of findWatching(b, d, live)) watch.push({ sym, ...w });
 
-    // ONE definition of a setup, shared with the backtest. A live scan is
-    // simply the setups sitting on the most recent closed bar.
-    for (const s of findSetups(b, d).filter(x => x.i === last)) {
+    // ONE definition of a setup, shared with the backtest.
+    //
+    // CATCH-UP WINDOW. This used to be `x.i === last`, which made a setup
+    // visible for exactly one H4 bar. Any run the scanner missed — VM reboot,
+    // network blip, a task that did not fire — dropped that bar's signals for
+    // good, with no trace. CHFJPY 2026-08-30 21:00 (REVERSAL SHORT, 198.503)
+    // was lost exactly this way: the watch tier flagged the level, then the
+    // setup never arrived, and the user was left eyeballing a target.
+    //
+    // So look back CATCHUP bars. The state file already dedupes on key+time,
+    // so nothing already sent is re-sent.
+    for (const s of findSetups(b, d).filter(x => x.i > last - CATCHUP)) {
+      // ...but do not raise a setup that has already played out. Walk the bars
+      // since it fired: if price reached the stop or the target, it is history,
+      // not a trade to take.
+      let done = null;
+      for (let j = s.i + 1; j <= last; j++) {
+        const hitStop = s.dir > 0 ? b[j].low <= s.stop : b[j].high >= s.stop;
+        const hitTgt = s.dir > 0 ? b[j].high >= s.target : b[j].low <= s.target;
+        if (hitStop) { done = 'stopped'; break; }
+        if (hitTgt) { done = 'target'; break; }
+      }
+      if (done) continue;
+      // A level that keeps qualifying fires on several consecutive bars. Inside
+      // the catch-up window that is ONE signal seen repeatedly, not several —
+      // so keep the earliest, which is when it actually triggered.
+      const dupKey = `${sym}:${s.kind}:${s.dir}:${s.level.toFixed(5)}`;
+      if (hits.some(h => h.key === dupKey)) continue;
       const riskUsd = s.risk * UNITS * (/JPY$/.test(sym) ? 1 / usdjpy : 1);
       const key = `${sym}:${s.kind}:${s.dir}:${s.level.toFixed(5)}`;
       nowSeen[key] = s.time;
       hits.push({
         sym, kind: s.kind, dir: s.dir, key, isNew: seen[key] !== s.time,
+        barsAgo: last - s.i,
         level: s.level, band: s.band, touches: s.touches,
         confirmedTime: s.confirmedTime, formedTime: s.formedTime, ageBars: s.ageBars,
         testNo: s.testNo, speed: s.speed,
@@ -189,7 +228,8 @@ for (const k of order) {
   for (const h of g) {
     const D = dp(h.sym);
     console.log(`  ${h.sym}  ${h.dir > 0 ? 'LONG' : 'SHORT'}` +
-      `${h.kind === 'REV' ? `   ${ctxLabel(h)}` : ''}${h.isNew ? '   ** NEW **' : ''}`);
+      `${h.kind === 'REV' ? `   ${ctxLabel(h)}` : ''}${h.isNew ? '   ** NEW **' : ''}` +
+      `${h.barsAgo ? `   ⏳ fired ${h.barsAgo} bar${h.barsAgo > 1 ? 's' : ''} ago (${h.barsAgo * 4}h) — still live` : ''}`);
     console.log(`     level ${h.level.toFixed(D)}  band ${h.band[0].toFixed(D)}-${h.band[1].toFixed(D)}  ` +
       `${h.touches} swings   formed ${h.formedTime ? h.formedTime.slice(0, 10) : '?'}` +
       `${h.ageBars ? ` (${(h.ageBars * 4 / 24).toFixed(0)}d old)` : ''}` +
@@ -245,7 +285,8 @@ if (fresh.length) {
   console.log(`${fresh.length} new setup(s) logged to alerts_v2.jsonl`);
   const lines = fresh.map(h => {
     const D = dp(h.sym);
-    return `${h.sym} ${h.dir > 0 ? 'LONG' : 'SHORT'} · ${ctxLabel(h)}\n` +
+    return `${h.sym} ${h.dir > 0 ? 'LONG' : 'SHORT'} · ${ctxLabel(h)}` +
+      `${h.barsAgo ? ` (fired ${h.barsAgo * 4}h ago, still live)` : ''}\n` +
       `  in ${h.px.toFixed(D)}  sl ${h.stop.toFixed(D)}  tp ${h.target.toFixed(D)}\n` +
       `  ${h.riskPips.toFixed(0)}p = $${h.riskUsd.toFixed(2)} at 0.01 lot · room ${h.room.toFixed(1)} ATR` +
       (h.news.length ? `\n  ⚠ news: ${h.news[0]}` : '');
