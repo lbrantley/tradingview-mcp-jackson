@@ -1,94 +1,9 @@
 {
-  "generatedAt": "2026-09-02T11:03:33.760Z",
+  "generatedAt": "2026-09-03T11:03:33.206Z",
   "horizonHours": 72,
   "sourceCacheAt": "2026-08-31T11:10:43.076Z",
-  "count": 14,
+  "count": 9,
   "events": [
-    {
-      "date": "2026-09-02T08:15:00-04:00",
-      "currency": "USD",
-      "impact": "Medium",
-      "title": "ADP Non-Farm Employment Change",
-      "forecast": "47K",
-      "previous": "44K",
-      "affectedPairs": [
-        "GBPUSD",
-        "EURUSD",
-        "USDJPY",
-        "USDCAD",
-        "USDCHF",
-        "AUDUSD",
-        "NZDUSD"
-      ]
-    },
-    {
-      "date": "2026-09-02T09:45:00-04:00",
-      "currency": "CAD",
-      "impact": "High",
-      "title": "BOC Rate Statement",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "USDCAD",
-        "GBPCAD",
-        "EURCAD",
-        "AUDCAD",
-        "NZDCAD",
-        "CADCHF",
-        "CADJPY"
-      ]
-    },
-    {
-      "date": "2026-09-02T09:45:00-04:00",
-      "currency": "CAD",
-      "impact": "High",
-      "title": "Overnight Rate",
-      "forecast": "2.25%",
-      "previous": "2.25%",
-      "affectedPairs": [
-        "USDCAD",
-        "GBPCAD",
-        "EURCAD",
-        "AUDCAD",
-        "NZDCAD",
-        "CADCHF",
-        "CADJPY"
-      ]
-    },
-    {
-      "date": "2026-09-02T10:30:00-04:00",
-      "currency": "CAD",
-      "impact": "High",
-      "title": "BOC Press Conference",
-      "forecast": "—",
-      "previous": "—",
-      "affectedPairs": [
-        "USDCAD",
-        "GBPCAD",
-        "EURCAD",
-        "AUDCAD",
-        "NZDCAD",
-        "CADCHF",
-        "CADJPY"
-      ]
-    },
-    {
-      "date": "2026-09-03T02:30:00-04:00",
-      "currency": "CHF",
-      "impact": "Medium",
-      "title": "CPI m/m",
-      "forecast": "0.0%",
-      "previous": "-0.1%",
-      "affectedPairs": [
-        "USDCHF",
-        "GBPCHF",
-        "EURCHF",
-        "AUDCHF",
-        "NZDCHF",
-        "CADCHF",
-        "CHFJPY"
-      ]
-    },
     {
       "date": "2026-09-03T08:30:00-04:00",
       "currency": "USD",
