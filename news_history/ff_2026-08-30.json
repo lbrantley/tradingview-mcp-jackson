@@ -680,17 +680,9 @@
   "previous": "52.8"
  },
  {
-  "title": "PPI m/m",
-  "country": "EUR",
-  "date": "2026-09-03T05:00:00-04:00",
-  "impact": "Low",
-  "forecast": "1.2%",
-  "previous": "-0.3%"
- },
- {
   "title": "Spanish 10-y Bond Auction",
   "country": "EUR",
-  "date": "2026-09-03T05:03:00-04:00",
+  "date": "2026-09-03T04:43:00-04:00",
   "impact": "Low",
   "forecast": "",
   "previous": "3.54|2.4"
@@ -698,10 +690,18 @@
  {
   "title": "French 10-y Bond Auction",
   "country": "EUR",
-  "date": "2026-09-03T05:18:00-04:00",
+  "date": "2026-09-03T04:57:00-04:00",
   "impact": "Low",
   "forecast": "",
   "previous": "3.86|3.7"
+ },
+ {
+  "title": "PPI m/m",
+  "country": "EUR",
+  "date": "2026-09-03T05:00:00-04:00",
+  "impact": "Low",
+  "forecast": "1.2%",
+  "previous": "-0.3%"
  },
  {
   "title": "Challenger Job Cuts y/y",
@@ -792,6 +792,14 @@
   "previous": "15B"
  },
  {
+  "title": "MPC Member Pill Speaks",
+  "country": "GBP",
+  "date": "2026-09-03T11:00:00-04:00",
+  "impact": "Low",
+  "forecast": "",
+  "previous": ""
+ },
+ {
   "title": "FOMC Member Hammack Speaks",
   "country": "USD",
   "date": "2026-09-03T15:00:00-04:00",
@@ -802,7 +810,7 @@
  {
   "title": "FOMC Member Goolsbee Speaks",
   "country": "USD",
-  "date": "2026-09-03T15:05:00-04:00",
+  "date": "2026-09-03T15:55:00-04:00",
   "impact": "Low",
   "forecast": "",
   "previous": ""
