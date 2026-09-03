@@ -22,7 +22,7 @@
  *
  * Read-only. Prints alerts; places nothing.
  */
-import { getCandles, getPricing, getSummary, LIVE_ACCOUNT_ID, ACCOUNT_ID } from '../src/oanda.js';
+import { getCandles, getPricing, getSummary, getOpenTrades, LIVE_ACCOUNT_ID, ACCOUNT_ID } from '../src/oanda.js';
 import { sma, rsi, atr } from '../src/indicators.js';
 import { findSetups, findWatching, DEFAULTS } from '../src/setups.js';
 import { pendingBlocks } from '../src/orderblocks.js';
@@ -68,7 +68,7 @@ const NOTIFY = args.includes('--notify');
  * unreadable on a phone. Only NEW setups go out — the state file makes every
  * run idempotent, so a repeated setup is silent.
  */
-function pushover(title, message) {
+function pushover(title, message, priority = '0') {
   // EVERY push is written to disk before it is sent, whether or not sending is
   // even enabled. Pushover keeps no history the user can pull, and until now
   // the watch and code-red messages -- the ones that actually drive trades --
@@ -77,7 +77,7 @@ function pushover(title, message) {
   // the only copy of it was on the user's phone screen.
   try {
     appendFileSync(PUSHLOG, JSON.stringify({
-      at: new Date().toISOString(), title, message,
+      at: new Date().toISOString(), title, message, priority,
       sent: !!(NOTIFY && process.env.PUSHOVER_ENABLED === '1' && process.env.PUSHOVER_TOKEN),
     }) + '\n');
   } catch (e) { console.log(`  push log failed: ${e.message}`); }
@@ -85,7 +85,7 @@ function pushover(title, message) {
   if (!NOTIFY || process.env.PUSHOVER_ENABLED !== '1' || !process.env.PUSHOVER_TOKEN) return;
   const body = new URLSearchParams({
     token: process.env.PUSHOVER_TOKEN, user: process.env.PUSHOVER_USER,
-    title, message: message.slice(0, 1024), priority: '0',
+    title, message: message.slice(0, 1024), priority,
   }).toString();
   const req = https.request({
     hostname: 'api.pushover.net', path: '/1/messages.json', method: 'POST',
@@ -151,6 +151,23 @@ const dp = s => /JPY$/.test(s) ? 3 : 5;
 const pipOf = s => /JPY$/.test(s) ? 0.01 : 0.0001;
 
 const nav = await getSummary(LIVE_ACCOUNT_ID || ACCOUNT_ID).then(a => parseFloat(a.NAV)).catch(() => null);
+
+// WHAT THE USER IS ACTUALLY HOLDING.
+// Without this the scanner treats all 28 pairs identically — a reversal firing
+// against an open position reads exactly like one on a pair never traded, and
+// gets buried in a batch of 48. On 2026-09-03 a REVERSAL LONG fired at 192.501
+// against a live CHFJPY short and nothing said so. Dodging levels and news on
+// pairs already held is the user's stated edge; it was the one thing not wired.
+const held = new Map();
+try {
+  for (const t of await getOpenTrades(LIVE_ACCOUNT_ID || ACCOUNT_ID)) {
+    const sym = t.instrument.replace('_', '');
+    const units = parseFloat(t.currentUnits);
+    const cur = held.get(sym) || { units: 0, pl: 0, n: 0 };
+    held.set(sym, { units: cur.units + units, pl: cur.pl + parseFloat(t.unrealizedPL), n: cur.n + 1 });
+  }
+} catch (e) { console.log(`  could not read positions: ${e.message}`); }
+const dirOf = sym => { const h = held.get(sym); return h ? Math.sign(h.units) : 0; };
 const cal = await getCalendar().catch(() => []);
 const px = await getPricing(PAIRS).catch(() => ({}));
 const seen = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : {};
@@ -319,6 +336,49 @@ if (lapsed.length) {
     console.log(`  ${l.sym}  closed ${l.dir > 0 ? 'above' : 'below'} ${l.level.toFixed(dp(l.sym))}` +
       `  (${l.movedPips.toFixed(0)}p past it) — no branch qualified, the watch plan is void`);
   console.log('');
+}
+
+// ---- ON YOUR POSITIONS -----------------------------------------------------
+// First, loudest, and pushed on its own. Everything below is opportunity; this
+// is exposure. A signal pointing AGAINST an open position is the one thing that
+// must never be one line in a batch of forty-eight.
+if (held.size) {
+  const notes = [];
+  for (const [sym, h] of held) {
+    const pd = Math.sign(h.units), D = dp(sym);
+    const against = hits.filter(x => x.sym === sym && x.dir !== pd);
+    const withYou = hits.filter(x => x.sym === sym && x.dir === pd);
+    const near = watch.filter(w => w.sym === sym).sort((a, b) => a.distATR - b.distATR);
+    const news = eventsFor(cal, sym, new Date(), { hoursAhead: 48 })
+      .map(e => `${e.date.slice(5, 16)} ${e.country} ${e.title}`);
+    const lines = [];
+    for (const a of against)
+      lines.push(`AGAINST YOU · ${a.kind}${a.context ? ' ' + a.context : ''} ` +
+        `${a.dir > 0 ? 'LONG' : 'SHORT'} at ${a.level.toFixed(D)}`);
+    for (const w of near.slice(0, 2))
+      lines.push(`level ${w.level.toFixed(D)} ${w.distATR.toFixed(2)} ATR away` +
+        `${w.state === 'CODE RED' ? ' — CODE RED' : ''}` +
+        `${w.ifReject && w.ifReject.dir !== pd ? `, rejects → ${w.ifReject.context || w.ifReject.kind} against you` : ''}`);
+    for (const wn of withYou) lines.push(`with you · ${wn.kind} at ${wn.level.toFixed(D)}`);
+    for (const n of news) lines.push(`⚠ ${n}`);
+    if (lines.length) notes.push({ sym, h, pd, lines, urgent: against.length > 0 || news.length > 0 });
+  }
+  if (notes.length) {
+    console.log(`\nON YOUR POSITIONS   (${held.size} pair${held.size > 1 ? 's' : ''} held)\n`);
+    for (const n of notes) {
+      console.log(`  ${n.sym}  ${n.pd > 0 ? 'LONG' : 'SHORT'} ${n.h.units}  ` +
+        `P/L $${n.h.pl.toFixed(2)}${n.h.n > 1 ? `  (${n.h.n} tickets)` : ''}`);
+      for (const l of n.lines) console.log(`     ${l}`);
+      console.log('');
+    }
+    const urgent = notes.filter(n => n.urgent);
+    if (urgent.length) {
+      const msg = urgent.map(n =>
+        `${n.sym} ${n.pd > 0 ? 'LONG' : 'SHORT'}  $${n.h.pl.toFixed(2)}\n  ` +
+        n.lines.join('\n  ')).join('\n\n');
+      pushover(`${urgent.length} position${urgent.length > 1 ? 's' : ''} need a look`, msg, '1');
+    }
+  }
 }
 
 const order = ['WALL', 'FIELD', 'REV'];
