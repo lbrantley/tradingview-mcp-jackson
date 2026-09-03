@@ -101,3 +101,58 @@ export function pairSkew(snap, sym) {
     asOf: b.date,
   };
 }
+
+// ---------------------------------------------------------------------------
+/**
+ * Cached snapshot. The report is weekly, so an hourly scanner has no business
+ * refetching it — this reads a local cache and only goes to CFTC when the
+ * cache is older than `maxAgeHours`. Never throws: positioning is context, and
+ * a scan must not fail because a public API had a bad afternoon.
+ */
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+const CACHE = join(dirname(fileURLToPath(import.meta.url)), '..', '.cot_cache.json');
+
+export async function cachedSnapshot({ maxAgeHours = 12 } = {}) {
+  try {
+    if (existsSync(CACHE)) {
+      const c = JSON.parse(readFileSync(CACHE, 'utf8'));
+      if (Date.now() - c.fetchedAt < maxAgeHours * 3600e3) return c.snap;
+    }
+  } catch (e) { /* fall through and refetch */ }
+  try {
+    const snap = await cotSnapshot(156);
+    writeFileSync(CACHE, JSON.stringify({ fetchedAt: Date.now(), snap }));
+    return snap;
+  } catch (e) {
+    try { return JSON.parse(readFileSync(CACHE, 'utf8')).snap; } catch { return null; }
+  }
+}
+
+/**
+ * One line describing what positioning says about taking `dir` on `sym`.
+ * Silent (null) unless at least one leg is at an extreme — positioning has no
+ * opinion in the middle of its range, and saying so on every alert is noise.
+ */
+export function positioningNote(snap, sym, dir) {
+  if (!snap) return null;
+  const bc = sym.slice(0, 3), qc = sym.slice(3);
+  const b = snap[bc], q = snap[qc];
+  if (!b || !q || b.error || q.error) return null;
+  const ext = v => v.percentile >= 80 || v.percentile <= 20;
+  if (!ext(b) && !ext(q)) return null;
+
+  const parts = [];
+  // being LONG the pair means long base, short quote
+  for (const [ccy, v, wantLong] of [[bc, b, dir > 0], [qc, q, dir < 0]]) {
+    if (!ext(v)) continue;
+    const crowdedLong = v.percentile >= 80;
+    const joining = (crowdedLong && wantLong) || (!crowdedLong && !wantLong);
+    parts.push(`${ccy} ${v.percentile.toFixed(0)}th pct ` +
+      `${crowdedLong ? 'crowded long' : 'crowded short'} — ` +
+      `${joining ? 'you would be JOINING it' : 'you would be against it'}` +
+      `${Math.abs(v.netChange) > 2000 ? (v.netChange > 0 ? ', still building' : ', unwinding') : ''}`);
+  }
+  return parts.length ? parts.join('; ') : null;
+}

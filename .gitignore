@@ -38,3 +38,4 @@ alerts_v2.jsonl
 
 # Calendar archive — rebuildable from scripts/backfill_calendar.mjs, and large
 calendar_history/
+.cot_cache.json

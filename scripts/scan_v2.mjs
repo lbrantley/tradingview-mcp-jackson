@@ -26,6 +26,7 @@ import { getCandles, getPricing, getSummary, getOpenTrades, LIVE_ACCOUNT_ID, ACC
 import { sma, rsi, atr } from '../src/indicators.js';
 import { findSetups, findWatching, DEFAULTS } from '../src/setups.js';
 import { pendingBlocks } from '../src/orderblocks.js';
+import { cachedSnapshot, positioningNote } from '../src/cot.js';
 import { getCalendar, eventsFor } from '../src/news.js';
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import https from 'https';
@@ -168,6 +169,12 @@ try {
   }
 } catch (e) { console.log(`  could not read positions: ${e.message}`); }
 const dirOf = sym => { const h = held.get(sym); return h ? Math.sign(h.units) : 0; };
+
+// CFTC positioning. Weekly data, so cached for 12h -- an hourly scan has no
+// business refetching it. Silent unless a leg sits at an extreme, because
+// positioning genuinely has no opinion in the middle of its range and printing
+// that on every alert would be noise.
+const cot = await cachedSnapshot({ maxAgeHours: 12 });
 const cal = await getCalendar().catch(() => []);
 const px = await getPricing(PAIRS).catch(() => ({}));
 const seen = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : {};
@@ -312,6 +319,8 @@ if (blocks.length) {
       `   (${b.riskPips.toFixed(0)}p = 1R, $${b.riskUsd.toFixed(2)} at 0.01 lot)`);
     console.log(`     price is ${Math.abs(b.distanceR).toFixed(2)}R ${b.distance > 0 ? 'above' : 'below'} the limit` +
       `   ·  ${b.barsSinceChoch}d since the CHoCH`);
+    const pos = positioningNote(cot, b.sym, b.dir);
+    if (pos) console.log(`     ⚖ positioning: ${pos}`);
     const news = eventsFor(cal, b.sym, new Date(), { hoursAhead: 72 })
       .map(e => `${e.date.slice(5, 16)} ${e.country} ${e.title}`);
     if (news.length) console.log(`     ⚠ news 72h: ${news.join(' | ')}`);
@@ -360,6 +369,8 @@ if (held.size) {
         `${w.state === 'CODE RED' ? ' — CODE RED' : ''}` +
         `${w.ifReject && w.ifReject.dir !== pd ? `, rejects → ${w.ifReject.context || w.ifReject.kind} against you` : ''}`);
     for (const wn of withYou) lines.push(`with you · ${wn.kind} at ${wn.level.toFixed(D)}`);
+    const pnote = positioningNote(cot, sym, pd);
+    if (pnote) lines.push(`⚖ positioning: ${pnote}`);
     for (const n of news) lines.push(`⚠ ${n}`);
     if (lines.length) notes.push({ sym, h, pd, lines, urgent: against.length > 0 || news.length > 0 });
   }
