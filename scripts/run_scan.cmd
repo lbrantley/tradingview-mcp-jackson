@@ -17,4 +17,20 @@ if not exist logs mkdir logs
 for /f "tokens=1-3 delims=/- " %%a in ("%date%") do set TODAY=%%c-%%a-%%b
 
 echo ===== %date% %time% ===== >> "logs\scan_%TODAY%.log"
+
+REM 2026-09-03: PULL FIRST. This step did not exist, so the VM ran whatever code
+REM was last copied here by hand. Order block alerts and position-aware alerts
+REM were both committed and neither ever reached the phone -- the repo had them,
+REM this machine did not. Shipping is not deploying.
+REM
+REM --autostash because the scanner writes tracked runtime files (pushes.jsonl)
+REM and an unstashed change makes rebase refuse. A failed pull is logged and the
+REM scan still runs on the old code: a stale scan beats no scan.
+git pull --rebase --autostash >> "logs\scan_%TODAY%.log" 2>&1
+if errorlevel 1 (
+  echo !! GIT PULL FAILED - scanning on possibly stale code >> "logs\scan_%TODAY%.log"
+) else (
+  for /f %%h in ('git rev-parse --short HEAD') do echo running @ %%h >> "logs\scan_%TODAY%.log"
+)
+
 node scripts\scan_v2.mjs --notify >> "logs\scan_%TODAY%.log" 2>&1

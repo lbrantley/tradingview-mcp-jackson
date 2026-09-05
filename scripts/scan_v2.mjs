@@ -30,6 +30,7 @@ import { cachedSnapshot, positioningNote } from '../src/cot.js';
 import { getCalendar, eventsFor } from '../src/news.js';
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import https from 'https';
+import { execSync } from 'child_process';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
@@ -297,7 +298,15 @@ for (const sym of PAIRS) {
   } catch (e) { if (SHOW_ALL) console.log(`  ${sym}: ${e.message}`); }
 }
 
-console.log(`\nSCAN v2 — ${cst(new Date().toISOString())} CST   ${PAIRS.length} pairs`);
+// Which code is actually running. The VM had no git pull for days, so alerts
+// that existed in the repo never reached the phone and nothing said so.
+let rev = 'unknown';
+try {
+  rev = execSync('git rev-parse --short HEAD', { cwd: REPO, encoding: 'utf8' }).trim();
+  const age = execSync('git log -1 --format=%cr', { cwd: REPO, encoding: 'utf8' }).trim();
+  rev = `${rev}, ${age}`;
+} catch (e) { /* not a checkout, or git missing */ }
+console.log(`\nSCAN v2 — ${cst(new Date().toISOString())} CST   ${PAIRS.length} pairs   code ${rev}`);
 if (nav) console.log(`account NAV $${nav.toFixed(2)}   size ${UNITS} units (0.01 lot) flat   READ-ONLY`);
 console.log('='.repeat(78));
 
