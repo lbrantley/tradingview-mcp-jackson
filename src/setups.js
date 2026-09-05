@@ -356,6 +356,19 @@ export function findWatching(bars, daily, live, opts = {}) {
       // Would this leg survive the volume gate if it fired now?
       const volOk = kind === 'REV' ? (retest === true || volTrend <= o.volTrendMaxRev)
                                    : volTrend >= o.volTrendMinBreak;
+      // The projected target must lie BEYOND the entry in the trade's direction.
+      // findSetups guards this and findWatching did not, so the watch tier was
+      // publishing shorts whose target sat ABOVE the entry -- GBPAUD FIELD SHORT
+      // on 2026-09-05 had stop 1.88162 and target 1.88866, unreachable by
+      // construction. The measured-move anchor is known broken
+      // (project-target-logic-open); until it is rebuilt, at least do not show
+      // a leg that points the wrong way.
+      // Checked against the LEVEL, not live price: on a watch the entry happens
+      // when price reaches the level, so that is the reference the target must
+      // sit beyond. Guarding against `live` let one case through.
+      const projected = dir > 0 ? leg.to + leg.size * o.fibExt : leg.to - leg.size * o.fibExt;
+      if (dir > 0 ? projected <= Math.max(z.price, live) : projected >= Math.min(z.price, live)) continue;
+
       legs[tag] = { kind, dir, stop, retest, volOk,
         grade: retest === true ? gradeOf(dRsiW[daily.length - 1], dir, o) : null,
         context: kind !== 'REV' ? null : (retest ? 'CONTINUATION' : 'REVERSAL'),
