@@ -63,6 +63,12 @@ const PAIRS = (argOf('--pairs') || ALL.join(',')).split(',').map(s => s.trim());
 const UNITS = parseInt(argOf('--units') || '1000', 10);      // 0.01 lot
 const SHOW_ALL = args.includes('--all');
 const NOTIFY = args.includes('--notify');
+// Whether a push can actually LEAVE this machine. The state file records what
+// the user has been TOLD, so it must only advance when telling them is possible.
+// Before this, an inspection run marked setups as seen and they could never
+// alert again -- which is exactly how seven order blocks were silently burned
+// on 2026-09-05.
+const WILL_DELIVER = NOTIFY && process.env.PUSHOVER_ENABLED === '1' && !!process.env.PUSHOVER_TOKEN;
 
 /**
  * One batched push per scan, not one per setup. With 28 pairs this can produce
@@ -70,6 +76,24 @@ const NOTIFY = args.includes('--notify');
  * unreadable on a phone. Only NEW setups go out — the state file makes every
  * run idempotent, so a repeated setup is silent.
  */
+/**
+ * Pushover truncates at 1024 characters and says nothing about it — a 33-setup
+ * alert on 2026-09-05 was 4,691 chars, so three quarters of it silently never
+ * arrived. Pack the best items until the budget is spent and say what was left
+ * behind, rather than letting the tail vanish.
+ */
+function packed(items, budget = 950) {
+  const out = [];
+  let used = 0;
+  for (const it of items) {
+    if (used + it.length + 2 > budget) break;
+    out.push(it); used += it.length + 2;
+  }
+  const rest = items.length - out.length;
+  if (rest) out.push(`+${rest} more — see the log`);
+  return out.join('\n\n');
+}
+
 function pushover(title, message, priority = '0') {
   // EVERY push is written to disk before it is sent, whether or not sending is
   // even enabled. Pushover keeps no history the user can pull, and until now
@@ -80,11 +104,11 @@ function pushover(title, message, priority = '0') {
   try {
     appendFileSync(PUSHLOG, JSON.stringify({
       at: new Date().toISOString(), title, message, priority,
-      sent: !!(NOTIFY && process.env.PUSHOVER_ENABLED === '1' && process.env.PUSHOVER_TOKEN),
+      sent: WILL_DELIVER,
     }) + '\n');
   } catch (e) { console.log(`  push log failed: ${e.message}`); }
 
-  if (!NOTIFY || process.env.PUSHOVER_ENABLED !== '1' || !process.env.PUSHOVER_TOKEN) return;
+  if (!WILL_DELIVER) return;
   const body = new URLSearchParams({
     token: process.env.PUSHOVER_TOKEN, user: process.env.PUSHOVER_USER,
     title, message: message.slice(0, 1024), priority,
@@ -180,7 +204,7 @@ const cal = await getCalendar().catch(() => []);
 const px = await getPricing(PAIRS).catch(() => ({}));
 const seen = existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : {};
 const nowSeen = {};
-const hits = [];
+let hits = [];
 const watch = [];
 const lapsed = [];
 const blocks = [];
@@ -263,6 +287,7 @@ for (const sym of PAIRS) {
         legPips: s.leg.size / pip, legFrom: s.leg.fromAt, legTo: s.leg.toAt,
         aheadLevels: s.aheadForTrade, behindLevels: s.behindForTrade,
         vs50: (s.px - s50[last]) / s.atr,
+        atr: s.atr,
         dailyRsi: dRsi[d.length - 1],
         dailyTrend: d[d.length - 1].close > dS50[d.length - 1] ? 'up' : 'down',
         news: eventsFor(cal, sym, new Date(), { hoursAhead: 48 })
@@ -343,7 +368,7 @@ if (blocks.length) {
         `  limit ${b.entry.toFixed(D)}  stop ${b.stop.toFixed(D)}\n` +
         `  ${b.riskPips.toFixed(0)}p = 1R ($${b.riskUsd.toFixed(2)})  ·  ${b.closedThrough ? 'closed' : 'wicked'} through`;
     });
-    pushover(`${fresh.length} order block${fresh.length > 1 ? 's' : ''}`, lines.join('\n\n'));
+    pushover(`${fresh.length} order block${fresh.length > 1 ? 's' : ''}`, packed(lines));
   }
 }
 
@@ -402,7 +427,40 @@ if (held.size) {
 }
 
 const order = ['WALL', 'FIELD', 'REV'];
-const fresh = hits.filter(h => h.isNew);
+// ---- THIN THE BOARD ---------------------------------------------------------
+// A scan on 2026-09-05 emitted 31 reversals, in which USDCAD SHORT appeared
+// three times at levels 14 and 15 pips apart, NZDCHF appeared three times
+// INCLUDING both directions, and GBPJPY carried a 0.1R target. That is one
+// trade printed three ways plus noise, and it is unreadable on a phone. Three
+// rules, cheapest first.
+const MIN_RR = 1.0;
+const thinned = [], dropped = { thin: 0, dupe: 0, clash: 0 };
+
+// 1. a target closer than the stop is not a trade
+for (const h of hits) { if (h.rr >= MIN_RR) thinned.push(h); else dropped.thin++; }
+
+// 2. same pair, same direction, levels within an ATR -> ONE trade. Keep the
+//    best-evidenced level, since touches are what the zone engine is built on.
+const merged = [];
+for (const h of thinned.sort((a, b) => b.touches - a.touches)) {
+  const dup = merged.find(m => m.sym === h.sym && m.dir === h.dir &&
+    Math.abs(m.level - h.level) <= (h.atr || Infinity));
+  if (dup) { (dup.alsoAt = dup.alsoAt || []).push(h.level); dropped.dupe++; continue; }
+  merged.push(h);
+}
+
+// 3. a pair firing BOTH ways says nothing. Flag it, keep it off the push.
+const bothWays = new Set(merged.filter(h =>
+  merged.some(o => o.sym === h.sym && o.dir !== h.dir)).map(h => h.sym));
+for (const sym of bothWays) dropped.clash += merged.filter(h => h.sym === sym).length;
+hits = merged;
+
+if (dropped.thin || dropped.dupe || dropped.clash)
+  console.log(`\nthinned: ${dropped.thin} under ${MIN_RR}R · ${dropped.dupe} duplicate levels · ` +
+    `${dropped.clash} on ${bothWays.size} contradicting pair${bothWays.size === 1 ? '' : 's'} ` +
+    `(${[...bothWays].join(', ') || '—'}) — shown below, kept off the push`);
+
+const fresh = hits.filter(h => h.isNew && !bothWays.has(h.sym));
 if (!hits.length) console.log('\nNo setups.');
 for (const k of order) {
   const g = hits.filter(h => h.kind === k && (SHOW_ALL || h.isNew));
@@ -466,15 +524,16 @@ for (const [title, list] of [['\n\u{1F534} CODE RED — at the level, resolution
 if (fresh.length) {
   for (const h of fresh) appendFileSync(LOG, JSON.stringify(h) + '\n');
   console.log(`${fresh.length} new setup(s) logged to alerts_v2.jsonl`);
-  const lines = fresh.map(h => {
+  // best first, so if the budget runs out it is the weakest that gets cut
+  const lines = [...fresh].sort((a, b) => (b.rr - a.rr) || (b.touches - a.touches)).map(h => {
     const D = dp(h.sym);
     return `${h.sym} ${h.dir > 0 ? 'LONG' : 'SHORT'} · ${ctxLabel(h)}` +
-      `${h.barsAgo ? ` (fired ${h.barsAgo * 4}h ago, still live)` : ''}\n` +
-      `  in ${h.px.toFixed(D)}  sl ${h.stop.toFixed(D)}  tp ${h.target.toFixed(D)}\n` +
-      `  ${h.riskPips.toFixed(0)}p = $${h.riskUsd.toFixed(2)} at 0.01 lot · room ${h.room.toFixed(1)} ATR` +
-      (h.news.length ? `\n  ⚠ news: ${h.news[0]}` : '');
+      `${h.barsAgo ? ` (${h.barsAgo * 4}h ago)` : ''}\n` +
+      `  in ${h.px.toFixed(D)}  sl ${h.stop.toFixed(D)}  tp ${h.target.toFixed(D)}  ${h.rr.toFixed(1)}R\n` +
+      `  ${h.riskPips.toFixed(0)}p = $${h.riskUsd.toFixed(2)}` +
+      (h.news.length ? `  ⚠ ${h.news[0].slice(0, 40)}` : '');
   });
-  pushover(`${fresh.length} setup${fresh.length > 1 ? 's' : ''} · scan v2`, lines.join('\n\n'));
+  pushover(`${fresh.length} setup${fresh.length > 1 ? 's' : ''} · scan v2`, packed(lines));
 }
 if (crNew.length) {
   const lines = crNew.map(w => {
@@ -484,7 +543,7 @@ if (crNew.length) {
       (w.ifBreak ? `  through → ${w.ifBreak.kind} ${w.ifBreak.dir > 0 ? 'LONG' : 'SHORT'}\n` : '') +
       (w.ifReject ? `  rejects → ${w.ifReject.context || w.ifReject.kind}${w.ifReject.grade ? ' ' + w.ifReject.grade : ''} ${w.ifReject.dir > 0 ? 'LONG' : 'SHORT'}` : '');
   });
-  pushover(`${crNew.length} level${crNew.length > 1 ? 's' : ''} at code red`, lines.join('\n\n'));
+  pushover(`${crNew.length} level${crNew.length > 1 ? 's' : ''} at code red`, packed(lines));
 }
 // A code-red level carries a plan. When it resolves and no branch qualifies,
 // that plan is withdrawn — and being told is the whole point, because the last
@@ -494,11 +553,15 @@ if (lapsed.length) {
     `${l.sym} closed ${l.dir > 0 ? 'above' : 'below'} ${l.level.toFixed(dp(l.sym))}\n` +
     `  ${l.movedPips.toFixed(0)}p past it — no branch qualified\n` +
     `  the earlier watch plan on this level is void`);
-  pushover(`${lapsed.length} watch${lapsed.length > 1 ? 'es' : ''} lapsed`, lines.join('\n\n'));
+  pushover(`${lapsed.length} watch${lapsed.length > 1 ? 'es' : ''} lapsed`, packed(lines));
 }
 
 // Written LAST, so it captures both setup and watch keys. Writing it earlier
 // meant every code-red level looked new on every scan.
-writeFileSync(STATE, JSON.stringify(nowSeen, null, 1));
+if (WILL_DELIVER) {
+  writeFileSync(STATE, JSON.stringify(nowSeen, null, 1));
+} else {
+  console.log('\n(inspection run — state NOT advanced, nothing was marked as seen)');
+}
 
 console.log(`\n${hits.length} setups (${fresh.length} new)   |   ${cr.length} code red (${crNew.length} new)   |   ${wa.length} watching`);
