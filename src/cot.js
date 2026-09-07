@@ -131,6 +131,43 @@ export async function cachedSnapshot({ maxAgeHours = 12 } = {}) {
 }
 
 /**
+ * A compact verdict for a table: which side of the crowd, AND whether that
+ * crowd is still arriving or leaving. Those two together decide everything and
+ * the second half is the part that gets dropped:
+ *
+ *                     still BUILDING          starting to UNWIND
+ *   joining           trend has momentum      late, they are leaving
+ *   against           fighting active flow    FAVOURABLE — they must
+ *                                             transact in your direction
+ *
+ * "Against the crowd" alone is not a good sign. Against an extreme that is
+ * still being ADDED to means standing in front of active flow.
+ */
+export function positioningVerdict(snap, sym, dir) {
+  if (!snap) return null;
+  const bc = sym.slice(0, 3), qc = sym.slice(3);
+  const b = snap[bc], q = snap[qc];
+  if (!b || !q || b.error || q.error) return null;
+  const ext = v => v.percentile >= 80 || v.percentile <= 20;
+  const legs = [];
+  for (const [v, wantLong] of [[b, dir > 0], [q, dir < 0]]) {
+    if (!ext(v)) continue;
+    const crowdedLong = v.percentile >= 80;
+    const joining = (crowdedLong && wantLong) || (!crowdedLong && !wantLong);
+    // net moving further from zero = still arriving; back toward it = leaving
+    const building = Math.sign(v.netChange) === Math.sign(v.net || 1);
+    legs.push({ joining, building });
+  }
+  if (!legs.length) return 'neutral';
+  if (legs.length === 2 && legs[0].joining !== legs[1].joining) return 'legs disagree';
+  const { joining, building } = legs[0];
+  if (!joining && !building) return 'AGAINST, unwinding — favourable';
+  if (!joining && building) return 'against, still building — fighting flow';
+  if (joining && building) return 'joining, still building';
+  return 'joining, but unwinding — late';
+}
+
+/**
  * One line describing what positioning says about taking `dir` on `sym`.
  * Silent (null) unless at least one leg is at an extreme — positioning has no
  * opinion in the middle of its range, and saying so on every alert is noise.
@@ -152,7 +189,15 @@ export function positioningNote(snap, sym, dir) {
     parts.push(`${ccy} ${v.percentile.toFixed(0)}th pct ` +
       `${crowdedLong ? 'crowded long' : 'crowded short'} — ` +
       `${joining ? 'you would be JOINING it' : 'you would be against it'}` +
-      `${Math.abs(v.netChange) > 2000 ? (v.netChange > 0 ? ', still building' : ', unwinding') : ''}`);
+      // SIGN BUG, fixed 2026-09-06: this read netChange > 0 as "still building",
+      // which is only true for a LONG. For a short (net < 0) a POSITIVE change
+      // means the position is SHRINKING -- covering. Every unwinding short was
+      // being labelled as building, and the label drives the whole read: against
+      // an unwinding extreme is favourable, against a building one is fighting
+      // flow. NZD was called "still building" while it covered 9,656 contracts.
+      `${Math.abs(v.netChange) > 2000
+          ? (Math.sign(v.netChange) === Math.sign(v.net || 1) ? ', still building' : ', unwinding')
+          : ''}`);
   }
   return parts.length ? parts.join('; ') : null;
 }
