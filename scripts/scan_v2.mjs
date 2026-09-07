@@ -25,7 +25,7 @@
 import { getCandles, getPricing, getSummary, getOpenTrades, LIVE_ACCOUNT_ID, ACCOUNT_ID } from '../src/oanda.js';
 import { sma, rsi, atr } from '../src/indicators.js';
 import { findSetups, findWatching, DEFAULTS } from '../src/setups.js';
-import { pendingBlocks } from '../src/orderblocks.js';
+import { pendingBlocks, reachLadder } from '../src/orderblocks.js';
 import { cachedSnapshot, positioningNote } from '../src/cot.js';
 import { getCalendar, eventsFor } from '../src/news.js';
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
@@ -353,6 +353,10 @@ if (blocks.length) {
       `   (${b.riskPips.toFixed(0)}p = 1R, $${b.riskUsd.toFixed(2)} at 0.01 lot)`);
     console.log(`     price is ${Math.abs(b.distanceR).toFixed(2)}R ${b.distance > 0 ? 'above' : 'below'} the limit` +
       `   ·  ${b.barsSinceChoch}d since the CHoCH`);
+    // Measured reach, not a target. The user manages exits; this is the
+    // distribution the decision sits in.
+    console.log(`     reaches   ` + reachLadder(b)
+      .map(x => `${x.r}R ${x.price.toFixed(dp(b.sym))} (${(100 * x.hit).toFixed(0)}%)`).join('   '));
     const pos = positioningNote(cot, b.sym, b.dir);
     if (pos) console.log(`     ⚖ positioning: ${pos}`);
     const news = eventsFor(cal, b.sym, new Date(), { hoursAhead: 72 })

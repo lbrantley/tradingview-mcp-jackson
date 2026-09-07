@@ -140,6 +140,27 @@ function build(bars, blockIdx, chochIdx, swingIdx, dir, o) {
 }
 
 /**
+ * Measured reach of these entries — NOT targets. 1,181 filled entries across
+ * 28 pairs and ~10 years, split-validated 14 fit / 14 untouched pairs (67.2%
+ * vs 67.9% at 1R). The user manages exits; this is the distribution their
+ * decision sits in, not an instruction.
+ */
+export const OB_REACH = [
+  { r: 1, hit: 0.676 },
+  { r: 2, hit: 0.389 },
+  { r: 3, hit: 0.265 },
+  { r: 5, hit: 0.180 },
+];
+
+/** Price levels for each rung of that ladder. */
+export function reachLadder(block) {
+  return OB_REACH.map(({ r, hit }) => ({
+    r, hit,
+    price: block.dir > 0 ? block.entry + block.risk * r : block.entry - block.risk * r,
+  }));
+}
+
+/**
  * Blocks that have not yet been filled, plus whether price has since traded
  * into them. `live` is the current price.
  */
