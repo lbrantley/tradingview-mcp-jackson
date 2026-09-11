@@ -22,7 +22,9 @@ const OVERRIDES = join(REPO, 'news_overrides.json');
 
 const FEEDS = [
   'https://nfs.faireconomy.media/ff_calendar_thisweek.json',
-  'https://nfs.faireconomy.media/ff_calendar_nextweek.json',
+  // ff_calendar_nextweek.json returned 404 as of 2026-09-11 — the endpoint is
+  // gone. Faireconomy now gives ONE WEEK of forward visibility at most, which
+  // is why the TradingView calendar below is no longer optional.
 ];
 
 /** Which pairs a currency's news can move. */
@@ -64,10 +66,27 @@ function merge(feed, extra) {
   return all;
 }
 
-/** Fetch, merge, and snapshot to news_history/. */
-export async function getCalendar({ snapshot = true } = {}) {
+/**
+ * Fetch, merge, and snapshot to news_history/.
+ *
+ * TWO INDEPENDENT SOURCES, as of 2026-09-11. Faireconomy alone failed badly:
+ * its next-week endpoint 404s, so forward visibility was capped at one week,
+ * and on the day this was found the this-week pull returned nothing too. The
+ * calendar fell back to a five-day-old snapshot and every pair reported
+ * "clean" — while a BoJ rate decision sat seven days out on an open yen
+ * position. Silent "no news" is the worst failure this system can have.
+ *
+ * TradingView carries ~14 days forward including every central bank decision,
+ * and uses the same field names, so the existing merge() dedupes across both.
+ */
+export async function getCalendar({ snapshot = true, forwardDays = 14 } = {}) {
   let stale = false;
-  const parts = await Promise.all(FEEDS.map(u => pull(u).catch(() => [])));
+  const tv = import('./calendar.js')
+    .then(m => m.fetchRange(new Date(Date.now() - 2 * 3600e3).toISOString(),
+                            new Date(Date.now() + forwardDays * 864e5).toISOString(),
+                            { minImportance: 0 }))
+    .catch(() => []);
+  const parts = await Promise.all([...FEEDS.map(u => pull(u).catch(() => [])), tv]);
   let feed = parts.flat();
 
   // Faireconomy rate limits to two pulls per five minutes, so a scan running
