@@ -68,7 +68,27 @@ const NOTIFY = args.includes('--notify');
 // Before this, an inspection run marked setups as seen and they could never
 // alert again -- which is exactly how seven order blocks were silently burned
 // on 2026-09-05.
-const WILL_DELIVER = NOTIFY && process.env.PUSHOVER_ENABLED === '1' && !!process.env.PUSHOVER_TOKEN;
+// Forex closes Friday 17:00 New York and reopens Sunday 17:00 New York. The
+// scanner ran hourly straight through, so the weekend of 2026-09-12/13 pushed
+// the same position warnings every hour while price could not move. New York
+// time handles DST on its own.
+function marketOpen(now = new Date()) {
+  const ny = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York',
+    weekday: 'short', hour: 'numeric', hour12: false }).formatToParts(now);
+  const day = ny.find(x => x.type === 'weekday').value;
+  const hour = parseInt(ny.find(x => x.type === 'hour').value, 10) % 24;
+  if (day === 'Sat') return false;
+  if (day === 'Fri' && hour >= 17) return false;
+  if (day === 'Sun' && hour < 17) return false;
+  return true;
+}
+const MARKET_OPEN = marketOpen();
+
+// Closed market counts as NOT delivering, so the state file does not advance
+// either. Otherwise anything that turned up over the weekend would be marked
+// as sent without ever being sent, and Sunday's first scan would stay silent.
+const WILL_DELIVER = NOTIFY && MARKET_OPEN &&
+  process.env.PUSHOVER_ENABLED === '1' && !!process.env.PUSHOVER_TOKEN;
 
 /**
  * One batched push per scan, not one per setup. With 28 pairs this can produce
@@ -399,6 +419,14 @@ if (held.size) {
     const news = eventsFor(cal, sym, new Date(), { hoursAhead: 48 })
       .map(e => `${e.date.slice(5, 16)} ${e.country} ${e.title}`);
     const lines = [];
+    // Stable identities for each danger, so the push fires when something NEW
+    // turns against the position rather than every hour. Distances and P/L
+    // change every scan and are deliberately left out of the key.
+    const dangers = [];
+    for (const a of against) dangers.push(`against:${a.kind}:${a.dir}:${a.level.toFixed(D)}`);
+    for (const w of near.slice(0, 2))
+      if (w.state === 'CODE RED' && w.ifReject && w.ifReject.dir !== pd) dangers.push(`codered:${w.level.toFixed(D)}`);
+    for (const n of news) dangers.push(`news:${n}`);
     for (const a of against)
       lines.push(`AGAINST YOU · ${a.kind}${a.context ? ' ' + a.context : ''} ` +
         `${a.dir > 0 ? 'LONG' : 'SHORT'} at ${a.level.toFixed(D)}`);
@@ -410,7 +438,13 @@ if (held.size) {
     const pnote = positioningNote(cot, sym, pd);
     if (pnote) lines.push(`⚖ positioning: ${pnote}`);
     for (const n of news) lines.push(`⚠ ${n}`);
-    if (lines.length) notes.push({ sym, h, pd, lines, urgent: against.length > 0 || news.length > 0 });
+    // What was already sent for this position, in this direction. Flipping
+    // from short to long is a new position and starts clean.
+    const pkey = `P:${sym}:${pd}`;
+    const before = new Set((seen[pkey] || '').split('|').filter(Boolean));
+    const fresh = dangers.filter(d => !before.has(d));
+    nowSeen[pkey] = dangers.join('|');
+    if (lines.length) notes.push({ sym, h, pd, lines, fresh, urgent: fresh.length > 0 });
   }
   if (notes.length) {
     console.log(`\nON YOUR POSITIONS   (${held.size} pair${held.size > 1 ? 's' : ''} held)\n`);
@@ -420,11 +454,23 @@ if (held.size) {
       for (const l of n.lines) console.log(`     ${l}`);
       console.log('');
     }
+    // ONLY when something new has turned against a position. On 2026-09-11 the
+    // AUDJPY short received the same 'AGAINST YOU · REV LONG at 110.280' push
+    // every hour — 21 near-identical alerts across five days. The warning was
+    // correct (price bounced exactly there and the user flipped long on it);
+    // the repetition trained the user to stop reading it. A danger that was
+    // already sent stays on the console and in the review, not on the phone.
     const urgent = notes.filter(n => n.urgent);
     if (urgent.length) {
       const msg = urgent.map(n =>
         `${n.sym} ${n.pd > 0 ? 'LONG' : 'SHORT'}  $${n.h.pl.toFixed(2)}\n  ` +
-        n.lines.join('\n  ')).join('\n\n');
+        n.lines.join('\n  ') +
+        `\n  NEW: ${n.fresh.map(f => {
+          const [kind, ...rest] = f.split(':');
+          if (kind === 'news') return rest.join(':');
+          if (kind === 'codered') return `code red at ${rest[0]}`;
+          return `${rest[0]} ${rest[1] === '1' ? 'LONG' : 'SHORT'} at ${rest[2]}`;
+        }).join(' · ')}`).join('\n\n');
       pushover(`${urgent.length} position${urgent.length > 1 ? 's' : ''} need a look`, msg, '1');
     }
   }
@@ -565,7 +611,9 @@ if (lapsed.length) {
 if (WILL_DELIVER) {
   writeFileSync(STATE, JSON.stringify(nowSeen, null, 1));
 } else {
-  console.log('\n(inspection run — state NOT advanced, nothing was marked as seen)');
+  console.log(MARKET_OPEN
+    ? '\n(inspection run — state NOT advanced, nothing was marked as seen)'
+    : '\n(market closed — no pushes, state NOT advanced; the first scan after the open will send anything new)');
 }
 
 console.log(`\n${hits.length} setups (${fresh.length} new)   |   ${cr.length} code red (${crNew.length} new)   |   ${wa.length} watching`);
