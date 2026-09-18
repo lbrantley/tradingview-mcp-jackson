@@ -48,7 +48,28 @@ function parseNewsValue(v) {
   return n;
 }
 
+/**
+ * Events whose direction CANNOT be read from forecast vs previous.
+ *
+ * A rate decision always reads "hike = strength" under that rule, and that is
+ * wrong in the way that costs money. On 2026-09-18 the BoJ hiked 1.00 -> 1.25,
+ * exactly as forecast, and the yen WEAKENED 27-153 pips across every cross.
+ * The Fed and BoE did the same thing two days earlier with the same result.
+ *
+ * Two reasons the rule fails here:
+ *   - a fully priced decision carries no information; the move happened in the
+ *     WEEK BEFORE, and what follows the event is the unwind of that positioning
+ *     — a large move in the opposite direction to the expectation
+ *   - what markets actually trade is the GUIDANCE, which is language we do not
+ *     capture at all. A hike with cautious forward language is currency-negative.
+ *
+ * So these are flagged as high-risk with NO direction, which is the honest
+ * answer. Labelling them cost the user real money on 2026-09-17.
+ */
+const GUIDANCE_DRIVEN = /interest rate decision|rate statement|monetary policy|press conference|fomc|boj|ecb|boe|snb|rba|rbnz|policy rate/i;
+
 function newsDirection(e) {
+  if (GUIDANCE_DRIVEN.test(e.title || '')) return 'unreadable';
   const f = parseNewsValue(e.forecast), p = parseNewsValue(e.previous);
   if (f === null || p === null) return null;
   const t = (e.title || '').toLowerCase();
@@ -59,6 +80,10 @@ function newsDirection(e) {
 }
 
 function alignment(isLong, isBase, dir) {
+  // No direction claimed. The event is a coin flip on guidance and the biggest
+  // risk on the calendar — saying "tailwind" or "headwind" here is worse than
+  // saying nothing, because it invites a position to be taken on it.
+  if (dir === 'unreadable') return 'direction unreadable — guidance-driven';
   if (!dir || dir === 'neutral') return 'neutral';
   if (isLong) return isBase ? (dir === 'strength' ? 'tailwind' : 'headwind')
                             : (dir === 'weakness' ? 'tailwind' : 'headwind');
