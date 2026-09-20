@@ -1,0 +1,167 @@
+# Scanner Review — 2026-09-20 (weekly)
+
+Generated: 2026-09-20T19:03:39.016Z
+
+```
+## Account
+
+NAV **$1316.65**   unrealised $-36.24   margin available $0.00   1 open
+
+| pair | units | now | P/L | stop | distance | news lean |
+|---|---|---|---|---|---|---|
+| AUDJPY | 37900 | 111.788 | $-36.24 | **none** | — | 🟢 1 tailwind |
+
+**What the system reads on each position**
+
+- **AUDJPY** LONG — last CONTINUATION LONG 70h ago at 110.849 — system stop 110.073, target **117.698** (Grade C); 591p to that target from here
+
+## What is coming, and which way it leans
+
+**AUDJPY LONG**
+- ⚪ 09-21T23:10 AUD — RBA Gov Bullock Speaks
+- 🟢 09-23T21:30 AUD — Employment Change  (fc 20.9K vs prev -15.8K)
+- ⚪ 09-23T21:30 AUD — Unemployment Rate  (fc 4.5% vs prev 4.5%)
+
+_Lean is read from forecast vs previous — which way consensus leans, not what will print._
+
+## Scanner calls, last 7 days
+
+| when | pair | dir | branch | entry | stop | target | outcome |
+|---|---|---|---|---|---|---|---|
+| 09-13T21:00 | NZDCAD | SHORT | REV | 0.80414 | 0.81266 | 0.79535 | open +0.45R |
+| 09-13T21:00 | GBPNZD | LONG | WALL | 2.33112 | 2.31959 | 2.37126 | open +0.81R |
+| 09-13T21:00 | GBPAUD | LONG | REV | 1.89130 | 1.87691 | 1.93091 | stopped -1.00R |
+| 09-13T21:00 | NZDCHF | SHORT | REV | 0.47392 | 0.47794 | 0.46599 | open +0.84R |
+| 09-13T21:00 | AUDJPY | LONG | REV | 109.828 | 108.760 | 117.698 | open +1.84R |
+| 09-14T01:00 | EURUSD | LONG | REV | 1.15656 | 1.14920 | 1.17163 | stopped -1.00R |
+| 09-14T01:00 | USDJPY | LONG | REV | 154.026 | 152.061 | 162.759 | open +1.46R |
+| 09-14T01:00 | GBPCHF | LONG | WALL | 1.10492 | 1.09992 | 1.11038 | stopped -1.00R |
+| 09-14T01:00 | GBPNZD | LONG | WALL | 2.33454 | 2.32570 | 2.37126 | open +0.67R |
+| 09-14T01:00 | GBPCAD | SHORT | REV | 1.87348 | 1.88182 | 1.83022 | open +0.04R |
+| 09-14T01:00 | CADJPY | LONG | REV | 111.016 | 109.717 | 116.230 | open +0.92R |
+| 09-14T01:00 | NZDCHF | SHORT | WALL | 0.47330 | 0.47522 | 0.46599 | open +1.44R |
+| 09-14T01:00 | USDCHF | LONG | WALL | 0.81826 | 0.81381 | 0.83638 | open +0.87R |
+| 09-14T01:00 | EURCHF | SHORT | REV | 0.94636 | 0.95232 | 0.92022 | open +0.36R |
+| 09-14T01:00 | EURJPY | SHORT | WALL | 178.141 | 179.060 | 169.718 | stopped -1.00R |
+| 09-14T05:00 | USDCAD | LONG | REV | 1.38974 | 1.38023 | 1.41480 | open +0.91R |
+| 09-14T05:00 | NZDUSD | LONG | REV | 0.57710 | 0.57067 | 0.61544 | stopped -1.00R |
+| 09-14T05:00 | EURNZD | SHORT | REV | 1.99933 | 2.01385 | 1.92783 | open -0.53R |
+| 09-14T05:00 | NZDCAD | LONG | REV | 0.80200 | 0.79445 | 0.84296 | open -0.22R |
+| 09-14T09:00 | EURCAD | LONG | REV | 1.60480 | 1.59633 | 1.63331 | open +0.16R |
+| 09-14T09:00 | CADCHF | LONG | REV | 0.58777 | 0.58361 | 0.59854 | open +0.05R |
+| 09-14T09:00 | EURGBP | LONG | REV | 0.85620 | 0.85290 | 0.86702 | open +0.42R |
+| 09-14T13:00 | GBPUSD | LONG | REV | 1.35056 | 1.34205 | 1.38773 | stopped -1.00R |
+| 09-14T13:00 | NZDUSD | LONG | REV | 0.57876 | 0.57174 | 0.61544 | stopped -1.00R |
+| 09-14T13:00 | EURAUD | SHORT | REV | 1.61752 | 1.63353 | 1.59104 | open +0.34R |
+| 09-14T13:00 | EURCAD | LONG | REV | 1.60714 | 1.59918 | 1.63331 | open -0.13R |
+| 09-14T13:00 | USDJPY | SHORT | REV | 154.318 | 156.347 | 145.382 | stopped -1.00R |
+| 09-14T13:00 | AUDCAD | LONG | REV | 0.99356 | 0.98591 | 1.00808 | open +0.38R |
+| 09-14T13:00 | GBPJPY | SHORT | REV | 208.416 | 210.505 | 196.722 | stopped -1.00R |
+| 09-14T13:00 | NZDJPY | LONG | REV | 89.312 | 88.294 | 97.622 | open +0.48R |
+| 09-14T13:00 | AUDUSD | LONG | REV | 0.71468 | 0.70795 | 0.74942 | stopped -1.00R |
+| 09-14T13:00 | GBPNZD | SHORT | REV | 2.33353 | 2.35029 | 2.24729 | open -0.41R |
+| 09-14T13:00 | EURJPY | SHORT | REV | 178.397 | 179.790 | 169.718 | stopped -1.00R |
+| 09-14T17:00 | EURCHF | LONG | REV | 0.94408 | 0.93829 | 0.95637 | open +0.02R |
+| 09-14T17:00 | NZDCAD | SHORT | REV | 0.80332 | 0.81047 | 0.79535 | open +0.42R |
+| 09-14T17:00 | CADJPY | LONG | REV | 111.030 | 109.742 | 116.230 | open +0.92R |
+| 09-14T21:00 | CADCHF | LONG | REV | 0.58806 | 0.58355 | 0.59854 | open -0.02R |
+| 09-14T21:00 | NZDCHF | SHORT | REV | 0.47222 | 0.47673 | 0.46599 | open +0.37R |
+| 09-15T01:00 | NZDJPY | LONG | REV | 89.059 | 87.959 | 97.622 | open +0.67R |
+| 09-15T01:00 | USDCAD | LONG | REV | 1.39138 | 1.38459 | 1.41480 | open +1.04R |
+| 09-15T01:00 | GBPNZD | LONG | REV | 2.34285 | 2.31915 | 2.37126 | open -0.10R |
+| 09-15T01:00 | NZDCHF | SHORT | REV | 0.47090 | 0.47569 | 0.46599 | open +0.08R |
+| 09-15T01:00 | USDCHF | LONG | REV | 0.81819 | 0.81072 | 0.83638 | open +0.53R |
+| 09-15T01:00 | AUDUSD | SHORT | REV | 0.71208 | 0.71929 | 0.70350 | open -0.06R |
+| 09-15T01:00 | EURGBP | LONG | REV | 0.85560 | 0.85305 | 0.86702 | open +0.78R |
+| 09-15T05:00 | EURCAD | SHORT | REV | 1.60362 | 1.61206 | 1.58152 | open -0.30R |
+| 09-15T05:00 | EURUSD | SHORT | REV | 1.15331 | 1.16040 | 1.14214 | open +0.66R |
+| 09-15T05:00 | GBPCHF | LONG | REV | 1.10178 | 1.09455 | 1.11038 | open -0.08R |
+| 09-15T05:00 | NZDJPY | LONG | REV | 89.388 | 88.484 | 97.622 | open +0.45R |
+| 09-15T05:00 | EURJPY | SHORT | REV | 178.761 | 180.484 | 169.718 | stopped -1.00R |
+| 09-15T09:00 | NZDCAD | LONG | REV | 0.80188 | 0.79454 | 0.84296 | open -0.21R |
+| 09-15T09:00 | AUDJPY | LONG | REV | 110.460 | 109.446 | 117.698 | open +1.31R |
+| 09-15T13:00 | NZDCAD | LONG | REV | 0.80154 | 0.79385 | 0.84296 | open -0.16R |
+| 09-15T13:00 | NZDCHF | SHORT | REV | 0.47164 | 0.47563 | 0.46599 | open +0.28R |
+| 09-15T13:00 | NZDJPY | LONG | REV | 89.350 | 88.293 | 97.622 | open +0.42R |
+| 09-15T17:00 | NZDCAD | LONG | REV | 0.80154 | 0.79405 | 0.84296 | open -0.16R |
+| 09-15T17:00 | GBPNZD | LONG | REV | 2.34048 | 2.31916 | 2.37126 | open -0.00R |
+| 09-15T17:00 | AUDUSD | LONG | REV | 0.71314 | 0.70658 | 0.73544 | open -0.09R |
+| 09-15T21:00 | EURCAD | SHORT | REV | 1.60676 | 1.61560 | 1.58152 | open +0.07R |
+| 09-15T21:00 | GBPUSD | SHORT | REV | 1.34694 | 1.35535 | 1.32734 | open +0.89R |
+| 09-15T21:00 | NZDUSD | SHORT | REV | 0.57428 | 0.58067 | 0.56164 | open +0.31R |
+| 09-15T21:00 | GBPJPY | SHORT | REV | 209.275 | 211.183 | 196.722 | stopped -1.00R |
+| 09-15T21:00 | EURNZD | LONG | REV | 2.00862 | 1.98996 | 2.03625 | open -0.09R |
+| 09-15T21:00 | EURGBP | LONG | REV | 0.85642 | 0.85341 | 0.86293 | open +0.39R |
+| 09-15T21:00 | NZDCHF | SHORT | REV | 0.47052 | 0.47372 | 0.46599 | stopped -1.00R |
+| 09-15T21:00 | EURCHF | LONG | REV | 0.94511 | 0.94075 | 0.95637 | open -0.21R |
+| 09-16T01:00 | EURUSD | LONG | REV | 1.15446 | 1.14698 | 1.17423 | stopped -1.00R |
+| 09-16T01:00 | USDJPY | SHORT | REV | 155.303 | 156.709 | 145.382 | stopped -1.00R |
+| 09-16T01:00 | GBPCHF | SHORT | REV | 1.10389 | 1.10875 | 1.07842 | open +0.56R |
+| 09-16T05:00 | NZDCAD | LONG | REV | 0.80161 | 0.79396 | 0.84296 | open -0.17R |
+| 09-16T05:00 | GBPCAD | SHORT | REV | 1.87620 | 1.88583 | 1.83022 | open +0.32R |
+| 09-16T05:00 | AUDJPY | LONG | REV | 110.596 | 109.408 | 117.698 | open +1.00R |
+| 09-16T05:00 | AUDUSD | SHORT | REV | 0.71304 | 0.71862 | 0.70350 | open +0.09R |
+| 09-16T05:00 | NZDJPY | LONG | REV | 89.270 | 88.352 | 97.622 | open +0.57R |
+| 09-16T09:00 | GBPNZD | SHORT | REV | 2.33717 | 2.35761 | 2.24729 | open -0.16R |
+| 09-16T09:00 | EURCAD | LONG | REV | 1.60758 | 1.59930 | 1.63331 | open -0.18R |
+| 09-16T09:00 | NZDCHF | SHORT | REV | 0.47144 | 0.47560 | 0.46599 | open +0.22R |
+| 09-16T09:00 | GBPAUD | SHORT | REV | 1.88712 | 1.89848 | 1.84930 | open +0.64R |
+| 09-16T09:00 | AUDCHF | LONG | REV | 0.58388 | 0.58081 | 0.59178 | open +0.62R |
+| 09-16T09:00 | EURCHF | LONG | REV | 0.94450 | 0.94087 | 0.95637 | open -0.09R |
+| 09-16T09:00 | EURJPY | LONG | REV | 179.056 | 177.598 | 192.611 | open +0.80R |
+| 09-16T13:00 | EURCAD | LONG | REV | 1.60786 | 1.59951 | 1.63331 | open -0.21R |
+| 09-16T13:00 | NZDUSD | LONG | REV | 0.57582 | 0.56973 | 0.61544 | open -0.58R |
+| 09-16T13:00 | EURUSD | LONG | REV | 1.15346 | 1.14705 | 1.17423 | stopped -1.00R |
+| 09-16T13:00 | AUDCAD | LONG | REV | 0.99394 | 0.98696 | 1.00808 | open +0.36R |
+| 09-16T13:00 | GBPNZD | LONG | REV | 2.33486 | 2.31674 | 2.37126 | open +0.31R |
+| 09-16T17:00 | NZDJPY | LONG | REV | 89.280 | 88.021 | 97.622 | open +0.41R |
+| 09-16T17:00 | EURCHF | LONG | REV | 0.94680 | 0.94097 | 0.95637 | open -0.45R |
+| 09-16T17:00 | GBPNZD | LONG | REV | 2.34202 | 2.31760 | 2.37126 | open -0.06R |
+| 09-16T17:00 | USDCHF | LONG | WALL | 0.82594 | 0.81788 | 0.83638 | open -0.47R |
+| 09-16T17:00 | EURNZD | LONG | REV | 2.00651 | 1.98966 | 2.03625 | open +0.03R |
+| 09-16T17:00 | AUDUSD | LONG | REV | 0.70868 | 0.70151 | 0.73544 | open +0.54R |
+| 09-16T17:00 | AUDJPY | LONG | REV | 110.764 | 109.420 | 117.698 | open +0.76R |
+| 09-16T17:00 | EURGBP | SHORT | REV | 0.85678 | 0.86015 | 0.85332 | stopped -1.00R |
+| 09-16T17:00 | NZDCAD | LONG | REV | 0.79924 | 0.79154 | 0.84296 | open +0.14R |
+| 09-16T21:00 | GBPCHF | SHORT | REV | 1.10434 | 1.11249 | 1.07842 | open +0.39R |
+| 09-17T01:00 | NZDCAD | LONG | REV | 0.80116 | 0.79348 | 0.84296 | open -0.11R |
+| 09-17T01:00 | AUDUSD | LONG | REV | 0.71088 | 0.70380 | 0.73544 | open +0.23R |
+| 09-17T01:00 | EURUSD | LONG | REV | 1.14664 | 1.13895 | 1.17423 | open +0.26R |
+| 09-16T21:00 | EURGBP | LONG | WALL | 0.85693 | 0.85547 | 0.86293 | open +0.45R |
+| 09-18T01:00 | NZDCAD | LONG | REV | 0.80112 | 0.79347 | 0.84296 | open -0.10R |
+| 09-18T01:00 | GBPUSD | LONG | REV | 1.33692 | 1.32697 | 1.36614 | open +0.26R |
+| 09-18T09:00 | GBPJPY | SHORT | REV | 210.522 | 213.124 | 196.722 | open +0.15R |
+| 09-18T01:00 | AUDJPY | SHORT | REV | 112.018 | 113.076 | 104.378 | open +0.22R |
+| 09-18T01:00 | EURNZD | SHORT | REV | 2.00482 | 2.02152 | 1.92783 | open -0.13R |
+| 09-18T09:00 | USDJPY | SHORT | REV | 157.708 | 159.320 | 145.382 | open +0.51R |
+| 09-18T09:00 | AUDUSD | SHORT | REV | 0.71162 | 0.71797 | 0.70350 | open -0.14R |
+| 09-18T01:00 | CHFJPY | LONG | WALL | 190.880 | 188.322 | 202.082 | open -0.01R |
+| 09-18T01:00 | GBPCHF | LONG | REV | 1.10094 | 1.09393 | 1.11038 | open +0.03R |
+| 09-18T09:00 | EURUSD | LONG | REV | 1.14684 | 1.13926 | 1.17423 | open +0.24R |
+| 09-18T01:00 | NZDCHF | LONG | REV | 0.47182 | 0.46840 | 0.47771 | open -0.38R |
+| 09-18T01:00 | USDCHF | LONG | REV | 0.82348 | 0.81631 | 0.83638 | open -0.19R |
+| 09-18T09:00 | CADJPY | SHORT | REV | 112.624 | 113.795 | 105.680 | open +0.35R |
+| 09-18T05:00 | EURJPY | SHORT | REV | 181.213 | 182.588 | 176.154 | open +0.72R |
+| 09-18T01:00 | NZDJPY | LONG | REV | 90.041 | 88.523 | 97.622 | open -0.16R |
+| 09-18T01:00 | GBPNZD | SHORT | REV | 2.33336 | 2.35156 | 2.24729 | open -0.39R |
+| 09-18T09:00 | EURGBP | LONG | REV | 0.85912 | 0.85598 | 0.86293 | open -0.49R |
+| 09-18T13:00 | GBPUSD | LONG | REV | 1.33824 | 1.32669 | 1.36614 | open +0.11R |
+| 09-18T13:00 | AUDUSD | LONG | REV | 0.71220 | 0.70412 | 0.73544 | open +0.04R |
+| 09-18T13:00 | AUDJPY | SHORT | REV | 111.664 | 113.242 | 104.378 | open -0.08R |
+| 09-18T13:00 | GBPJPY | SHORT | REV | 209.834 | 212.091 | 196.722 | open -0.14R |
+| 09-18T13:00 | GBPCHF | LONG | REV | 1.10106 | 1.09399 | 1.11038 | open +0.02R |
+| 09-18T13:00 | NZDCHF | SHORT | WALL | 0.47055 | 0.47325 | 0.46599 | open +0.01R |
+| 09-18T13:00 | EURJPY | SHORT | REV | 179.928 | 182.285 | 176.154 | open -0.12R |
+| 09-18T13:00 | CADJPY | SHORT | REV | 112.012 | 113.562 | 105.680 | open -0.13R |
+| 09-18T13:00 | CHFJPY | SHORT | REV | 190.634 | 192.582 | 176.922 | open -0.12R |
+| 09-18T17:00 | EURCAD | SHORT | REV | 1.60612 | 1.61520 | 1.59150 | open +0.00R |
+| 09-18T17:00 | CADCHF | LONG | REV | 0.58796 | 0.58363 | 0.59854 | open +0.00R |
+| 09-18T09:00 | NZDJPY | SHORT | REV | 90.077 | 91.411 | 82.704 | open +0.21R |
+| 09-18T17:00 | USDCAD | SHORT | REV | 1.39843 | 1.40484 | 1.35795 | open +0.00R |
+| 09-18T13:00 | NZDJPY | SHORT | REV | 89.676 | 90.745 | 82.704 | open -0.11R |
+
+## Running tally, last 30 days
+
+16 resolved · 0 target / 16 stopped · **-16.0R** · -1.000R per call · 44 still open
+
+```
