@@ -27,6 +27,7 @@ import { sma, rsi, atr } from '../src/indicators.js';
 import { findSetups, findWatching, DEFAULTS } from '../src/setups.js';
 import { pendingBlocks, reachLadder } from '../src/orderblocks.js';
 import { cachedSnapshot, positioningNote } from '../src/cot.js';
+import { quoteRates, usdPerPrice, moveWeights, weightLine, weightTag } from '../src/weight.js';
 import { getCalendar, eventsFor } from '../src/news.js';
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import https from 'https';
@@ -228,6 +229,12 @@ let hits = [];
 const watch = [];
 const lapsed = [];
 const blocks = [];
+const atrByPair = new Map();
+
+// Quote currency -> USD, once. This used to be a flat `usdjpy = 147` that only
+// handled JPY-quoted pairs and treated every other quote currency as if it were
+// already dollars — so the risk on a CAD-quoted pair read ~38% high.
+const rates = await quoteRates(getCandles);
 
 for (const sym of PAIRS) {
   try {
@@ -245,7 +252,8 @@ for (const sym of PAIRS) {
     const dS50 = sma(d.map(x => x.close), 50);
     const s50 = sma(b.map(x => x.close), 50);
     const pip = pipOf(sym);
-    const usdjpy = 147;                         // rough, for the JPY-quote conversion
+    const toUsd = usdPerPrice(sym, rates, UNITS);   // price move -> dollars on the marker
+    atrByPair.set(sym, aH4[last]);                  // for the MOVE tiers, computed once all pairs are in
 
     // Levels price is standing at RIGHT NOW, on live price rather than closed
     // bars — so an hourly scan has something to say between H4 closes.
@@ -262,7 +270,7 @@ for (const sym of PAIRS) {
       if (ob.invalidated || ob.filled || ob.expired) continue;
       blocks.push({ sym, ...ob,
         riskPips: ob.risk / pip,
-        riskUsd: ob.risk * UNITS * (/JPY$/.test(sym) ? 1 / usdjpy : 1) });
+        riskUsd: ob.risk * toUsd });
     }
 
     // ONE definition of a setup, shared with the backtest.
@@ -293,7 +301,7 @@ for (const sym of PAIRS) {
       // so keep the earliest, which is when it actually triggered.
       const dupKey = `${sym}:${s.kind}:${s.dir}:${s.level.toFixed(5)}`;
       if (hits.some(h => h.key === dupKey)) continue;
-      const riskUsd = s.risk * UNITS * (/JPY$/.test(sym) ? 1 / usdjpy : 1);
+      const riskUsd = s.risk * toUsd;
       const key = `${sym}:${s.kind}:${s.dir}:${s.level.toFixed(5)}`;
       nowSeen[key] = s.time;
       hits.push({
@@ -510,6 +518,11 @@ if (dropped.thin || dropped.dupe || dropped.clash)
     `${dropped.clash} on ${bothWays.size} contradicting pair${bothWays.size === 1 ? '' : 's'} ` +
     `(${[...bothWays].join(', ') || '—'}) — shown below, kept off the push`);
 
+// Quartiles across the pairs actually scanned, so the tiers track the current
+// regime rather than a frozen table. Relative by construction: a quarter of the
+// board is tier A even in a dead market.
+const weights = moveWeights(atrByPair, rates, UNITS);
+
 const fresh = hits.filter(h => h.isNew && !bothWays.has(h.sym));
 if (!hits.length) console.log('\nNo setups.');
 for (const k of order) {
@@ -526,6 +539,8 @@ for (const k of order) {
       `${h.ageBars ? ` (${(h.ageBars * 4 / 24).toFixed(0)}d old)` : ''}` +
       `   last confirmed ${h.confirmedTime.slice(0, 10)}`);
     console.log(`     room ahead ${h.room.toFixed(1)} ATR   ${h.backup} levels stacked ahead`);
+    const wl = weightLine(weights.get(h.sym));
+    if (wl) console.log(`     ${wl}`);
     console.log(`     entry ${h.px.toFixed(D)}   stop ${h.stop.toFixed(D)} (${h.riskPips.toFixed(0)}p, $${h.riskUsd.toFixed(2)})   target ${h.target.toFixed(D)} (${h.rr.toFixed(1)}R)`);
     console.log(`     leg ${h.legPips.toFixed(0)}p daily, ${h.legFrom.slice(0, 10)} → ${h.legTo.slice(0, 10)}, projected ${FIB_EXT}× beyond`);
     console.log(`     next ahead: ${h.aheadLevels.map(v => v.toFixed(D)).join('  ') || '—'}`);
@@ -578,7 +593,7 @@ if (fresh.length) {
   const lines = [...fresh].sort((a, b) => (b.rr - a.rr) || (b.touches - a.touches)).map(h => {
     const D = dp(h.sym);
     return `${h.sym} ${h.dir > 0 ? 'LONG' : 'SHORT'} · ${ctxLabel(h)}` +
-      `${h.barsAgo ? ` (${h.barsAgo * 4}h ago)` : ''}\n` +
+      `${h.barsAgo ? ` (${h.barsAgo * 4}h ago)` : ''}  ${weightTag(weights.get(h.sym))}\n` +
       `  in ${h.px.toFixed(D)}  sl ${h.stop.toFixed(D)}  tp ${h.target.toFixed(D)}  ${h.rr.toFixed(1)}R\n` +
       `  ${h.riskPips.toFixed(0)}p = $${h.riskUsd.toFixed(2)}` +
       (h.news.length ? `  ⚠ ${h.news[0].slice(0, 40)}` : '');
