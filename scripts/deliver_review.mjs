@@ -338,6 +338,10 @@ async function main() {
   if (doPush) {
     log('Committing + pushing to GitHub...');
     run(`git add ${OUT_REL_PATH}`);
+    // Charts are SVG files beside the review, not inline markup -- GitHub
+    // sanitises inline <svg> -- so they have to be committed or every image in
+    // the review renders as a broken link.
+    run('git add briefs/charts 2>/dev/null || true');
     if (existsSync(NEWS_UPCOMING)) run(`git add ${NEWS_UPCOMING_REL}`);
     // Also stage runtime files the scanner just wrote to, otherwise the
     // subsequent `git pull --rebase` refuses ("cannot pull with rebase: You

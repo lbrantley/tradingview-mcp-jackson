@@ -21,6 +21,8 @@ import { getCalendar, eventsFor } from './news.js';
 import { findSetups } from './setups.js';
 import { pendingBlocks, reachLadder, fillOdds, OB_TF } from './orderblocks.js';
 import { quoteRates, usdPerPrice } from './weight.js';
+import { blockWindows, blockChart } from './chart_svg.js';
+import { writeFileSync, mkdirSync } from 'fs';
 
 // Every pair the scanner watches. Blocks are scarce -- roughly 7 form per six
 // weeks across all 28 -- so a daily list is short by nature, and the ones that
@@ -53,12 +55,45 @@ async function liveBlocks(tf) {
       for (const b of pendingBlocks(d, live, { barsPerDay: spec.barsPerDay })) {
         if (b.invalidated || b.filled || b.expired || b.outOfReach) continue;
         const q = quotes[sym];
-        out.push({ sym, ...b, riskUsd: b.risk * toUsd, riskPips: b.risk / pipOf(sym),
-          spreadShare: q ? (q.ask - q.bid) / b.risk : null });
+        out.push({ sym, tf, ...b, riskUsd: b.risk * toUsd, riskPips: b.risk / pipOf(sym),
+          spreadShare: q ? (q.ask - q.bid) / b.risk : null,
+          age: Math.round(b.ageDays ?? b.barsSinceChoch),
+          decimals: dp(sym), live, bars: d });
       }
     } catch { /* one pair failing must not take the review down */ }
   }
   return out.sort((x, y) => Math.abs(x.distanceR) - Math.abs(y.distanceR));
+}
+
+/**
+ * Charts for the blocks worth looking at, written as SVG FILES beside the
+ * review. GitHub sanitises inline <svg> in markdown, so a chart has to be an
+ * image reference; see src/chart_svg.js for the rest of that constraint.
+ *
+ * Capped AND distance-gated, because 30 live blocks would mean 30 images at
+ * ~20KB committed every single day, and a chart of a block seven R away is
+ * padding -- price is nowhere near it and will not be this week. Only blocks a
+ * resting limit could plausibly catch get drawn, so a quiet day produces no
+ * images at all rather than six meaningless ones.
+ */
+const CHART_CAP = 6;
+const CHART_MAX_R = 3;
+
+function writeCharts(blocks, dateStr, repoDir) {
+  const rel = `charts/${dateStr}`;
+  const dir = join(repoDir, 'briefs', rel);
+  const made = [];
+  try { mkdirSync(dir, { recursive: true }); } catch { return made; }
+  for (const b of blocks.filter(x => Math.abs(x.distanceR) <= CHART_MAX_R).slice(0, CHART_CAP)) {
+    try {
+      const win = blockWindows(b.bars, b, b.tf);
+      if (!win) continue;
+      const name = `${b.sym}-${b.tf}-${b.blockTime.slice(0, 10)}.svg`;
+      writeFileSync(join(dir, name), blockChart(b, win));
+      made.push({ b, path: `${rel}/${name}` });
+    } catch { /* a chart failing must never take the review down */ }
+  }
+  return made;
 }
 
 /**
@@ -308,6 +343,24 @@ export async function buildReview({ days = 1 } = {}) {
     '14 untouched +0.494R). **Read these net of cost:** an H4 stop is about a third of a daily one, so ' +
     'the same spread takes three times the share. Gross +0.452R against daily +0.413R, but net of one ' +
     'spread +0.231R against +0.303R. Real, and mostly rent._');
+
+  // The tables say WHERE; the charts say WHY. An order block is a candle, so a
+  // row of numbers cannot show the thing the trade is built on.
+  const nearest = [...blocksD, ...blocksH4].sort((x, y) => Math.abs(x.distanceR) - Math.abs(y.distanceR));
+  const charts = writeCharts(nearest, new Date().toISOString().slice(0, 10), REPO);
+  if (charts.length) {
+    out.push(`### In reach, drawn\n`);
+    out.push(`_${charts.length} block${charts.length > 1 ? 's' : ''} within ${CHART_MAX_R}R of the limit. ` +
+      `Blocks further out are in the tables above but not worth a picture yet._\n`);
+    for (const { b, path } of charts) {
+      out.push(`**${b.sym} ${b.dir > 0 ? 'LONG' : 'SHORT'}** · ${b.tf === 'D' ? 'daily' : '4-hour'} · ` +
+        `${Math.abs(b.distanceR).toFixed(2)}R away · waited ${b.age}d\n`);
+      out.push(`![${b.sym} ${b.tf} order block: how it formed, and where price is now](${path})\n`);
+    }
+    out.push('_Hollow candle closed up, filled closed down. Left panel is the block forming — the ringed ' +
+      'candle is the block, **C** is the change of character. Right panel is where price sits now against ' +
+      'the zone. Full legend is inside each image._\n');
+  }
 
   // ---- what the scanner called, and how it went ----
   out.push(`## Scanner calls, last ${days} day${days > 1 ? 's' : ''}\n`);
