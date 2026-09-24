@@ -25,7 +25,7 @@
 import { getCandles, getPricing, getSummary, getOpenTrades, LIVE_ACCOUNT_ID, ACCOUNT_ID } from '../src/oanda.js';
 import { sma, rsi, atr } from '../src/indicators.js';
 import { findSetups, findWatching, DEFAULTS } from '../src/setups.js';
-import { pendingBlocks, reachLadder } from '../src/orderblocks.js';
+import { pendingBlocks, reachLadder, fillOdds } from '../src/orderblocks.js';
 import { cachedSnapshot, positioningNote } from '../src/cot.js';
 import { quoteRates, usdPerPrice, moveWeights, weightLine, weightTag } from '../src/weight.js';
 import { getCalendar, eventsFor } from '../src/news.js';
@@ -267,7 +267,7 @@ for (const sym of PAIRS) {
     // costs nothing but attention — worth carrying even when the median wait
     // is 5 days and the tail runs to months.
     for (const ob of pendingBlocks(d, live)) {
-      if (ob.invalidated || ob.filled || ob.expired) continue;
+      if (ob.invalidated || ob.filled || ob.expired || ob.outOfReach) continue;
       blocks.push({ sym, ...ob,
         riskPips: ob.risk / pip,
         riskUsd: ob.risk * toUsd });
@@ -386,6 +386,10 @@ console.log('='.repeat(78));
 if (blocks.length) {
   const fresh = blocks.filter(b => seen[`OB:${b.sym}:${b.blockTime}`] === undefined);
   console.log(`\nORDER BLOCKS   (${blocks.length} live, ${fresh.length} new)\n`);
+  // Nearest first, because distance is what decides whether a block ever fills
+  // (94% under 0.5R against 12% past 8R) and a phone only shows the top of a
+  // list. Age is the SECOND signal -- it makes a block better when it finally
+  // fills -- so it is printed on every line rather than driving the order.
   for (const b of blocks.sort((x, y) => Math.abs(x.distanceR) - Math.abs(y.distanceR))) {
     const D = dp(b.sym), isNew = seen[`OB:${b.sym}:${b.blockTime}`] === undefined;
     console.log(`  ${b.sym}  ${b.dir > 0 ? 'LONG' : 'SHORT'}${isNew ? '   ** NEW **' : ''}` +
@@ -394,11 +398,16 @@ if (blocks.length) {
       `   CHoCH ${b.chochTime.slice(0, 10)} took out ${b.swing.toFixed(D)}`);
     console.log(`     LIMIT ${b.entry.toFixed(D)}   stop ${b.stop.toFixed(D)}` +
       `   (${b.riskPips.toFixed(0)}p = 1R, $${b.riskUsd.toFixed(2)} at 0.01 lot)`);
-    console.log(`     price is ${Math.abs(b.distanceR).toFixed(2)}R ${b.distance > 0 ? 'above' : 'below'} the limit` +
-      `   ·  ${b.barsSinceChoch}d since the CHoCH`);
+    // AGE IS A QUALITY SIGNAL, NOT STALENESS. Measured over 479 clean fills:
+    // a block filling at 15-60 days returns +0.56R against +0.35R for one
+    // filling inside a fortnight. Price taking its time to come back is the
+    // block working, so this reads as patience rather than decay.
+    const age = b.barsSinceChoch;
+    console.log(`     ${Math.abs(b.distanceR).toFixed(2)}R from the limit — ${(100 * fillOdds(b.distanceR)).toFixed(0)}% of blocks this close fill` +
+      `   ·  waited ${age}d${age >= 15 ? ', and patient blocks run further' : ''}`);
     // Measured reach, not a target. The user manages exits; this is the
     // distribution the decision sits in.
-    console.log(`     reaches   ` + reachLadder(b)
+    console.log(`     reaches   ` + reachLadder(b, age)
       .map(x => `${x.r}R ${x.price.toFixed(dp(b.sym))} (${(100 * x.hit).toFixed(0)}%)`).join('   '));
     const pos = positioningNote(cot, b.sym, b.dir);
     if (pos) console.log(`     ⚖ positioning: ${pos}`);

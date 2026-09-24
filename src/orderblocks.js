@@ -46,7 +46,16 @@ export const OB_DEFAULTS = {
   // 120 days is where the fill data flattens: 87% of blocks that ever fill have
   // done so by then, 92% by 250. Beyond this the order is mostly just sitting
   // there. Needs its own test; do not treat this number as evidence.
-  maxAgeDays: 120,
+  // Age is NOT a filter. Measured 2026-09-24: blocks filling past this cutoff
+  // still returned +0.42R, beating the under-15-day cohort at +0.35R, and the
+  // 120 was never tested when it was written. Invalidation is the real filter
+  // (12% of blocks die that way). This bound only stops the live list growing
+  // without limit -- it is housekeeping, not a quality judgement.
+  maxAgeDays: 365,
+  // Past this a block fills one time in eight -- the cliff in fillOdds above.
+  // This, not age, is what keeps the live list honest: removing the age cap
+  // alone surfaced a GBPJPY block 355 days old sitting 16.6R away.
+  maxDistanceR: 8,
 };
 
 export function pivots(bars, lookback) {
@@ -152,12 +161,62 @@ export const OB_REACH = [
   { r: 5, hit: 0.180 },
 ];
 
-/** Price levels for each rung of that ladder. */
-export function reachLadder(block) {
-  return OB_REACH.map(({ r, hit }) => ({
+/**
+ * ...but that single ladder is an average over ages, and age is the biggest
+ * thing that moves it. Measured 2026-09-24 over 479 clean fills by how old the
+ * block was ON THE DAY IT FILLED:
+ *
+ *     under 15 days   1R 68%  2R 39%  3R 27%  5R 18%   +0.35R
+ *     15-60 days      1R 78%  2R 46%  3R 33%  5R 26%   +0.56R
+ *     60+ days        1R 75%  2R 53%  3R 37%  5R 25%   +0.55R
+ *
+ * A block price takes its time coming back to is the BETTER one. Printing the
+ * average against an 80-day-old block understates it by ten points at 2R, and
+ * the live list is mostly old blocks, so the average was wrong for nearly
+ * every one of them.
+ */
+export const OB_REACH_BY_AGE = [
+  { maxAge: 15, rungs: [{ r: 1, hit: 0.68 }, { r: 2, hit: 0.39 }, { r: 3, hit: 0.27 }, { r: 5, hit: 0.18 }] },
+  { maxAge: 60, rungs: [{ r: 1, hit: 0.78 }, { r: 2, hit: 0.46 }, { r: 3, hit: 0.33 }, { r: 5, hit: 0.26 }] },
+  { maxAge: Infinity, rungs: [{ r: 1, hit: 0.75 }, { r: 2, hit: 0.53 }, { r: 3, hit: 0.37 }, { r: 5, hit: 0.25 }] },
+];
+
+/**
+ * Price levels for each rung. Pass the block's age in days to get the ladder
+ * matched to it; without one it falls back to the age-blind average.
+ */
+export function reachLadder(block, ageDays = null) {
+  const rungs = ageDays == null ? OB_REACH
+    : OB_REACH_BY_AGE.find(b => ageDays < b.maxAge).rungs;
+  return rungs.map(({ r, hit }) => ({
     r, hit,
     price: block.dir > 0 ? block.entry + block.risk * r : block.entry - block.risk * r,
   }));
+}
+
+/**
+ * How likely a block sitting unfilled right now is to fill at all.
+ *
+ * Measured 2026-09-24 over 7,316 snapshots of open blocks -- every open block
+ * on every fifth day, looked forward. DISTANCE dominates age:
+ *
+ *     under 0.5R  94%        under 15d   81%
+ *     0.5-1R      87%        15-60d      66%
+ *     1-2R        81%        60-120d     52%
+ *     2-4R        71%        120-240d    39%
+ *     4-8R        50%        over 240d   21%
+ *     over 8R     12%   <- cliff
+ *
+ * The two are correlated -- a block is old BECAUSE price went away from it --
+ * but distance is the sharper cut, and it is the one that answers "is this
+ * worth a resting limit". Beyond 8R a block fills one time in eight and is
+ * clutter; that is what prunes the list, not age.
+ */
+export function fillOdds(distanceR) {
+  const d = Math.abs(distanceR);
+  const curve = [[0, 0.94], [0.5, 0.87], [1, 0.81], [2, 0.71], [4, 0.50], [8, 0.12]];
+  for (let i = curve.length - 1; i >= 0; i--) if (d >= curve[i][0]) return curve[i][1];
+  return 0.94;
 }
 
 /**
@@ -179,6 +238,7 @@ export function pendingBlocks(bars, live, opts = {}) {
     const age = last - b.chochIdx;
     return { ...b,
       barsSinceChoch: age, expired: age > o.maxAgeDays,
+      outOfReach: Math.abs(distance / b.risk) > o.maxDistanceR,
       filled: filledAt !== null, filledTime: filledAt ? bars[filledAt].time : null,
       invalidated: invalidatedAt !== null,
       distance, distanceR: distance / b.risk };
