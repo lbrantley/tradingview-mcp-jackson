@@ -284,7 +284,22 @@ for (const sym of PAIRS) {
     //
     // So look back CATCHUP bars. The state file already dedupes on key+time,
     // so nothing already sent is re-sent.
-    for (const s of findSetups(b, d).filter(x => x.i > last - CATCHUP)) {
+    // LATEST FIRING FIRST. A level that keeps qualifying fires on several
+    // consecutive bars, and the catch-up window collapses those to one — so
+    // which one it keeps decides what gets sent. Measured over 2,666 setups,
+    // the firing NUMBER is the single biggest quality signal in the system:
+    //
+    //     1st firing  67% reach 1R  +0.332R      <- what was being sent
+    //     2nd         74%           +0.472R
+    //     3rd         79%           +0.585R
+    //     all repeats 79%           +0.590R
+    //
+    // A level that keeps firing is a level price keeps respecting; the first
+    // touch is the unproven one. This used to keep the EARLIEST, on the logic
+    // that it was "when it actually triggered" — which picked both the least
+    // proven firing and the stalest entry price. Reversed, so the dedupe below
+    // keeps the most recent.
+    for (const s of findSetups(b, d).filter(x => x.i > last - CATCHUP).reverse()) {
       // ...but do not raise a setup that has already played out. Walk the bars
       // since it fired: if price reached the stop or the target, it is history,
       // not a trade to take.
@@ -296,9 +311,9 @@ for (const sym of PAIRS) {
         if (hitTgt) { done = 'target'; break; }
       }
       if (done) continue;
-      // A level that keeps qualifying fires on several consecutive bars. Inside
-      // the catch-up window that is ONE signal seen repeatedly, not several —
-      // so keep the earliest, which is when it actually triggered.
+      // Inside the catch-up window repeated firings of one level are ONE signal
+      // seen several times, not several trades. Iterating newest-first above
+      // means the first one reached is the most recent, so this keeps that.
       const dupKey = `${sym}:${s.kind}:${s.dir}:${s.level.toFixed(5)}`;
       if (hits.some(h => h.key === dupKey)) continue;
       const riskUsd = s.risk * toUsd;
@@ -309,7 +324,7 @@ for (const sym of PAIRS) {
         barsAgo: last - s.i,
         level: s.level, band: s.band, touches: s.touches,
         confirmedTime: s.confirmedTime, formedTime: s.formedTime, ageBars: s.ageBars,
-        testNo: s.testNo, speed: s.speed,
+        testNo: s.testNo, speed: s.speed, fireNo: s.fireNo,
         room: s.room, backup: s.backup, px: s.px, stop: s.stop, target: s.target,
         riskPips: s.risk / pip, riskUsd, rr: s.rr,
         legPips: s.leg.size / pip, legFrom: s.leg.fromAt, legTo: s.leg.toAt,
@@ -402,6 +417,44 @@ if (blocks.length) {
     });
     pushover(`${fresh.length} order block${fresh.length > 1 ? 's' : ''}`, packed(lines));
   }
+
+  // APPROACH, not discovery. A block is announced once, on the day the CHoCH
+  // reveals it — at which point price is typically 4-10R away from the limit
+  // and there is nothing to do. It then stays live for up to 120 days, and the
+  // median wait for price to come back is about 5 days with a tail into months.
+  // So the single alert lands when it cannot be acted on and there is silence
+  // on the day it can. The levels engine has had a CODE RED tier for exactly
+  // this since the start; blocks never got one.
+  //
+  // Keyed on the STATE, so each block alerts once per transition (nearing, then
+  // arriving) rather than every hour it sits there.
+  const approaching = [];
+  for (const b of blocks) {
+    const state = b.distanceR <= 0.25 ? 'AT ZONE' : b.distanceR <= 1 ? 'NEARING' : null;
+    const k = `OBA:${b.sym}:${b.blockTime}`;
+    if (!state) { delete nowSeen[k]; continue; }   // moved away: re-arm
+    nowSeen[k] = state;
+    if (seen[k] !== state) approaching.push({ ...b, state });
+  }
+  if (approaching.length) {
+    console.log(`\n\u{1F3AF} ORDER BLOCKS IN REACH   (${approaching.length})\n`);
+    for (const b of approaching) {
+      const D = dp(b.sym);
+      console.log(`  ${b.sym}  ${b.dir > 0 ? 'LONG' : 'SHORT'}   ${b.state}` +
+        `   ${b.distanceR.toFixed(2)}R from the limit`);
+      console.log(`     limit ${b.entry.toFixed(D)}   stop ${b.stop.toFixed(D)}` +
+        `   (${b.riskPips.toFixed(0)}p = 1R, $${b.riskUsd.toFixed(2)})`);
+      console.log(`     zone ${b.zoneLow.toFixed(D)}-${b.zoneHigh.toFixed(D)}   block ${b.blockTime.slice(0, 10)}\n`);
+    }
+    const lines = approaching.map(b => {
+      const D = dp(b.sym);
+      return `${b.sym} ${b.dir > 0 ? 'LONG' : 'SHORT'} · block ${b.state}\n` +
+        `  limit ${b.entry.toFixed(D)}  stop ${b.stop.toFixed(D)}  (${b.distanceR.toFixed(2)}R away)\n` +
+        `  ${b.riskPips.toFixed(0)}p = 1R ($${b.riskUsd.toFixed(2)})`;
+    });
+    pushover(`${approaching.length} order block${approaching.length > 1 ? 's' : ''} in reach`,
+      packed(lines), approaching.some(b => b.state === 'AT ZONE') ? '1' : '0');
+  }
 }
 
 // Levels that were code red, then resolved without qualifying for anything.
@@ -491,6 +544,14 @@ const order = ['WALL', 'FIELD', 'REV'];
 // INCLUDING both directions, and GBPJPY carried a 0.1R target. That is one
 // trade printed three ways plus noise, and it is unreadable on a phone. Three
 // rules, cheapest first.
+// The firing number, said in words. Measured: 1st 67% reach 1R, 2nd 74%,
+// 3rd 79%. A level on its third firing has proved something a fresh one has not.
+function fireLabel(n) {
+  if (n <= 1) return 'first firing at this level — least proven (67% reach 1R)';
+  const ord = n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;
+  return `${ord} firing at this level — price keeps respecting it (${n >= 3 ? 79 : 74}% reach 1R)`;
+}
+
 const MIN_RR = 1.0;
 const thinned = [], dropped = { thin: 0, dupe: 0, clash: 0 };
 
@@ -541,6 +602,7 @@ for (const k of order) {
     console.log(`     room ahead ${h.room.toFixed(1)} ATR   ${h.backup} levels stacked ahead`);
     const wl = weightLine(weights.get(h.sym));
     if (wl) console.log(`     ${wl}`);
+    if (h.fireNo) console.log(`     ${fireLabel(h.fireNo)}`);
     console.log(`     entry ${h.px.toFixed(D)}   stop ${h.stop.toFixed(D)} (${h.riskPips.toFixed(0)}p, $${h.riskUsd.toFixed(2)})   target ${h.target.toFixed(D)} (${h.rr.toFixed(1)}R)`);
     console.log(`     leg ${h.legPips.toFixed(0)}p daily, ${h.legFrom.slice(0, 10)} → ${h.legTo.slice(0, 10)}, projected ${FIB_EXT}× beyond`);
     console.log(`     next ahead: ${h.aheadLevels.map(v => v.toFixed(D)).join('  ') || '—'}`);
@@ -593,7 +655,8 @@ if (fresh.length) {
   const lines = [...fresh].sort((a, b) => (b.rr - a.rr) || (b.touches - a.touches)).map(h => {
     const D = dp(h.sym);
     return `${h.sym} ${h.dir > 0 ? 'LONG' : 'SHORT'} · ${ctxLabel(h)}` +
-      `${h.barsAgo ? ` (${h.barsAgo * 4}h ago)` : ''}  ${weightTag(weights.get(h.sym))}\n` +
+      `${h.barsAgo ? ` (${h.barsAgo * 4}h ago)` : ''}  ${weightTag(weights.get(h.sym))}` +
+      `${h.fireNo > 1 ? `  ${h.fireNo}${h.fireNo === 2 ? 'nd' : h.fireNo === 3 ? 'rd' : 'th'} firing` : ''}\n` +
       `  in ${h.px.toFixed(D)}  sl ${h.stop.toFixed(D)}  tp ${h.target.toFixed(D)}  ${h.rr.toFixed(1)}R\n` +
       `  ${h.riskPips.toFixed(0)}p = $${h.riskUsd.toFixed(2)}` +
       (h.news.length ? `  ⚠ ${h.news[0].slice(0, 40)}` : '');

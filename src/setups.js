@@ -161,6 +161,12 @@ export function findSetups(bars, daily, opts = {}) {
   if (!zones.length) return [];
 
   const lastAt = new Map(), testNo = new Map();
+  // How many setups this level has already produced. Measured over 2,666
+  // setups this is the strongest single quality signal in the engine — a level
+  // that keeps firing is one price keeps respecting, and the FIRST firing is
+  // the unproven one:
+  //     1st 67% reach 1R +0.332R · 2nd 74% +0.472R · 3rd 79% +0.585R
+  const fireNo = new Map();
   const out = [];
 
   for (let i = 220; i < bars.length; i++) {
@@ -240,8 +246,10 @@ export function findSetups(bars, daily, opts = {}) {
       if (retest === false && volTrend > o.volTrendMaxRev) continue;
 
       lastAt.set(key, i);
+      const fires = (fireNo.get(key) ?? 0) + 1;
+      fireNo.set(key, fires);
       out.push({
-        i, time: bars[i].time, kind, dir, zone: z,
+        i, time: bars[i].time, kind, dir, zone: z, fireNo: fires,
         retest, context: kind !== 'REV' ? null : (retest ? 'CONTINUATION' : 'REVERSAL'),
         volTrend, grade: retest === true ? gradeOf(dRsi[dIdx], dir, o) : null,
         gradeRsi: retest === true && dRsi[dIdx] != null
