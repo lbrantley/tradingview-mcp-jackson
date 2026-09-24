@@ -19,6 +19,40 @@ import { fileURLToPath } from 'url';
 import { getCandles, getPricing, getSummary, getOpenTrades, LIVE_ACCOUNT_ID, ACCOUNT_ID } from './oanda.js';
 import { getCalendar, eventsFor } from './news.js';
 import { findSetups } from './setups.js';
+import { pendingBlocks, reachLadder, fillOdds } from './orderblocks.js';
+import { quoteRates, usdPerPrice } from './weight.js';
+
+// Every pair the scanner watches. Blocks are scarce -- roughly 7 form per six
+// weeks across all 28 -- so a daily list is short by nature, and the ones that
+// matter are the patient ones sitting there for weeks.
+const BLOCK_PAIRS = 'GBPCHF AUDNZD EURNZD GBPNZD EURCHF CADCHF EURAUD GBPJPY AUDCHF GBPUSD GBPCAD USDCHF GBPAUD CADJPY EURCAD USDCAD AUDUSD NZDCHF USDJPY AUDJPY EURJPY NZDCAD EURUSD AUDCAD EURGBP NZDJPY NZDUSD CHFJPY'.split(' ');
+
+/**
+ * Live order blocks, as a standing worklist rather than an alert.
+ *
+ * The scanner only ever pings on a block ONCE, the day the CHoCH reveals it,
+ * and a block stays live for months -- so without this the daily review is
+ * silent about entries that are sitting right there. Nearest first, because
+ * distance decides whether a block ever fills (94% under 0.5R, 12% past 8R).
+ */
+async function liveBlocks() {
+  const rates = await quoteRates(getCandles).catch(() => null);
+  if (!rates) return [];
+  const out = [];
+  for (const sym of BLOCK_PAIRS) {
+    try {
+      const d = await getCandles(sym, { granularity: 'D', count: 600 });
+      if (d.length < 200) continue;
+      const live = d[d.length - 1].close;
+      const toUsd = usdPerPrice(sym, rates, 1000);
+      for (const b of pendingBlocks(d, live)) {
+        if (b.invalidated || b.filled || b.expired || b.outOfReach) continue;
+        out.push({ sym, ...b, riskUsd: b.risk * toUsd, riskPips: b.risk / pipOf(sym) });
+      }
+    } catch { /* one pair failing must not take the review down */ }
+  }
+  return out.sort((x, y) => Math.abs(x.distanceR) - Math.abs(y.distanceR));
+}
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ALERTS = join(REPO, 'alerts_v2.jsonl');
@@ -227,6 +261,30 @@ export async function buildReview({ days = 1 } = {}) {
       out.push('');
     }
     out.push('_Lean is read from forecast vs previous — which way consensus leans, not what will print._\n');
+  }
+
+  // ---- entries sitting there right now ----
+  // These are not events, so they never appear under "scanner calls" -- they
+  // are standing limits the user can place and forget, and OANDA reserves no
+  // margin until one fills.
+  const blocks = await liveBlocks();
+  out.push('## Order blocks live right now\n');
+  if (!blocks.length) out.push('_None in reach._\n');
+  else {
+    out.push('| pair | dir | limit | stop | 1R | away | fills | waited | reaches 1R / 2R |');
+    out.push('|---|---|---|---|---|---|---|---|---|');
+    for (const b of blocks) {
+      const D = dp(b.sym), age = b.barsSinceChoch;
+      const lad = reachLadder(b, age);
+      out.push(`| ${b.sym} | ${b.dir > 0 ? 'LONG' : 'SHORT'} | **${b.entry.toFixed(D)}** | ` +
+        `${b.stop.toFixed(D)} | ${b.riskPips.toFixed(0)}p $${b.riskUsd.toFixed(2)} | ` +
+        `${Math.abs(b.distanceR).toFixed(1)}R | ${(100 * fillOdds(b.distanceR)).toFixed(0)}% | ` +
+        `${age}d | ${(100 * lad[0].hit).toFixed(0)}% / ${(100 * lad[1].hit).toFixed(0)}% |`);
+    }
+    out.push('');
+    out.push('_Age is a quality signal, not staleness: a block filling after 60 days reaches 2R ' +
+      '58% of the time against 34% for one filling the same day. "Fills" is measured from distance ' +
+      '— 94% under 0.5R, 12% past 8R, which is why nothing past 8R is listed._\n');
   }
 
   // ---- what the scanner called, and how it went ----
