@@ -56,6 +56,9 @@ export const OB_DEFAULTS = {
   // This, not age, is what keeps the live list honest: removing the age cap
   // alone surfaced a GBPJPY block 355 days old sitting 16.6R away.
   maxDistanceR: 8,
+  // Bars per day, so `age` in bars converts to days. 1 for daily, 6 for H4 --
+  // without this an H4 block expires six times too early.
+  barsPerDay: 1,
 };
 
 export function pivots(bars, lookback) {
@@ -162,61 +165,75 @@ export const OB_REACH = [
 ];
 
 /**
- * ...but that single ladder is an average over ages, and age is the biggest
- * thing that moves it. Measured 2026-09-24 over 479 clean fills by how old the
- * block was ON THE DAY IT FILLED:
+ * TIMEFRAME PARAMETERS.
  *
- *     under 15 days   1R 68%  2R 39%  3R 27%  5R 18%   +0.35R
- *     15-60 days      1R 78%  2R 46%  3R 33%  5R 26%   +0.56R
- *     60+ days        1R 75%  2R 53%  3R 37%  5R 25%   +0.55R
+ * The same definition runs on daily and H4, but the numbers do NOT transfer --
+ * an H4 block's 1R is about a third the size of a daily one, so its ages and
+ * distances behave differently. Each timeframe carries its own measured curves.
+ * Printing the daily ladder against an H4 block would repeat exactly the error
+ * of printing one age-blind ladder against every block.
  *
- * A block price takes its time coming back to is the BETTER one. Printing the
- * average against an 80-day-old block understates it by ten points at 2R, and
- * the live list is mostly old blocks, so the average was wrong for nearly
- * every one of them.
+ * reach   how far a filled block runs, by how old it was on the day it filled.
+ *         Rungs are [1R, 2R, 3R, 5R]. Age is a QUALITY signal on both
+ *         timeframes: patient blocks run further.
+ * fill    whether a block sitting unfilled right now ever fills, by distance.
+ *         Distance dominates age; this is what prunes the live list.
+ *
+ * Daily: 479 clean fills, 7,316 open-block snapshots.
+ * H4:  1,198 clean fills, 21,105 open-block snapshots. Split-validated 14 pairs
+ *      fit / 14 untouched: +0.410R vs +0.494R, so the pattern is not fitted.
+ *
+ * H4 CAVEAT, and it is the whole argument against the timeframe: gross
+ * expectancy is +0.452R against daily's +0.413R, but H4's stop is a third the
+ * size so spread takes three times the share. Net of one spread H4 is +0.231R
+ * against daily's +0.303R; net of two it is +0.016R against +0.223R. The edge
+ * is real and mostly rent. Report spread as a share of 1R next to every H4
+ * block rather than hiding it.
  */
-export const OB_REACH_BY_AGE = [
-  { maxAge: 15, rungs: [{ r: 1, hit: 0.68 }, { r: 2, hit: 0.39 }, { r: 3, hit: 0.27 }, { r: 5, hit: 0.18 }] },
-  { maxAge: 60, rungs: [{ r: 1, hit: 0.78 }, { r: 2, hit: 0.46 }, { r: 3, hit: 0.33 }, { r: 5, hit: 0.26 }] },
-  { maxAge: Infinity, rungs: [{ r: 1, hit: 0.75 }, { r: 2, hit: 0.53 }, { r: 3, hit: 0.37 }, { r: 5, hit: 0.25 }] },
-];
+export const OB_TF = {
+  D: {
+    label: 'daily', granularity: 'D', barsPerDay: 1,
+    reach: [
+      { maxAgeDays: 15, rungs: [0.68, 0.39, 0.27, 0.18] },
+      { maxAgeDays: 60, rungs: [0.78, 0.46, 0.33, 0.26] },
+      { maxAgeDays: Infinity, rungs: [0.75, 0.53, 0.37, 0.25] },
+    ],
+    fill: [[0, 0.94], [0.5, 0.87], [1, 0.81], [2, 0.71], [4, 0.50], [8, 0.12]],
+  },
+  H4: {
+    label: '4-hour', granularity: 'H4', barsPerDay: 6,
+    reach: [
+      { maxAgeDays: 2, rungs: [0.70, 0.46, 0.32, 0.21] },
+      { maxAgeDays: 7, rungs: [0.77, 0.47, 0.32, 0.18] },
+      { maxAgeDays: Infinity, rungs: [0.78, 0.51, 0.35, 0.21] },
+    ],
+    fill: [[0, 0.87], [0.5, 0.83], [1, 0.79], [2, 0.66], [4, 0.51], [8, 0.27]],
+  },
+};
+
+const RUNG_R = [1, 2, 3, 5];
 
 /**
- * Price levels for each rung. Pass the block's age in days to get the ladder
- * matched to it; without one it falls back to the age-blind average.
+ * Price levels for each rung, with the hit rate matched to this block's
+ * timeframe and age. Without an age it falls back to the age-blind average.
  */
-export function reachLadder(block, ageDays = null) {
-  const rungs = ageDays == null ? OB_REACH
-    : OB_REACH_BY_AGE.find(b => ageDays < b.maxAge).rungs;
-  return rungs.map(({ r, hit }) => ({
-    r, hit,
+export function reachLadder(block, ageDays = null, tf = 'D') {
+  const spec = OB_TF[tf] || OB_TF.D;
+  const hits = ageDays == null
+    ? OB_REACH.map(x => x.hit)
+    : spec.reach.find(b => ageDays < b.maxAgeDays).rungs;
+  return RUNG_R.map((r, i) => ({
+    r, hit: hits[i],
     price: block.dir > 0 ? block.entry + block.risk * r : block.entry - block.risk * r,
   }));
 }
 
-/**
- * How likely a block sitting unfilled right now is to fill at all.
- *
- * Measured 2026-09-24 over 7,316 snapshots of open blocks -- every open block
- * on every fifth day, looked forward. DISTANCE dominates age:
- *
- *     under 0.5R  94%        under 15d   81%
- *     0.5-1R      87%        15-60d      66%
- *     1-2R        81%        60-120d     52%
- *     2-4R        71%        120-240d    39%
- *     4-8R        50%        over 240d   21%
- *     over 8R     12%   <- cliff
- *
- * The two are correlated -- a block is old BECAUSE price went away from it --
- * but distance is the sharper cut, and it is the one that answers "is this
- * worth a resting limit". Beyond 8R a block fills one time in eight and is
- * clutter; that is what prunes the list, not age.
- */
-export function fillOdds(distanceR) {
+/** How likely a block sitting unfilled at this distance is to fill at all. */
+export function fillOdds(distanceR, tf = 'D') {
+  const curve = (OB_TF[tf] || OB_TF.D).fill;
   const d = Math.abs(distanceR);
-  const curve = [[0, 0.94], [0.5, 0.87], [1, 0.81], [2, 0.71], [4, 0.50], [8, 0.12]];
   for (let i = curve.length - 1; i >= 0; i--) if (d >= curve[i][0]) return curve[i][1];
-  return 0.94;
+  return curve[0][1];
 }
 
 /**
@@ -237,7 +254,8 @@ export function pendingBlocks(bars, live, opts = {}) {
     const distance = b.dir > 0 ? live - b.entry : b.entry - live;
     const age = last - b.chochIdx;
     return { ...b,
-      barsSinceChoch: age, expired: age > o.maxAgeDays,
+      barsSinceChoch: age, ageDays: age / (o.barsPerDay || 1),
+      expired: age / (o.barsPerDay || 1) > o.maxAgeDays,
       outOfReach: Math.abs(distance / b.risk) > o.maxDistanceR,
       filled: filledAt !== null, filledTime: filledAt ? bars[filledAt].time : null,
       invalidated: invalidatedAt !== null,

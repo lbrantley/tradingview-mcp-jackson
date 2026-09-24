@@ -25,7 +25,7 @@
 import { getCandles, getPricing, getSummary, getOpenTrades, LIVE_ACCOUNT_ID, ACCOUNT_ID } from '../src/oanda.js';
 import { sma, rsi, atr } from '../src/indicators.js';
 import { findSetups, findWatching, DEFAULTS } from '../src/setups.js';
-import { pendingBlocks, reachLadder, fillOdds } from '../src/orderblocks.js';
+import { pendingBlocks, reachLadder, fillOdds, OB_TF } from '../src/orderblocks.js';
 import { cachedSnapshot, positioningNote } from '../src/cot.js';
 import { quoteRates, usdPerPrice, moveWeights, weightLine, weightTag } from '../src/weight.js';
 import { getCalendar, eventsFor } from '../src/news.js';
@@ -228,7 +228,8 @@ const nowSeen = {};
 let hits = [];
 const watch = [];
 const lapsed = [];
-const blocks = [];
+const blocks = [];        // daily
+const blocks4 = [];       // H4 -- same definition, its own measured numbers
 const atrByPair = new Map();
 
 // Quote currency -> USD, once. This used to be a flat `usdjpy = 147` that only
@@ -268,9 +269,25 @@ for (const sym of PAIRS) {
     // is 5 days and the tail runs to months.
     for (const ob of pendingBlocks(d, live)) {
       if (ob.invalidated || ob.filled || ob.expired || ob.outOfReach) continue;
-      blocks.push({ sym, ...ob,
+      blocks.push({ sym, ...ob, tf: 'D',
         riskPips: ob.risk / pip,
         riskUsd: ob.risk * toUsd });
+    }
+
+    // H4 BLOCKS. Same definition, six times the frequency, and its own curves.
+    // Kept SEPARATE from daily rather than merged: the two have different stop
+    // sizes, different odds, and a very different sensitivity to spread, so
+    // pooling them would average away the thing that distinguishes them.
+    // `spreadShare` is printed because H4's edge is mostly rent paid to the
+    // spread -- gross +0.452R, net of one spread +0.231R -- and that is the
+    // user's call to make per block, not something to silently filter.
+    const sp = px[sym] ? px[sym].ask - px[sym].bid : null;
+    for (const ob of pendingBlocks(b, live, { barsPerDay: OB_TF.H4.barsPerDay })) {
+      if (ob.invalidated || ob.filled || ob.expired || ob.outOfReach) continue;
+      blocks4.push({ sym, ...ob, tf: 'H4',
+        riskPips: ob.risk / pip,
+        riskUsd: ob.risk * toUsd,
+        spreadShare: sp == null ? null : sp / ob.risk });
     }
 
     // ONE definition of a setup, shared with the backtest.
@@ -383,32 +400,32 @@ console.log('='.repeat(78));
 // CHoCH, when the block becomes known and a limit can go in, and the fill days
 // or weeks later. Only the first is reported here — the fill shows up as a
 // position, which the daily review already covers.
-if (blocks.length) {
-  const fresh = blocks.filter(b => seen[`OB:${b.sym}:${b.blockTime}`] === undefined);
-  console.log(`\nORDER BLOCKS   (${blocks.length} live, ${fresh.length} new)\n`);
-  // Nearest first, because distance is what decides whether a block ever fills
-  // (94% under 0.5R against 12% past 8R) and a phone only shows the top of a
-  // list. Age is the SECOND signal -- it makes a block better when it finally
-  // fills -- so it is printed on every line rather than driving the order.
-  for (const b of blocks.sort((x, y) => Math.abs(x.distanceR) - Math.abs(y.distanceR))) {
-    const D = dp(b.sym), isNew = seen[`OB:${b.sym}:${b.blockTime}`] === undefined;
+/**
+ * One renderer for both timeframes. Daily and H4 print as SEPARATE sections
+ * with separate state keys, so each dedupes on its own and neither drowns the
+ * other -- H4 produces roughly six blocks for every daily one.
+ */
+function reportBlocks(list, tf, prefix, title) {
+  if (!list.length) return;
+  const fresh = list.filter(b => seen[`${prefix}:${b.sym}:${b.blockTime}`] === undefined);
+  console.log(`\n${title}   (${list.length} live, ${fresh.length} new)\n`);
+  // Nearest first, because distance decides whether a block ever fills and a
+  // phone only shows the top of a list. Age is the second signal -- it makes a
+  // block better when it finally fills -- so it prints on every line instead.
+  for (const b of list.sort((x, y) => Math.abs(x.distanceR) - Math.abs(y.distanceR))) {
+    const D = dp(b.sym), isNew = seen[`${prefix}:${b.sym}:${b.blockTime}`] === undefined;
+    const age = Math.round(b.ageDays ?? b.barsSinceChoch);
     console.log(`  ${b.sym}  ${b.dir > 0 ? 'LONG' : 'SHORT'}${isNew ? '   ** NEW **' : ''}` +
       `   ${b.closedThrough ? 'closed through' : 'wicked through'}`);
     console.log(`     block ${b.blockTime.slice(0, 10)}   zone ${b.zoneLow.toFixed(D)}-${b.zoneHigh.toFixed(D)}` +
       `   CHoCH ${b.chochTime.slice(0, 10)} took out ${b.swing.toFixed(D)}`);
     console.log(`     LIMIT ${b.entry.toFixed(D)}   stop ${b.stop.toFixed(D)}` +
-      `   (${b.riskPips.toFixed(0)}p = 1R, $${b.riskUsd.toFixed(2)} at 0.01 lot)`);
-    // AGE IS A QUALITY SIGNAL, NOT STALENESS. Measured over 479 clean fills:
-    // a block filling at 15-60 days returns +0.56R against +0.35R for one
-    // filling inside a fortnight. Price taking its time to come back is the
-    // block working, so this reads as patience rather than decay.
-    const age = b.barsSinceChoch;
-    console.log(`     ${Math.abs(b.distanceR).toFixed(2)}R from the limit — ${(100 * fillOdds(b.distanceR)).toFixed(0)}% of blocks this close fill` +
-      `   ·  waited ${age}d${age >= 15 ? ', and patient blocks run further' : ''}`);
-    // Measured reach, not a target. The user manages exits; this is the
-    // distribution the decision sits in.
-    console.log(`     reaches   ` + reachLadder(b, age)
-      .map(x => `${x.r}R ${x.price.toFixed(dp(b.sym))} (${(100 * x.hit).toFixed(0)}%)`).join('   '));
+      `   (${b.riskPips.toFixed(0)}p = 1R, $${b.riskUsd.toFixed(2)} at 0.01 lot)` +
+      `${b.spreadShare != null ? `   spread ${(100 * b.spreadShare).toFixed(0)}% of 1R` : ''}`);
+    console.log(`     ${Math.abs(b.distanceR).toFixed(2)}R from the limit — ${(100 * fillOdds(b.distanceR, tf)).toFixed(0)}% of blocks this close fill` +
+      `   ·  waited ${age}d${age >= (tf === 'H4' ? 2 : 15) ? ', and patient blocks run further' : ''}`);
+    console.log(`     reaches   ` + reachLadder(b, age, tf)
+      .map(x => `${x.r}R ${x.price.toFixed(D)} (${(100 * x.hit).toFixed(0)}%)`).join('   '));
     const pos = positioningNote(cot, b.sym, b.dir);
     if (pos) console.log(`     ⚖ positioning: ${pos}`);
     const news = eventsFor(cal, b.sym, new Date(), { hoursAhead: 72 })
@@ -416,56 +433,51 @@ if (blocks.length) {
     if (news.length) console.log(`     ⚠ news 72h: ${news.join(' | ')}`);
     console.log('');
   }
-  for (const b of blocks) nowSeen[`OB:${b.sym}:${b.blockTime}`] = b.chochTime;
+  for (const b of list) nowSeen[`${prefix}:${b.sym}:${b.blockTime}`] = b.chochTime;
   if (fresh.length) {
     const lines = fresh.map(b => {
       const D = dp(b.sym);
-      return `${b.sym} ${b.dir > 0 ? 'LONG' : 'SHORT'} · order block\n` +
+      return `${b.sym} ${b.dir > 0 ? 'LONG' : 'SHORT'} · ${tf} block\n` +
         `  limit ${b.entry.toFixed(D)}  stop ${b.stop.toFixed(D)}\n` +
-        `  ${b.riskPips.toFixed(0)}p = 1R ($${b.riskUsd.toFixed(2)})  ·  ${b.closedThrough ? 'closed' : 'wicked'} through`;
+        `  ${b.riskPips.toFixed(0)}p = 1R ($${b.riskUsd.toFixed(2)})  ·  ${Math.abs(b.distanceR).toFixed(1)}R away` +
+        `${b.spreadShare != null ? `  ·  spread ${(100 * b.spreadShare).toFixed(0)}% of 1R` : ''}`;
     });
-    pushover(`${fresh.length} order block${fresh.length > 1 ? 's' : ''}`, packed(lines));
+    pushover(`${fresh.length} ${tf} order block${fresh.length > 1 ? 's' : ''}`, packed(lines));
   }
 
   // APPROACH, not discovery. A block is announced once, on the day the CHoCH
-  // reveals it — at which point price is typically 4-10R away from the limit
-  // and there is nothing to do. It then stays live for up to 120 days, and the
-  // median wait for price to come back is about 5 days with a tail into months.
-  // So the single alert lands when it cannot be acted on and there is silence
-  // on the day it can. The levels engine has had a CODE RED tier for exactly
-  // this since the start; blocks never got one.
-  //
-  // Keyed on the STATE, so each block alerts once per transition (nearing, then
-  // arriving) rather than every hour it sits there.
+  // reveals it, and then stays live for months -- so the single alert lands when
+  // price is often several R away and there is silence on the day it arrives.
+  // Keyed on STATE so each block alerts once per transition, and re-arms if
+  // price walks back off.
   const approaching = [];
-  for (const b of blocks) {
+  for (const b of list) {
     const state = b.distanceR <= 0.25 ? 'AT ZONE' : b.distanceR <= 1 ? 'NEARING' : null;
-    const k = `OBA:${b.sym}:${b.blockTime}`;
-    if (!state) { delete nowSeen[k]; continue; }   // moved away: re-arm
+    const k = `${prefix}A:${b.sym}:${b.blockTime}`;
+    if (!state) { delete nowSeen[k]; continue; }
     nowSeen[k] = state;
     if (seen[k] !== state) approaching.push({ ...b, state });
   }
   if (approaching.length) {
-    console.log(`\n\u{1F3AF} ORDER BLOCKS IN REACH   (${approaching.length})\n`);
+    console.log(`\n\u{1F3AF} ${tf} BLOCKS IN REACH   (${approaching.length})\n`);
     for (const b of approaching) {
       const D = dp(b.sym);
-      console.log(`  ${b.sym}  ${b.dir > 0 ? 'LONG' : 'SHORT'}   ${b.state}` +
-        `   ${b.distanceR.toFixed(2)}R from the limit`);
-      console.log(`     limit ${b.entry.toFixed(D)}   stop ${b.stop.toFixed(D)}` +
-        `   (${b.riskPips.toFixed(0)}p = 1R, $${b.riskUsd.toFixed(2)})`);
-      console.log(`     zone ${b.zoneLow.toFixed(D)}-${b.zoneHigh.toFixed(D)}   block ${b.blockTime.slice(0, 10)}\n`);
+      console.log(`  ${b.sym}  ${b.dir > 0 ? 'LONG' : 'SHORT'}   ${b.state}   ${b.distanceR.toFixed(2)}R from the limit`);
+      console.log(`     limit ${b.entry.toFixed(D)}   stop ${b.stop.toFixed(D)}   (${b.riskPips.toFixed(0)}p = 1R, $${b.riskUsd.toFixed(2)})\n`);
     }
     const lines = approaching.map(b => {
       const D = dp(b.sym);
-      return `${b.sym} ${b.dir > 0 ? 'LONG' : 'SHORT'} · block ${b.state}\n` +
+      return `${b.sym} ${b.dir > 0 ? 'LONG' : 'SHORT'} · ${tf} block ${b.state}\n` +
         `  limit ${b.entry.toFixed(D)}  stop ${b.stop.toFixed(D)}  (${b.distanceR.toFixed(2)}R away)\n` +
         `  ${b.riskPips.toFixed(0)}p = 1R ($${b.riskUsd.toFixed(2)})`;
     });
-    pushover(`${approaching.length} order block${approaching.length > 1 ? 's' : ''} in reach`,
+    pushover(`${approaching.length} ${tf} block${approaching.length > 1 ? 's' : ''} in reach`,
       packed(lines), approaching.some(b => b.state === 'AT ZONE') ? '1' : '0');
   }
 }
 
+reportBlocks(blocks, 'D', 'OB', 'ORDER BLOCKS — DAILY');
+reportBlocks(blocks4, 'H4', 'OB4', 'ORDER BLOCKS — 4 HOUR');
 // Levels that were code red, then resolved without qualifying for anything.
 if (lapsed.length) {
   console.log(`\nBROKE, NO TRADE   (${lapsed.length})\n`);

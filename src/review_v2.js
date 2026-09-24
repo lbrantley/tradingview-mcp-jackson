@@ -19,7 +19,7 @@ import { fileURLToPath } from 'url';
 import { getCandles, getPricing, getSummary, getOpenTrades, LIVE_ACCOUNT_ID, ACCOUNT_ID } from './oanda.js';
 import { getCalendar, eventsFor } from './news.js';
 import { findSetups } from './setups.js';
-import { pendingBlocks, reachLadder, fillOdds } from './orderblocks.js';
+import { pendingBlocks, reachLadder, fillOdds, OB_TF } from './orderblocks.js';
 import { quoteRates, usdPerPrice } from './weight.js';
 
 // Every pair the scanner watches. Blocks are scarce -- roughly 7 form per six
@@ -35,23 +35,52 @@ const BLOCK_PAIRS = 'GBPCHF AUDNZD EURNZD GBPNZD EURCHF CADCHF EURAUD GBPJPY AUD
  * silent about entries that are sitting right there. Nearest first, because
  * distance decides whether a block ever fills (94% under 0.5R, 12% past 8R).
  */
-async function liveBlocks() {
+async function liveBlocks(tf) {
+  const spec = OB_TF[tf];
   const rates = await quoteRates(getCandles).catch(() => null);
   if (!rates) return [];
+  // Spread as a share of 1R. An H4 stop can be four pips, at which point a
+  // normal two-pip spread is half the risk before price has moved -- the block
+  // is untradeable and nothing else in the row says so.
+  const quotes = await getPricing(BLOCK_PAIRS).catch(() => ({}));
   const out = [];
   for (const sym of BLOCK_PAIRS) {
     try {
-      const d = await getCandles(sym, { granularity: 'D', count: 600 });
+      const d = await getCandles(sym, { granularity: spec.granularity, count: tf === 'H4' ? 3000 : 600 });
       if (d.length < 200) continue;
       const live = d[d.length - 1].close;
       const toUsd = usdPerPrice(sym, rates, 1000);
-      for (const b of pendingBlocks(d, live)) {
+      for (const b of pendingBlocks(d, live, { barsPerDay: spec.barsPerDay })) {
         if (b.invalidated || b.filled || b.expired || b.outOfReach) continue;
-        out.push({ sym, ...b, riskUsd: b.risk * toUsd, riskPips: b.risk / pipOf(sym) });
+        const q = quotes[sym];
+        out.push({ sym, ...b, riskUsd: b.risk * toUsd, riskPips: b.risk / pipOf(sym),
+          spreadShare: q ? (q.ask - q.bid) / b.risk : null });
       }
     } catch { /* one pair failing must not take the review down */ }
   }
   return out.sort((x, y) => Math.abs(x.distanceR) - Math.abs(y.distanceR));
+}
+
+/**
+ * One table per timeframe. They are NOT pooled -- different stop sizes, odds
+ * and spread sensitivity, so averaging them would hide what separates them.
+ */
+function blockTable(out, blocks, tf, heading, note) {
+  out.push(`### ${heading}\n`);
+  if (!blocks.length) { out.push('_None in reach._\n'); return; }
+  out.push('| pair | dir | limit | stop | 1R | spread | away | fills | waited | reaches 1R / 2R |');
+  out.push('|---|---|---|---|---|---|---|---|---|---|');
+  for (const b of blocks) {
+    const D = dp(b.sym), age = Math.round(b.ageDays ?? b.barsSinceChoch);
+    const lad = reachLadder(b, age, tf);
+    out.push(`| ${b.sym} | ${b.dir > 0 ? 'LONG' : 'SHORT'} | **${b.entry.toFixed(D)}** | ` +
+      `${b.stop.toFixed(D)} | ${b.riskPips.toFixed(0)}p $${b.riskUsd.toFixed(2)} | ` +
+      `${b.spreadShare == null ? '—' : (b.spreadShare > 0.2 ? `**${(100 * b.spreadShare).toFixed(0)}%**` : `${(100 * b.spreadShare).toFixed(0)}%`)} | ` +
+      `${Math.abs(b.distanceR).toFixed(1)}R | ${(100 * fillOdds(b.distanceR, tf)).toFixed(0)}% | ` +
+      `${age}d | ${(100 * lad[0].hit).toFixed(0)}% / ${(100 * lad[1].hit).toFixed(0)}% |`);
+  }
+  out.push('');
+  out.push(note + '\n');
 }
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -267,25 +296,18 @@ export async function buildReview({ days = 1 } = {}) {
   // These are not events, so they never appear under "scanner calls" -- they
   // are standing limits the user can place and forget, and OANDA reserves no
   // margin until one fills.
-  const blocks = await liveBlocks();
+  const blocksD = await liveBlocks('D');
+  const blocksH4 = await liveBlocks('H4');
   out.push('## Order blocks live right now\n');
-  if (!blocks.length) out.push('_None in reach._\n');
-  else {
-    out.push('| pair | dir | limit | stop | 1R | away | fills | waited | reaches 1R / 2R |');
-    out.push('|---|---|---|---|---|---|---|---|---|');
-    for (const b of blocks) {
-      const D = dp(b.sym), age = b.barsSinceChoch;
-      const lad = reachLadder(b, age);
-      out.push(`| ${b.sym} | ${b.dir > 0 ? 'LONG' : 'SHORT'} | **${b.entry.toFixed(D)}** | ` +
-        `${b.stop.toFixed(D)} | ${b.riskPips.toFixed(0)}p $${b.riskUsd.toFixed(2)} | ` +
-        `${Math.abs(b.distanceR).toFixed(1)}R | ${(100 * fillOdds(b.distanceR)).toFixed(0)}% | ` +
-        `${age}d | ${(100 * lad[0].hit).toFixed(0)}% / ${(100 * lad[1].hit).toFixed(0)}% |`);
-    }
-    out.push('');
-    out.push('_Age is a quality signal, not staleness: a block filling after 60 days reaches 2R ' +
-      '58% of the time against 34% for one filling the same day. "Fills" is measured from distance ' +
-      '— 94% under 0.5R, 12% past 8R, which is why nothing past 8R is listed._\n');
-  }
+  blockTable(out, blocksD, 'D', 'Daily',
+    '_Age is a quality signal, not staleness: a daily block filling after 60 days reaches 2R 58% of ' +
+    'the time against 34% for one filling the same day. "Fills" comes from distance — 94% under 0.5R, ' +
+    '12% past 8R, which is why nothing past 8R is listed._');
+  blockTable(out, blocksH4, 'H4', '4-hour',
+    '_Same definition, roughly six times the frequency, split-validated clean (14 pairs fit +0.410R, ' +
+    '14 untouched +0.494R). **Read these net of cost:** an H4 stop is about a third of a daily one, so ' +
+    'the same spread takes three times the share. Gross +0.452R against daily +0.413R, but net of one ' +
+    'spread +0.231R against +0.303R. Real, and mostly rent._');
 
   // ---- what the scanner called, and how it went ----
   out.push(`## Scanner calls, last ${days} day${days > 1 ? 's' : ''}\n`);
