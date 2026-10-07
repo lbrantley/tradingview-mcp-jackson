@@ -22,7 +22,7 @@
  */
 import 'dotenv/config';
 import { execSync, spawnSync } from 'child_process';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import https from 'https';
@@ -218,8 +218,21 @@ async function main() {
     log(`  ✅ pulled — market_context.json + any other dev updates are current`);
   }
   if (prePullStashed) {
-    const popR = runVerbose(`git stash pop --quiet`);
-    if (!popR.ok) log(`  ⚠  pre-pull stash pop failed: ${popR.stderr.trim().split('\n')[0]}`);
+    let popR = runVerbose(`git stash pop --quiet`);
+    // The chart SVGs are DERIVED artifacts, regenerated from live data on every
+    // run, and once a previous review has committed them the pull brings the
+    // same paths back as tracked files -- so popping an untracked copy of them
+    // always collides. Everything else in that stash is real state (pushes.jsonl
+    // is the only record of what reached the phone), so dropping the stash is
+    // not an option. Clear just the artifacts and pop again.
+    if (!popR.ok && /briefs[\\/]charts/.test(popR.stderr)) {
+      const dir = join(BRIEFS, 'charts', TODAY);
+      log(`  chart artifacts collided with the pull; clearing ${dir} and retrying`);
+      try { rmSync(dir, { recursive: true, force: true }); } catch (e) { log(`    clear failed: ${e.message}`); }
+      popR = runVerbose(`git stash pop --quiet`);
+    }
+    if (!popR.ok) log(`  ⚠  pre-pull stash pop failed: ${popR.stderr.trim().split('\n')[0]}` +
+      `\n     stash kept — run 'git stash list' on this machine`);
   }
 
   // Step 0b: auto-refresh market_context.json via Claude + web_search so
