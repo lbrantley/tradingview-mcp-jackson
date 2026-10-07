@@ -28,6 +28,7 @@ import { findSetups, findWatching, DEFAULTS } from '../src/setups.js';
 import { pendingBlocks, reachLadder, fillOdds, OB_TF } from '../src/orderblocks.js';
 import { cachedSnapshot, positioningNote } from '../src/cot.js';
 import { quoteRates, usdPerPrice, moveWeights, weightLine, weightTag } from '../src/weight.js';
+import { sessionClock, restsThrough, skewFor } from '../src/sessions.js';
 import { getCalendar, eventsFor } from '../src/news.js';
 import { appendFileSync, readFileSync, writeFileSync, existsSync } from 'fs';
 import https from 'https';
@@ -393,6 +394,18 @@ try {
 } catch (e) { /* not a checkout, or git missing */ }
 console.log(`\nSCAN v2 — ${cst(new Date().toISOString())} CST   ${PAIRS.length} pairs   code ${rev}`);
 if (nav) console.log(`account NAV $${nav.toFixed(2)}   size ${UNITS} units (0.01 lot) flat   READ-ONLY`);
+// THE CLOCK. The 07:00-10:00 Chicago window carries 1.39-1.58x an average
+// hour; 14:00-18:00 carries 0.65-0.91x. Session preference persists at
+// 0.91-0.96 across a split of the history, which makes it the most stable
+// signal in this system -- London and New York do not move. Printed before any
+// setup, because the same setup read at 15:00 and at 08:00 is not the same
+// opportunity.
+{
+  const c = sessionClock(), r = restsThrough();
+  console.log(`clock ${String(c.hour).padStart(2, '0')}:00 Chicago · ${c.state} hour at ${c.mult.toFixed(2)}x` +
+    `${c.live ? ` · in the ${c.live.name} window` : ` · next ${c.next.name} in ${c.next.in}h`}`);
+  console.log(`      an order placed now rests through ${r.covers}${r.hours ? ` (~${r.hours}h)` : ''}`);
+}
 console.log('='.repeat(78));
 
 // ---- ORDER BLOCKS ----------------------------------------------------------
@@ -623,6 +636,9 @@ for (const k of order) {
     console.log(`     room ahead ${h.room.toFixed(1)} ATR   ${h.backup} levels stacked ahead`);
     const wl = weightLine(weights.get(h.sym));
     if (wl) console.log(`     ${wl}`);
+    const sk = skewFor(h.sym);
+    if (sk) console.log(`     window ${sk.mult.toFixed(2)}x in the session an order would rest through — ${sk.verdict}` +
+      `   (AM ${sk.am.toFixed(2)}x · PM ${sk.pm.toFixed(2)}x)`);
     if (h.fireNo) console.log(`     ${fireLabel(h.fireNo)}`);
     console.log(`     entry ${h.px.toFixed(D)}   stop ${h.stop.toFixed(D)} (${h.riskPips.toFixed(0)}p, $${h.riskUsd.toFixed(2)})   target ${h.target.toFixed(D)} (${h.rr.toFixed(1)}R)`);
     console.log(`     leg ${h.legPips.toFixed(0)}p daily, ${h.legFrom.slice(0, 10)} → ${h.legTo.slice(0, 10)}, projected ${FIB_EXT}× beyond`);

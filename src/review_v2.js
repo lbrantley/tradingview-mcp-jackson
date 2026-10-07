@@ -18,10 +18,12 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getCandles, getPricing, getSummary, getOpenTrades, LIVE_ACCOUNT_ID, ACCOUNT_ID } from './oanda.js';
 import { getCalendar, eventsFor } from './news.js';
+import { atr } from './indicators.js';
 import { findSetups } from './setups.js';
 import { pendingBlocks, reachLadder, fillOdds, OB_TF } from './orderblocks.js';
 import { quoteRates, usdPerPrice } from './weight.js';
 import { blockWindows, blockChart } from './chart_svg.js';
+import { SESSION_SKEW, sessionClock, restsThrough, skewFor, energyRanking } from './sessions.js';
 import { writeFileSync, mkdirSync } from 'fs';
 
 // Every pair the scanner watches. Blocks are scarce -- roughly 7 form per six
@@ -103,8 +105,8 @@ function writeCharts(blocks, dateStr, repoDir) {
 function blockTable(out, blocks, tf, heading, note) {
   out.push(`### ${heading}\n`);
   if (!blocks.length) { out.push('_None in reach._\n'); return; }
-  out.push('| pair | dir | limit | stop | 1R | spread | away | fills | waited | reaches 1R / 2R |');
-  out.push('|---|---|---|---|---|---|---|---|---|---|');
+  out.push('| pair | dir | limit | stop | 1R | spread | away | fills | waited | window | reaches 1R / 2R |');
+  out.push('|---|---|---|---|---|---|---|---|---|---|---|');
   for (const b of blocks) {
     const D = dp(b.sym), age = Math.round(b.ageDays ?? b.barsSinceChoch);
     const lad = reachLadder(b, age, tf);
@@ -112,7 +114,8 @@ function blockTable(out, blocks, tf, heading, note) {
       `${b.stop.toFixed(D)} | ${b.riskPips.toFixed(0)}p $${b.riskUsd.toFixed(2)} | ` +
       `${b.spreadShare == null ? '—' : (b.spreadShare > 0.2 ? `**${(100 * b.spreadShare).toFixed(0)}%**` : `${(100 * b.spreadShare).toFixed(0)}%`)} | ` +
       `${Math.abs(b.distanceR).toFixed(1)}R | ${(100 * fillOdds(b.distanceR, tf)).toFixed(0)}% | ` +
-      `${age}d | ${(100 * lad[0].hit).toFixed(0)}% / ${(100 * lad[1].hit).toFixed(0)}% |`);
+      `${age}d | ${(() => { const k = skewFor(b.sym); return k ? `${k.mult.toFixed(2)}x${k.mult < 1 ? ' ⚠' : ''}` : '—'; })()} | ` +
+      `${(100 * lad[0].hit).toFixed(0)}% / ${(100 * lad[1].hit).toFixed(0)}% |`);
   }
   out.push('');
   out.push(note + '\n');
@@ -232,7 +235,7 @@ async function resolve(a) {
   return { ...a, outcome: 'open', r: (L ? last - a.px : a.px - last) / risk, now: last };
 }
 
-export async function buildReview({ days = 1 } = {}) {
+export async function buildReview({ days = 1, kind = 'daily' } = {}) {
   const out = [];
   const alerts = loadAlerts(days);
   const older = loadAlerts(30).filter(a => Date.parse(a.time) < Date.now() - days * 86400e3);
@@ -245,6 +248,58 @@ export async function buildReview({ days = 1 } = {}) {
   const cal = await getCalendar({ snapshot: false }).catch(() => []);
 
   const positionWinds = [];
+  // THE CLOCK FIRST. Measured over ~2 years, the 07:00-10:00 Chicago window
+  // carries 1.39-1.58x an average hour and 14:00-18:00 carries 0.65-0.91x.
+  // Session preference persists at 0.91-0.96 across a split of the history --
+  // the most stable signal in the system, because London and New York do not
+  // move. A setup read without knowing which window it falls in is a setup
+  // read without its most reliable context.
+  const clock = sessionClock();
+  const rests = restsThrough();
+  out.push('## The clock\n');
+  out.push(`It is **${String(clock.hour).padStart(2,'0')}:00 Chicago** — a **${clock.state}** hour ` +
+    `at ${clock.mult.toFixed(2)}x an average one` +
+    `${clock.live ? `, inside the ${clock.live.name} window` : ''}.`);
+  out.push(`An order placed now rests through **${rests.covers}**` +
+    `${rests.hours ? ` — about ${rests.hours}h of cover` : ''}.`);
+  out.push(`Next window: **${clock.next.name}** in ${clock.next.in}h.\n`);
+  out.push(kind === 'evening'
+    ? '_Evening pass. Orders placed now get the longest cover of the day: Tokyo, ' +
+      'London, and tomorrow\'s NY overlap. Place limits and stops here — whatever ' +
+      'does not fill overnight is still live for the morning._\n'
+    : '_Morning pass. The NY overlap is the single best window of the day but it is ' +
+      'the only one left before the afternoon goes dead, so this is the adjustment ' +
+      'pass: the morning-skewed pairs, and anything that filled overnight._\n');
+
+  // WHERE THE ENERGY IS. A different question from the clock: the clock says
+  // WHEN any pair moves, this says WHICH pairs are unusually active now.
+  // Volatility PERSISTS rather than mean-reverting -- a pair already running
+  // covers 6.31 ATR over the next 20 bars against 3.67 for a quiet one, over
+  // 77,812 observations. Shelf life is short though: the ranking holds at 0.86
+  // a day out and 0.72 at two days, so it is a two-day list, not a standing one.
+  // It gives no direction -- after a >1.5 ATR bar price continued 47.7% and
+  // reversed 52.3%. Energy picks the pair; structure picks the side.
+  try {
+    const a14 = new Map(), a100 = new Map();
+    for (const sym of BLOCK_PAIRS) {
+      const b = await getCandles(sym, { granularity: 'H4', count: 400 }).catch(() => null);
+      if (!b || b.length < 200) continue;
+      const x = atr(b, 14), y = atr(b, 100);
+      a14.set(sym, x[x.length - 1]); a100.set(sym, y[y.length - 1]);
+    }
+    const en = energyRanking(a14, a100);
+    if (en.length) {
+      const hot = en.filter(e => e.state === 'HOT'), quiet = en.filter(e => e.state === 'quiet');
+      out.push('## Where the energy is\n');
+      out.push(`**Running hot:** ${hot.length ? hot.map(e => `${e.sym} ${e.ratio.toFixed(2)}`).join(' · ') : '_nothing unusually active_'}`);
+      out.push(`**Quiet:** ${quiet.length ? quiet.slice(-6).map(e => `${e.sym} ${e.ratio.toFixed(2)}`).join(' · ') : '_none_'}\n`);
+      out.push('_ATR(14) over ATR(100). Above 1.15 is unusually active, and volatility persists — ' +
+        'a pair already running covers 6.31 ATR over the next 20 bars against 3.67 for a quiet one. ' +
+        'Good for about two days. It says nothing about direction: after a big bar price continued ' +
+        '47.7% of the time and reversed 52.3%. This picks the pair; the levels pick the side._\n');
+    }
+  } catch { /* energy is context, never worth failing the review over */ }
+
   out.push('## Account\n');
   if (cal.stale) out.push('_Calendar from the last snapshot — the live feed was rate limited._\n');
   if (acct) out.push(`NAV **$${(+acct.NAV).toFixed(2)}**   unrealised $${(+acct.unrealizedPL).toFixed(2)}   ` +

@@ -31,7 +31,11 @@ import { findScannerPid, pauseScanner, resumeScanner } from '../src/process_cont
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = join(__dirname, '..');
 const BRIEFS = join(REPO, 'briefs');
+// 'morning' and 'evening' are the two daily passes, split at 06:00 and 18:00
+// Chicago to match the two windows the user can actually place orders in.
+// 'daily' stays accepted so anything still calling it keeps working.
 const KIND = (process.argv[2] || 'daily').toLowerCase();
+const DAILY_KINDS = ['daily', 'morning', 'evening'];
 const TODAY = new Date().toISOString().slice(0, 10);
 const OUT_FILE = join(BRIEFS, `${TODAY}-${KIND}-review.md`);
 const OUT_REL_PATH = `briefs/${TODAY}-${KIND}-review.md`;
@@ -272,7 +276,12 @@ async function main() {
   let reviewText = '';
   try {
     const { buildReview } = await import('../src/review_v2.js');
-    reviewText = await buildReview({ days: KIND === 'weekly' ? 7 : 1 });
+    // `evening` is the 18:00 CST pass. It is the MORE powerful of the two
+    // daily reviews, not the lesser: an order placed at 6pm rests through
+    // Tokyo, London and tomorrow's NY overlap — about sixteen hours covering
+    // the best window of the next day. The 6am pass only has the NY overlap
+    // before the afternoon goes dead. See src/sessions.js.
+    reviewText = await buildReview({ days: DAILY_KINDS.includes(KIND) ? 1 : 7, kind: KIND });
     log(`Review built: ${reviewText.length} bytes`);
   } catch (e) {
     log(`Review failed: ${e.message}`);
@@ -434,8 +443,10 @@ async function main() {
     ? 'GITHUB AUTH'
     : (gitError ? (gitError.split(' failed')[0] || 'git').toUpperCase() : null);
   const title = gitError
-    ? `⚠️ ${KIND === 'weekly' ? 'Weekly' : 'Daily'} review — ${gitStep} FAILED (${TODAY})`
-    : (KIND === 'weekly' ? `📊 Weekly review — ${TODAY}` : `🔍 Daily review — ${TODAY}`);
+    ? `⚠️ ${KIND[0].toUpperCase()}${KIND.slice(1)} review — ${gitStep} FAILED (${TODAY})`
+    : ({ weekly: `📊 Weekly review — ${TODAY}`,
+          morning: `🌅 Morning review — ${TODAY}`,
+          evening: `🌙 Evening review — ${TODAY}` }[KIND] || `🔍 Daily review — ${TODAY}`);
   const messageParts = [summary, gradeLine];
   // Macro refresh outcome — makes silent failures loud on the phone.
   const macroBadge = {
