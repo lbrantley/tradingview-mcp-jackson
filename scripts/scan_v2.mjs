@@ -670,7 +670,13 @@ for (const [title, list] of [['\n\u{1F534} CODE RED — at the level, resolution
 }
 
 if (fresh.length) {
-  for (const h of fresh) appendFileSync(LOG, JSON.stringify(h) + '\n');
+  // GATED, like the state file. The log is the record of what the user was
+  // actually TOLD, and it is the sample every live measurement is computed
+  // from. Appending on runs that cannot deliver meant every local inspection
+  // re-logged the same setups: 281 of 551 lines were duplicates by 2026-10-06,
+  // and measuring them as independent observations made 26 distinct alerts
+  // look like 110 and turned a meaningless sample into a confident verdict.
+  if (WILL_DELIVER) for (const h of fresh) appendFileSync(LOG, JSON.stringify(h) + '\n');
   console.log(`${fresh.length} new setup(s) logged to alerts_v2.jsonl`);
   // best first, so if the budget runs out it is the weakest that gets cut
   const lines = [...fresh].sort((a, b) => (b.rr - a.rr) || (b.touches - a.touches)).map(h => {
