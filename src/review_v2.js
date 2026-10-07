@@ -23,7 +23,7 @@ import { findSetups } from './setups.js';
 import { pendingBlocks, reachLadder, fillOdds, OB_TF } from './orderblocks.js';
 import { quoteRates, usdPerPrice } from './weight.js';
 import { blockWindows, blockChart } from './chart_svg.js';
-import { SESSION_SKEW, sessionClock, restsThrough, skewFor, energyRanking } from './sessions.js';
+import { SESSION_SKEW, sessionClock, restsThrough, skewFor, energyRanking, chicagoDate } from './sessions.js';
 import { writeFileSync, mkdirSync } from 'fs';
 
 // Every pair the scanner watches. Blocks are scarce -- roughly 7 form per six
@@ -405,7 +405,7 @@ export async function buildReview({ days = 1, kind = 'daily' } = {}) {
   // The tables say WHERE; the charts say WHY. An order block is a candle, so a
   // row of numbers cannot show the thing the trade is built on.
   const nearest = [...blocksD, ...blocksH4].sort((x, y) => Math.abs(x.distanceR) - Math.abs(y.distanceR));
-  const charts = writeCharts(nearest, new Date().toISOString().slice(0, 10), REPO);
+  const charts = writeCharts(nearest, chicagoDate(), REPO);   // must match deliver_review's TODAY
   if (charts.length) {
     out.push(`### In reach, drawn\n`);
     out.push(`_${charts.length} block${charts.length > 1 ? 's' : ''} within ${CHART_MAX_R}R of the limit. ` +

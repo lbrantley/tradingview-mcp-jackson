@@ -70,6 +70,19 @@ export const WINDOWS = [
   { name: 'Tokyo', from: 19, to: 23 },
 ];
 
+/**
+ * Today's date in Chicago, YYYY-MM-DD.
+ *
+ * The VM runs on UTC, so `toISOString().slice(0,10)` files the 18:00 Chicago
+ * review under TOMORROW once the clock is past 19:00 CDT — and after DST ends
+ * in November, 18:00 CST IS 00:00 UTC, so every evening review would be dated a
+ * day ahead, permanently. Everything else in this system reasons in Chicago;
+ * the filenames have to as well, or the briefs sort wrong.
+ */
+export function chicagoDate(now = new Date()) {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(now);
+}
+
 /** Current hour in Chicago, DST handled by the platform. */
 export function chicagoHour(now = new Date()) {
   return +new Intl.DateTimeFormat('en-US', {

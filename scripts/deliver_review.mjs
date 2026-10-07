@@ -36,7 +36,10 @@ const BRIEFS = join(REPO, 'briefs');
 // 'daily' stays accepted so anything still calling it keeps working.
 const KIND = (process.argv[2] || 'daily').toLowerCase();
 const DAILY_KINDS = ['daily', 'morning', 'evening'];
-const TODAY = new Date().toISOString().slice(0, 10);
+// Chicago, not UTC. The VM runs UTC, so the 18:00 Chicago review was filed
+// under tomorrow -- and once DST ends 18:00 CST is exactly 00:00 UTC, which
+// would make that permanent. See chicagoDate() in src/sessions.js.
+const TODAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
 const OUT_FILE = join(BRIEFS, `${TODAY}-${KIND}-review.md`);
 const OUT_REL_PATH = `briefs/${TODAY}-${KIND}-review.md`;
 const NEWS_CACHE = join(REPO, 'news_cache.json');
