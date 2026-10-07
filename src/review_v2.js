@@ -263,13 +263,16 @@ export async function buildReview({ days = 1, kind = 'daily' } = {}) {
   out.push(`An order placed now rests through **${rests.covers}**` +
     `${rests.hours ? ` — about ${rests.hours}h of cover` : ''}.`);
   out.push(`Next window: **${clock.next.name}** in ${clock.next.in}h.\n`);
-  out.push(kind === 'evening'
-    ? '_Evening pass. Orders placed now get the longest cover of the day: Tokyo, ' +
-      'London, and tomorrow\'s NY overlap. Place limits and stops here — whatever ' +
-      'does not fill overnight is still live for the morning._\n'
-    : '_Morning pass. The NY overlap is the single best window of the day but it is ' +
-      'the only one left before the afternoon goes dead, so this is the adjustment ' +
-      'pass: the morning-skewed pairs, and anything that filled overnight._\n');
+  // The weekly review is not a session pass, so it gets no pass label -- its
+  // orders are not placed against the next sixteen hours.
+  if (kind === 'evening') out.push(
+    '_Evening pass. Orders placed now get the longest cover of the day: Tokyo, ' +
+    'London, and tomorrow\'s NY overlap. Place limits and stops here — whatever ' +
+    'does not fill overnight is still live for the morning._\n');
+  else if (kind === 'morning' || kind === 'daily') out.push(
+    '_Morning pass. The NY overlap is the single best window of the day but it is ' +
+    'the only one left before the afternoon goes dead, so this is the adjustment ' +
+    'pass: the morning-skewed pairs, and anything that filled overnight._\n');
 
   // WHERE THE ENERGY IS. A different question from the clock: the clock says
   // WHEN any pair moves, this says WHICH pairs are unusually active now.
