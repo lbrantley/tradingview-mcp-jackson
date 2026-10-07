@@ -350,7 +350,10 @@ async function main() {
     // Charts are SVG files beside the review, not inline markup -- GitHub
     // sanitises inline <svg> -- so they have to be committed or every image in
     // the review renders as a broken link.
-    run('git add briefs/charts 2>/dev/null || true');
+    // Plain form, no shell operators: the VM is Windows and execSync goes
+    // through cmd.exe, where `2>/dev/null || true` is not parseable. run()
+    // already swallows a non-zero exit, which is all the guard this needed.
+    run('git add briefs/charts');
     if (existsSync(NEWS_UPCOMING)) run(`git add ${NEWS_UPCOMING_REL}`);
     // Also stage runtime files the scanner just wrote to, otherwise the
     // subsequent `git pull --rebase` refuses ("cannot pull with rebase: You
