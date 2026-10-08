@@ -393,7 +393,14 @@ try {
   rev = `${rev}, ${age}`;
 } catch (e) { /* not a checkout, or git missing */ }
 console.log(`\nSCAN v2 — ${cst(new Date().toISOString())} CST   ${PAIRS.length} pairs   code ${rev}`);
-if (nav) console.log(`account NAV $${nav.toFixed(2)}   size ${UNITS} units (0.01 lot) flat   READ-ONLY`);
+// "flat" was hardcoded, so the header announced flat while the section below
+// listed open positions. The one line the user reads first should not contradict
+// the rest of the scan.
+if (nav) {
+  const syms = [...held.keys()];
+  console.log(`account NAV $${nav.toFixed(2)}   size ${UNITS} units (0.01 lot)   ` +
+    `${syms.length ? `holding ${syms.join(', ')}` : 'flat'}   READ-ONLY`);
+}
 // THE CLOCK. The 07:00-10:00 Chicago window carries 1.39-1.58x an average
 // hour; 14:00-18:00 carries 0.65-0.91x. Session preference persists at
 // 0.91-0.96 across a split of the history, which makes it the most stable
