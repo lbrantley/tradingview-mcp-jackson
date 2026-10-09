@@ -79,7 +79,14 @@ async function liveBlocks(tf) {
  * images at all rather than six meaningless ones.
  */
 const CHART_CAP = 6;
-const CHART_MAX_R = 3;
+// How near a block has to be to earn a row, and a picture. Measured fill odds:
+// 94% under 0.5R, 87% to 1R, 81% to 2R, then 71% at 2-4R -- and those are
+// EVENTUAL fills, often weeks out. Past this a block is not something to do.
+const SHOW_WITHIN_R = 2;
+// Must match SHOW_WITHIN_R. These drifted apart once the tables were trimmed
+// to 2R: the charts kept drawing out to 3R, so the review was illustrating the
+// exact blocks the tables had just hidden.
+const CHART_MAX_R = SHOW_WITHIN_R;
 
 function writeCharts(blocks, dateStr, repoDir) {
   const rel = `charts/${dateStr}`;
@@ -107,8 +114,6 @@ function writeCharts(blocks, dateStr, repoDir) {
 // and 50% at 4-8R -- and those are EVENTUAL fills, often weeks out. Listing
 // twenty-odd of them buries the two that matter. The approach alerts already
 // fire at 1R and 0.25R, so nothing is lost by waiting for a block to come to us.
-const SHOW_WITHIN_R = 2;
-
 function blockTable(out, blocks, tf, heading, note) {
   out.push(`### ${heading}\n`);
   if (!blocks.length) { out.push('_None in reach._\n'); return; }
