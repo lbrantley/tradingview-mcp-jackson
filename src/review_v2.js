@@ -444,13 +444,19 @@ export async function buildReview({ days = 1, kind = 'daily' } = {}) {
     const conflicted = new Set(Object.entries(byBar).filter(([, v]) => v.size > 1).map(([k]) => k));
     if (conflicted.size) out.push(`⚠️ **${conflicted.size} conflicted**: ` +
       [...conflicted].map(k => k.split('@')[0]).join(', ') + ' — levels either side firing opposite ways, no read.\n');
-    out.push('| when | pair | dir | branch | entry | stop | target | outcome |');
-    out.push('|---|---|---|---|---|---|---|---|');
+    // FIRING NUMBER belongs here. It is the strongest signal in the level
+    // engine -- a 1st firing reaches 1R 64% of the time, a 3rd-or-later 77% --
+    // and the review, which is the thing actually read every morning, was the
+    // one place it did not appear.
+    out.push('| when | pair | dir | branch | firing | entry | stop | target | outcome |');
+    out.push('|---|---|---|---|---|---|---|---|---|');
     for (const r of res) {
       if (conflicted.has(`${r.sym}@${r.time}`)) continue;
       const d = dp(r.sym);
+      const fn = r.fireNo || 1;
+      const fire = fn === 1 ? '1st ⚠' : fn === 2 ? '2nd' : fn === 3 ? '3rd' : `${fn}th`;
       out.push(`| ${r.time.slice(5, 16)} | ${r.sym} | ${r.dir > 0 ? 'LONG' : 'SHORT'} | ${r.kind} | ` +
-        `${r.px.toFixed(d)} | ${r.stop.toFixed(d)} | ${r.target.toFixed(d)} | ` +
+        `${fire} | ${r.px.toFixed(d)} | ${r.stop.toFixed(d)} | ${r.target.toFixed(d)} | ` +
         `${r.outcome}${r.r != null ? ` ${r.r >= 0 ? '+' : ''}${r.r.toFixed(2)}R` : ''} |`);
     }
     out.push('');
