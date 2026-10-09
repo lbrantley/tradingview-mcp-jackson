@@ -102,9 +102,23 @@ function writeCharts(blocks, dateStr, repoDir) {
  * One table per timeframe. They are NOT pooled -- different stop sizes, odds
  * and spread sensitivity, so averaging them would hide what separates them.
  */
+// Beyond this a block is not something to do, it is something that exists.
+// Measured fill odds: 94% under 0.5R, 87% to 1R, 81% to 2R, then 71% at 2-4R
+// and 50% at 4-8R -- and those are EVENTUAL fills, often weeks out. Listing
+// twenty-odd of them buries the two that matter. The approach alerts already
+// fire at 1R and 0.25R, so nothing is lost by waiting for a block to come to us.
+const SHOW_WITHIN_R = 2;
+
 function blockTable(out, blocks, tf, heading, note) {
   out.push(`### ${heading}\n`);
   if (!blocks.length) { out.push('_None in reach._\n'); return; }
+  const far = blocks.filter(b => Math.abs(b.distanceR) > SHOW_WITHIN_R);
+  blocks = blocks.filter(b => Math.abs(b.distanceR) <= SHOW_WITHIN_R);
+  if (!blocks.length) {
+    out.push(`_None within ${SHOW_WITHIN_R}R. ${far.length} further out — ` +
+      `nearest ${Math.min(...far.map(b => Math.abs(b.distanceR))).toFixed(1)}R away._\n`);
+    return;
+  }
   out.push('| pair | dir | limit | stop | 1R | spread | away | fills | waited | window | reaches 1R / 2R |');
   out.push('|---|---|---|---|---|---|---|---|---|---|---|');
   for (const b of blocks) {
@@ -118,6 +132,10 @@ function blockTable(out, blocks, tf, heading, note) {
       `${(100 * lad[0].hit).toFixed(0)}% / ${(100 * lad[1].hit).toFixed(0)}% |`);
   }
   out.push('');
+  if (far.length) out.push(`_${far.length} more live but further out, ` +
+    `${Math.min(...far.map(b => Math.abs(b.distanceR))).toFixed(1)}R to ` +
+    `${Math.max(...far.map(b => Math.abs(b.distanceR))).toFixed(1)}R away. ` +
+    `They alert on their own when they come within 1R._`);
   out.push(note + '\n');
 }
 
@@ -296,10 +314,8 @@ export async function buildReview({ days = 1, kind = 'daily' } = {}) {
       out.push('## Where the energy is\n');
       out.push(`**Running hot:** ${hot.length ? hot.map(e => `${e.sym} ${e.ratio.toFixed(2)}`).join(' · ') : '_nothing unusually active_'}`);
       out.push(`**Quiet:** ${quiet.length ? quiet.slice(-6).map(e => `${e.sym} ${e.ratio.toFixed(2)}`).join(' · ') : '_none_'}\n`);
-      out.push('_ATR(14) over ATR(100). Above 1.15 is unusually active, and volatility persists — ' +
-        'a pair already running covers 6.31 ATR over the next 20 bars against 3.67 for a quiet one. ' +
-        'Good for about two days. It says nothing about direction: after a big bar price continued ' +
-        '47.7% of the time and reversed 52.3%. This picks the pair; the levels pick the side._\n');
+      out.push('_Volatility persists for about two days, so a hot pair stays hot. It says nothing ' +
+        'about direction — this picks the pair, the levels pick the side._\n');
     }
   } catch { /* energy is context, never worth failing the review over */ }
 
@@ -393,14 +409,10 @@ export async function buildReview({ days = 1, kind = 'daily' } = {}) {
   const blocksH4 = await liveBlocks('H4');
   out.push('## Order blocks live right now\n');
   blockTable(out, blocksD, 'D', 'Daily',
-    '_Age is a quality signal, not staleness: a daily block filling after 60 days reaches 2R 58% of ' +
-    'the time against 34% for one filling the same day. "Fills" comes from distance — 94% under 0.5R, ' +
-    '12% past 8R, which is why nothing past 8R is listed._');
+    '_Older blocks run further: 60+ days reaches 2R 58% of the time against 34% for a same-day fill._');
   blockTable(out, blocksH4, 'H4', '4-hour',
-    '_Same definition, roughly six times the frequency, split-validated clean (14 pairs fit +0.410R, ' +
-    '14 untouched +0.494R). **Read these net of cost:** an H4 stop is about a third of a daily one, so ' +
-    'the same spread takes three times the share. Gross +0.452R against daily +0.413R, but net of one ' +
-    'spread +0.231R against +0.303R. Real, and mostly rent._');
+    '_H4 stops are a third of a daily one, so spread bites three times as hard — a bolded spread ' +
+    'figure is most of the edge gone before price moves._');
 
   // The tables say WHERE; the charts say WHY. An order block is a candle, so a
   // row of numbers cannot show the thing the trade is built on.
@@ -415,9 +427,7 @@ export async function buildReview({ days = 1, kind = 'daily' } = {}) {
         `${Math.abs(b.distanceR).toFixed(2)}R away · waited ${b.age}d\n`);
       out.push(`![${b.sym} ${b.tf} order block: how it formed, and where price is now](${path})\n`);
     }
-    out.push('_Hollow candle closed up, filled closed down. Left panel is the block forming — the ringed ' +
-      'candle is the block, **C** is the change of character. Right panel is where price sits now against ' +
-      'the zone. Full legend is inside each image._\n');
+    out.push('_Left panel is the block forming, right is where price sits now. Legend is in each image._\n');
   }
 
   // ---- what the scanner called, and how it went ----
